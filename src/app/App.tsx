@@ -15,14 +15,15 @@ import { defaultBacklogTemplates } from '../defaults/templates';
 import { defaultPrinciples, defaultTypeInstructions } from '../defaults/instructions';
 import type { BacklogRelationship } from '../domain/relationship';
 import { diffDocuments, splitSections, parseChecklistSections, updateChecklistLine, convertPlaceholderTemplate } from '../domain/document';
+import { itemTypeLabel } from './labels';
+import { SettingsModal } from './SettingsModal';
+import { ItemMenu } from './ItemMenu';
+import { Composer } from './Composer';
 import { logError } from '../infrastructure/logging';
 
 const refinementStore = new IndexedDbRefinementStore();
 const workspace = new WorkspaceApplicationService(refinementStore);
 const settingsRepository = new SettingsRepository();
-const itemTypeLabel: Record<BacklogItemType, string> = {
-  capability: 'Capability', feature: 'Feature', 'user-story': 'User story', enabler: 'Enabler',
-};
 const typeShort: Record<BacklogItemType, string> = {
   capability: 'CAP', feature: 'FEA', 'user-story': 'STO', enabler: 'ENA',
 };
@@ -336,11 +337,8 @@ export default function App() {
       else setError(`Could not assess quality: ${errorText(cause)}`);
     } finally { setBusy(false); }
   }
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | BacklogItemType>('general');
 
   async function deleteSelected() {
-    setMenuOpen(false);
     if (!selectedItem || !window.confirm(`Delete “${selectedItem.title}” and its refinement sessions? Related items will be kept.`)) return;
     try {
       await workspace.deleteItemAndReferences(selectedItem.id);
@@ -350,24 +348,9 @@ export default function App() {
     } catch (cause) { setError(`Could not delete item: ${errorText(cause)}`); }
   }
 
-  async function saveSettings(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveSettings(values: UserSettings) {
     try {
-      const form = new FormData(event.currentTarget);
-      const saved = await settingsRepository.save({
-        instructions: String(form.get('instructions') ?? ''),
-        templates: Object.fromEntries(
-          (Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => [
-            type, String(form.get(`template-${type}`) ?? ''),
-          ]),
-        ) as UserSettings['templates'],
-        principles: String(form.get('principles') ?? ''),
-        typeInstructions: Object.fromEntries(
-          (Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => [
-            type, String(form.get(`type-instructions-${type}`) ?? ''),
-          ]),
-        ) as UserSettings['typeInstructions'],
-      });
+      const saved = await settingsRepository.save(values);
       setSettings(saved); setShowSettings(false); setNotice('Instructions and templates saved locally in IndexedDB.');
     } catch (cause) { setError(`Could not save settings: ${errorText(cause)}`); }
   }
@@ -451,6 +434,12 @@ export default function App() {
     } catch (cause) { logError('Could not undo', cause); setError(`Could not undo: ${errorText(cause)}`); }
   }
 
+  function downloadMarkdown() {
+    if (!selectedItem) return;
+    const name = selectedItem.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'backlog-item';
+    downloadFile(`${name}.md`, markdownFor(selectedItem), 'text/markdown');
+  }
+
   async function copyMarkdown() {
     if (!selectedItem) return;
     try {
@@ -503,7 +492,7 @@ export default function App() {
 
         <section className={`refinement-column panel-${mobilePanel}`} aria-label="Refinement workspace">
           {selectedItem ? <>
-            <div className="refine-heading"><div><span className="eyebrow">REFINEMENT WORKSPACE</span><h1>{selectedItem.title}</h1><p>{parentItem ? <><button className="text-link" onClick={() => void selectItem(parentItem.id)}>{parentItem.title}</button><span className="crumb-sep">/</span></> : null}{itemTypeLabel[selectedItem.type]} <span className="crumb-sep">·</span> {selectedItem.status.replaceAll('-', ' ')}</p></div><div className="heading-actions">{sessions.length > 1 && <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} onChange={(event) => void switchSession(event.target.value)}>{sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}</select>}<button className="new-session-button" onClick={() => void startNewSession()} aria-label="Start a new refinement session" title="New refinement session">＋</button><div className="menu-wrap"><button className="more-button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menuOpen} onKeyDown={(event) => { if (event.key === 'Escape') setMenuOpen(false); }} onClick={() => setMenuOpen((open) => !open)} onBlur={(event) => { if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) setMenuOpen(false); }}>···</button>{menuOpen && <div className="menu-popover" role="menu" onKeyDown={(event) => { if (event.key === 'Escape') setMenuOpen(false); }} onBlur={(event) => { if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) setMenuOpen(false); }}><button role="menuitem" className="menu-item menu-danger" onClick={() => void deleteSelected()}>🗑 Delete item</button></div>}</div></div></div>
+            <div className="refine-heading"><div><span className="eyebrow">REFINEMENT WORKSPACE</span><h1>{selectedItem.title}</h1><p>{parentItem ? <><button className="text-link" onClick={() => void selectItem(parentItem.id)}>{parentItem.title}</button><span className="crumb-sep">/</span></> : null}{itemTypeLabel[selectedItem.type]} <span className="crumb-sep">·</span> {selectedItem.status.replaceAll('-', ' ')}</p></div><div className="heading-actions">{sessions.length > 1 && <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} onChange={(event) => void switchSession(event.target.value)}>{sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}</select>}<button className="new-session-button" onClick={() => void startNewSession()} aria-label="Start a new refinement session" title="New refinement session">＋</button><ItemMenu actions={[{ id: 'copy', label: '▣ Copy Markdown', onSelect: () => void copyMarkdown() }, { id: 'download', label: '↓ Download .md', onSelect: downloadMarkdown }, { id: 'delete', label: '🗑 Delete item', danger: true, onSelect: () => void deleteSelected() }]} /></div></div>
             {parentItem && <div className="context-banner"><span className="context-icon">↳</span><span>Refining within <strong>{parentItem.title}</strong></span><button onClick={() => void selectItem(parentItem.id)}>View parent</button></div>}
             <div ref={conversationRef} className="conversation-scroll" aria-live="polite">
               {currentMessages.length === 0 && <div className="welcome-card"><div className="agent-icon">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span>↳</span> What outcome should this work make possible?</div></div></div>}
@@ -511,7 +500,7 @@ export default function App() {
               {busy && <div className="message-row"><div className="agent-icon">✳</div><div className="message-content"><span className="message-author">Refinement agent</span><p className="typing"><i /><i /><i /><span>Thinking through the details</span></p></div></div>}
               {proposal && <div className="proposal-panel"><div className="proposal-heading"><div><span className="eyebrow">DECOMPOSITION PROPOSAL</span><h3>Possible next pieces</h3></div><button className="close-button" onClick={() => setProposal(undefined)} aria-label="Dismiss proposal">×</button></div><p className="proposal-rationale">{proposal.rationale}</p><div className="proposal-list">{proposal.children.map((child) => <label className="proposal-item" key={child.proposalId}><input type="checkbox" checked={selectedProposals.includes(child.proposalId)} onChange={(event) => setSelectedProposals((current) => event.target.checked ? [...current, child.proposalId] : current.filter((id) => id !== child.proposalId))} /><span className="proposal-copy"><input aria-label="Proposal title" value={child.title} onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, title: event.target.value } : value) })} /><small className="muted-copy">{parseChecklistSections(child.description).filter((entry) => entry.kind === 'assumption').length} assumptions · {parseChecklistSections(child.description).filter((entry) => entry.kind === 'question').length} open questions{(() => { const sections = splitSections(child.description).sections; return sections.length ? ` · ${sections.filter((section) => section.body.trim() && !/^(- \[ \]\s*)?$/.test(section.body.trim())).length}/${sections.length} sections filled` : ''; })()}</small><textarea aria-label="Proposal description" rows={10} value={child.description} placeholder="Add a short description before accepting" onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, description: event.target.value } : value) })} /></span><span className="type-pill">{typeShort[child.type]}</span></label>)}</div><div className="proposal-actions"><span>{selectedProposals.length} selected</span><button className="button button-primary button-small" disabled={!selectedProposals.length || busy} onClick={() => void acceptSelectedProposals()}>Add selected items <span>→</span></button></div></div>}
             </div>
-            <div className="composer-wrap"><div className="composer-tools"><span><span className="green-spark">✳</span> Refine with AI</span><span className="composer-hint">Enter to send · Shift+Enter for new line</span></div><form className="composer" onSubmit={(event) => void submitMessage(event)}><textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (message.trim() && !busy) void submitMessage(); } }} placeholder="Share context, answer a question, or describe what you know…" rows={3} aria-label="Message the refinement agent" disabled={busy} /><div className="composer-bottom"><div className="composer-tip"><span>↗</span> Your structured item updates as you refine</div><button className="send-button" type="submit" disabled={busy || !message.trim()} aria-label="Send message">{busy ? '…' : '↑'}</button></div></form><div className="composer-actions">{busy && <button className="retry-button" onClick={cancelRequest}>■ Cancel request</button>}{retryState?.sessionId === session?.id && <button className="retry-button" onClick={() => void retryAssessment()} disabled={busy}>↻ Retry last request</button>}<button className="continue-button" onClick={() => void submitMessage(undefined, true)} disabled={busy || !session}><span>◷</span> Continue with current information <span className="continue-note">Stop asking and capture what’s still unknown</span></button></div></div>
+            <div className="composer-wrap"><div className="composer-tools"><span><span className="green-spark">✳</span> Refine with AI</span><span className="composer-hint">Enter to send · Shift+Enter for new line</span></div><Composer value={message} busy={busy} onChange={setMessage} onSubmit={() => void submitMessage()} /><div className="composer-actions">{busy && <button className="retry-button" onClick={cancelRequest}>■ Cancel request</button>}{retryState?.sessionId === session?.id && <button className="retry-button" onClick={() => void retryAssessment()} disabled={busy}>↻ Retry last request</button>}<button className="continue-button" onClick={() => void submitMessage(undefined, true)} disabled={busy || !session}><span>◷</span> Continue with current information <span className="continue-note">Stop asking and capture what’s still unknown</span></button></div></div>
           </> : <div className="no-selection"><div className="empty-icon">✳</div><h2>Choose what to refine</h2><p>Select an item from your backlog or create something new.</p><button className="button button-primary" onClick={() => { setNewParentId(undefined); setShowNew(true); }}>Create backlog item</button></div>}
         </section>
 
@@ -538,30 +527,7 @@ export default function App() {
 
       {showNew && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowNew(false); }}><form className="modal" onSubmit={(event) => void createItem(event)}><button type="button" className="close-button modal-close" onClick={() => setShowNew(false)} aria-label="Close">×</button><span className="eyebrow">NEW BACKLOG ITEM</span><h2>What are we shaping?</h2><p>Start with the item type and a working title. You can refine it as you go.</p><label htmlFor="new-type">Item type</label><select id="new-type" value={newType} onChange={(event) => setNewType(event.target.value as BacklogItemType)}>{Object.entries(itemTypeLabel).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select><label htmlFor="new-title">Working title <span>Optional</span></label><input id="new-title" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`Untitled ${itemTypeLabel[newType]}`} autoFocus /><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setShowNew(false)}>Cancel</button><button className="button button-primary" type="submit">Create and refine <span>→</span></button></div></form></div>}
 
-      {showSettings && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowSettings(false); }}><form className="modal settings-modal" onSubmit={(event) => void saveSettings(event)} onKeyDown={(event) => { if (event.key === 'Escape') setShowSettings(false); }}>
-        <button type="button" className="close-button modal-close" onClick={() => setShowSettings(false)} aria-label="Close">×</button>
-        <span className="eyebrow">PERSONALIZE YOUR AGENT</span><h2>Instructions & templates</h2>
-        <div className="settings-tabs" role="tablist" aria-label="Settings sections">{settingsTabs.map((tab) => <button key={tab.id} type="button" role="tab" id={`settings-tab-${tab.id}`} aria-selected={settingsTab === tab.id} aria-controls={`settings-panel-${tab.id}`} className={`settings-tab ${settingsTab === tab.id ? 'active' : ''}`} onClick={() => setSettingsTab(tab.id)}>{tab.label}</button>)}</div>
-        <div className="settings-body">
-          <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={settingsTab !== 'general'}>
-            <div className="env-config-note"><strong>LLM connection</strong><span className={llmConfigurationReady ? 'env-ready' : 'env-missing'}>{llmConfigurationReady ? 'Endpoint and model detected' : 'Missing VITE_LLM_ENDPOINT or VITE_LLM_MODEL'}</span><code>VITE_LLM_ENDPOINT · VITE_LLM_MODEL</code><small>In local development only, LOCAL_LLM_API_KEY from .env.local is attached to requests. Production builds omit this key and send requests without browser-held credentials.</small></div>
-            <label htmlFor="principles">Base refinement principles</label>
-            <p className="settings-help">Stable rules applied to every backlog item. Restoring defaults reloads them from <code>src/defaults/instructions/principles.md</code>.</p>
-            <textarea className="markdown-template-input" id="principles" name="principles" rows={12} defaultValue={settings.principles} />
-            <label htmlFor="instructions">Additional agent instructions <span>Optional</span></label>
-            <textarea id="instructions" name="instructions" rows={4} placeholder="Add local instructions for how the agent should refine your backlog…" defaultValue={settings.instructions} />
-          </div>
-          {(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => <div key={type} role="tabpanel" id={`settings-panel-${type}`} aria-labelledby={`settings-tab-${type}`} hidden={settingsTab !== type}>
-            <label htmlFor={`type-instructions-${type}`}>{itemTypeLabel[type]} instructions</label>
-            <p className="settings-help">Added to the base principles when refining a {itemTypeLabel[type].toLowerCase()}.</p>
-            <textarea className="markdown-template-input" id={`type-instructions-${type}`} name={`type-instructions-${type}`} rows={8} defaultValue={settings.typeInstructions[type]} />
-            <label htmlFor={`template-${type}`}>{itemTypeLabel[type]} template</label>
-            <p className="settings-help">Plain Markdown: headings plus optional &lt;!-- hints --&gt; for the agent, which decides what to fill in. Keep &quot;Assumptions&quot; and &quot;Open questions&quot; sections (one &quot;- [ ] item&quot; per line) to get confirm/reject/resolve buttons.</p>
-            <textarea className="markdown-template-input" id={`template-${type}`} name={`template-${type}`} rows={14} defaultValue={settings.templates[type]} />
-          </div>)}
-        </div>
-        <div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => { if (!window.confirm('Restore ALL instructions and templates to the source defaults? Your customizations will be lost.')) return; void settingsRepository.restoreDefaults().then(setSettings).then(() => { setShowSettings(false); setNotice('Instructions and templates restored to source defaults.'); }).catch((cause: unknown) => setError(`Could not restore defaults: ${errorText(cause)}`)); }}>Restore source defaults</button><button className="button button-primary" type="submit">Save customization</button></div>
-      </form></div>}
+      {showSettings && <SettingsModal settings={settings} llmReady={llmConfigurationReady} onClose={() => setShowSettings(false)} onSave={(values) => void saveSettings(values)} onRestore={() => { void settingsRepository.restoreDefaults().then(setSettings).then(() => { setShowSettings(false); setNotice('Instructions and templates restored to source defaults.'); }).catch((cause: unknown) => setError(`Could not restore defaults: ${errorText(cause)}`)); }} />}
     </div>
   );
 }
@@ -574,11 +540,6 @@ function TreeItem({ item, allItems, relationships, selectedId, onSelect, onAddCh
   const [expanded, setExpanded] = useState(true);
   return <div className="tree-node"><div className={`tree-row ${selectedId === item.id ? 'selected' : ''}`} style={{ paddingLeft: 8 + depth * 17 }}><button className="tree-expand" disabled={!children.length} aria-label={`${expanded ? 'Collapse' : 'Expand'} ${item.title}`} onClick={() => setExpanded((value) => !value)}><span className={`tree-chevron ${children.length && expanded ? 'expanded' : ''}`}>{children.length ? '›' : ''}</span></button><button className="tree-select" onClick={() => onSelect(item.id)} aria-current={selectedId === item.id ? 'page' : undefined}><span className={`tree-type tree-type-${item.type}`}>{typeShort[item.type]}</span><span className="tree-title">{item.title}</span><span className={`tree-status tree-status-${item.status}`} aria-label={statusText(item.status)} /></button><button className="tree-add" aria-label={`Add child to ${item.title}`} onClick={() => onAddChild(item.id)}>+</button></div>{children.length > 0 && expanded && <div className="tree-children">{children.map((child) => <TreeItem key={child.id} item={child} allItems={allItems} relationships={relationships} selectedId={selectedId} onSelect={onSelect} onAddChild={onAddChild} depth={depth + 1} />)}</div>}</div>;
 }
-
-const settingsTabs: { id: 'general' | BacklogItemType; label: string }[] = [
-  { id: 'general', label: 'General' },
-  ...(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => ({ id: type, label: itemTypeLabel[type] })),
-];
 
 function statusText(status: BacklogItem['status']): string {
   return ({ draft: 'Draft', refining: 'Refining', ready: 'Ready', 'ready-with-open-questions': 'Ready · questions', complete: 'Complete' })[status];
