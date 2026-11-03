@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { BacklogItemType } from '../domain/backlog-item';
 import { getLlmConfiguration } from '../infrastructure/llm/llmConfig';
 import { ChatPanel } from './ChatPanel';
@@ -66,7 +67,7 @@ export default function App() {
       <header className="topbar">
         <a className="brand" href="#" aria-label="Backlog Studio home" onClick={(event) => event.preventDefault()}><span className="brand-mark">b.</span><span>backlog<span className="brand-light">studio</span></span></a>
         <div className="topbar-center"><span className="workspace-dot" /> Personal workspace <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><span className="local-badge"><span /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}>⚙</button><button className="avatar" aria-label="Local workspace profile">F</button></div>
+        <div className="topbar-actions"><span className="local-badge"><span /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}>⚙</button><button className="avatar" aria-label="Local workspace profile">;-)</button></div>
       </header>
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
@@ -91,12 +92,6 @@ export default function App() {
           item={selectedItem} parentItem={backlog.parentItem} session={backlog.session} sessions={backlog.sessions} busy={flow.busy}
           canRetry={flow.retryState?.sessionId === backlog.session?.id} message={flow.message} reviewChanges={flow.reviewChanges}
           pending={flow.pending} proposal={flow.proposal} selectedProposals={flow.selectedProposals}
-          menuActions={[
-            { id: 'copy', label: '▣ Copy Markdown', onSelect: () => void copyMarkdown() },
-            { id: 'duplicate', label: 'Duplicate item', onSelect: () => void backlog.duplicateSelected() },
-            { id: 'download', label: '↓ Download .md', onSelect: downloadMarkdown },
-            { id: 'delete', label: '🗑 Delete item', danger: true, onSelect: () => void deleteSelected() },
-          ]}
           onSelectItem={selectItem} onNewSession={() => void backlog.startNewSession()} onSwitchSession={(id) => void switchSession(id)}
           onMessageChange={flow.setMessage} onSubmit={() => void flow.submitMessage()} onContinue={() => void flow.submitMessage(true)}
           onCancel={flow.cancelRequest} onRetry={() => void flow.retryAssessment()} onToggleReview={flow.toggleReview}
@@ -109,6 +104,12 @@ export default function App() {
         <PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
           item={selectedItem} items={backlog.items} relationships={backlog.relationships} parentItem={backlog.parentItem} session={backlog.session} busy={flow.busy}
+          menuActions={[
+            { id: 'copy', label: <><MdContentCopy aria-hidden /> Copy Markdown</>, onSelect: () => void copyMarkdown() },
+            { id: 'duplicate', label: <><MdControlPointDuplicate aria-hidden /> Duplicate item</>, onSelect: () => void backlog.duplicateSelected() },
+            { id: 'download', label: <><MdDownload aria-hidden /> Download .md</>, onSelect: downloadMarkdown },
+            { id: 'delete', label: <><MdDelete aria-hidden /> Delete item</>, danger: true, onSelect: () => void deleteSelected() },
+          ]}
           onSelectItem={selectItem} onCopy={() => void copyMarkdown()} onUpdate={(changes) => void backlog.updateSelected(changes)}
           onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={() => void flow.undoLastChange()}
           onChangeStatus={(status) => void flow.changeSelectedStatus(status)} onAssessQuality={() => void flow.assessQuality()}

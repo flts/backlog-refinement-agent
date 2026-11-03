@@ -43,7 +43,7 @@ export const defaultUserSettings: UserSettings = {
 };
 
 function normalizeTemplate(value: string | string[] | undefined, fallback: string): string {
-  if (typeof value === 'string') return convertPlaceholderTemplate(value);
+  if (typeof value === 'string') return value.trim() ? convertPlaceholderTemplate(value) : fallback;
   if (!value) return fallback;
   return value.map((section) => `## ${section}`).join('\n\n');
 }

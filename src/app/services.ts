@@ -5,6 +5,7 @@ import { SettingsRepository } from '../infrastructure/storage/SettingsRepository
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
 import { ProxyLlmProvider } from '../infrastructure/llm/ProxyLlmProvider';
 import { ProxyRefinementProvider } from '../infrastructure/llm/ProxyRefinementProvider';
+import { defaultBacklogTemplates } from '../defaults/templates';
 import { getLlmConfiguration } from '../infrastructure/llm/llmConfig';
 
 const refinementStore = new IndexedDbRefinementStore();
@@ -12,15 +13,19 @@ export const workspace = new WorkspaceApplicationService(refinementStore);
 export const settingsRepository = new SettingsRepository();
 
 export function makeRefinementService(settings: UserSettings): RefinementApplicationService {
+  const templates = Object.fromEntries(
+    (Object.keys(defaultBacklogTemplates) as (keyof typeof defaultBacklogTemplates)[])
+      .map((type) => [type, settings.templates[type]?.trim() ? settings.templates[type] : defaultBacklogTemplates[type]]),
+  ) as typeof defaultBacklogTemplates;
   return new RefinementApplicationService({
     store: refinementStore,
     provider: new ProxyRefinementProvider(
       new ProxyLlmProvider(getLlmConfiguration()),
       settings.instructions,
-      settings.templates,
+      templates,
       { principles: settings.principles, typeInstructions: settings.typeInstructions },
     ),
-    templates: settings.templates,
+    templates,
     ids: { nextId: () => crypto.randomUUID() },
   });
 }

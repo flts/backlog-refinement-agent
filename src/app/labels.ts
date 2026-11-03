@@ -5,7 +5,7 @@ export const itemTypeLabel: Record<BacklogItemType, string> = {
 };
 export const itemTypes = Object.keys(itemTypeLabel) as BacklogItemType[];
 export const typeShort: Record<BacklogItemType, string> = {
-  capability: 'CAP', feature: 'FEA', 'user-story': 'STO', enabler: 'ENA',
+  capability: 'Cap', feature: 'Feat', 'user-story': 'Story', enabler: 'Enabler',
 };
 
 export function statusText(status: BacklogItem['status']): string {

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 
-export interface MenuAction { id: string; label: string; danger?: boolean; onSelect: () => void }
+export interface MenuAction { id: string; label: ReactNode; danger?: boolean; onSelect: () => void }
 
 export function ItemMenu({ actions }: { actions: MenuAction[] }) {
   const [open, setOpen] = useState(false);

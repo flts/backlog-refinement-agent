@@ -18,7 +18,7 @@ describe('PreviewPanel', () => {
     const onResolveChecklist = vi.fn();
     const onAssessQuality = vi.fn();
     const onProposeChildren = vi.fn();
-    render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false}
+    render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
       onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={onAssessQuality} onProposeChildren={onProposeChildren} />);
     expect(screen.getByText('Users are logged in')).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe('PreviewPanel', () => {
   });
 
   it('shows an empty state without an item', () => {
-    render(<PreviewPanel className="preview" items={[]} relationships={[]} busy={false} onSelectItem={vi.fn()} onCopy={vi.fn()}
+    render(<PreviewPanel className="preview" items={[]} relationships={[]} busy={false} menuActions={[]} onSelectItem={vi.fn()} onCopy={vi.fn()}
       onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()} onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByText('Your item preview')).toBeInTheDocument();
   });
@@ -39,7 +39,7 @@ describe('PreviewPanel', () => {
 
 describe('ChatPanel', () => {
   const base = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
-    className: 'chat', item, sessions: [], busy: false, canRetry: false, message: '', reviewChanges: false, selectedProposals: [], menuActions: [],
+    className: 'chat', item, sessions: [], busy: false, canRetry: false, message: '', reviewChanges: false, selectedProposals: [],
     session: { id: 's', backlogItemId: 'i1', conversation: [{ id: 'm1', role: 'user', content: 'Hello agent', createdAt: '2026-01-01T10:00:00Z' }] } as unknown as RefinementSession,
     onSelectItem: vi.fn(), onNewSession: vi.fn(), onSwitchSession: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
     onCancel: vi.fn(), onRetry: vi.fn(), onToggleReview: vi.fn(), onApplyPending: vi.fn(), onDiscardPending: vi.fn(), onProposalChange: vi.fn(),
