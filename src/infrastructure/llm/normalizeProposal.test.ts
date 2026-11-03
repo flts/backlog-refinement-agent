@@ -47,4 +47,12 @@ describe('normalizeProposal', () => {
     expect(quality).toMatchObject({ mixedOutcomes: true, suggestedItemType: 'enabler', suggestedSplit: ['store', 'find'] });
     expect(quality?.speculativeScope).toBeUndefined();
   });
+
+  it('builds a child description from template sections', () => {
+    const parsed = normalizeProposal({
+      kind: 'decomposition', parentItemId: 'p', rationale: 'r',
+      children: [{ type: 'feature', title: 'T', sections: [{ heading: '## Summary', markdown: 'S' }, { heading: 'Scope', markdown: ['a', 'b'] }] }],
+    }) as { children: { description: string }[] };
+    expect(parsed.children[0].description).toBe('## Summary\nS\n\n## Scope\na\nb');
+  });
 });

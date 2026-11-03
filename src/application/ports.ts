@@ -11,6 +11,8 @@ export interface AssessmentInput {
   relatedItems: readonly BacklogItem[];
   relationships: readonly BacklogRelationship[];
   conversation: readonly ConversationMessage[];
+  /** Set on the single automatic retry: why the previous answer was rejected. */
+  validationFeedback?: string;
 }
 
 export interface DecompositionInput extends AssessmentInput {
@@ -22,6 +24,8 @@ export interface DecompositionInput extends AssessmentInput {
 export interface RefinementProvider {
   generateAssessment(input: AssessmentInput, signal?: AbortSignal): Promise<unknown>;
   generateDecomposition(input: DecompositionInput, signal?: AbortSignal): Promise<unknown>;
+  /** Read-only quality check of the current document; returns `{ quality }`. */
+  generateQuality?(input: AssessmentInput, signal?: AbortSignal): Promise<unknown>;
 }
 
 export interface RefinementStore {

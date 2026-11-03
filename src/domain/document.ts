@@ -195,24 +195,42 @@ const stripHints = (markdown: string): string => markdown.replace(/<!--[\s\S]*?-
  * Rebuild a document on the headings of a template: filled sections are kept, missing ones stay
  * empty, hints are removed and sections the template does not know are kept under "Additional notes".
  */
+export const templateHeadings = (template: string): string[] =>
+  splitSections(stripHints(template)).sections.map(({ heading }) => heading);
+
+const headingKind = (heading: string): "assumption" | "question" | undefined =>
+  assumptionHeading.test(heading) ? "assumption" : questionHeading.test(heading) ? "question" : undefined;
+
 export function conformToTemplate(template: string, markdown: string): { document: string; extraHeadings: string[] } {
   const wanted = splitSections(stripHints(template));
   if (!wanted.sections.length) return { document: markdown.trim(), extraHeadings: [] };
   const given = splitSections(markdown);
   const used = new Set<number>();
+  const find = (match: (heading: string) => boolean) => given.sections.findIndex((section, i) => !used.has(i) && match(section.heading));
   const sections = wanted.sections.map(({ heading }) => {
-    const index = given.sections.findIndex((section, i) =>
-      !used.has(i) && normalizeHeading(section.heading) === normalizeHeading(heading));
+    const wantedKind = headingKind(heading);
+    const norm = normalizeHeading(heading);
+    let index = find((h) => normalizeHeading(h) === norm);
+    if (index < 0 && wantedKind) index = find((h) => headingKind(h) === wantedKind);
+    if (index < 0) index = find((h) => { const n = normalizeHeading(h); return n.length > 3 && (norm.startsWith(n) || n.startsWith(norm)); });
     if (index < 0) return { heading, body: "" };
     used.add(index);
     return { heading, body: given.sections[index].body };
   });
-  const extra = given.sections.filter((_, i) => !used.has(i));
-  const notes = [given.preamble, ...extra.map(({ heading, body }) => `### ${heading}\n${body}`.trim())]
-    .filter(Boolean).join("\n\n");
+  // Leftover assumption/question sections are merged into the template's own list instead of becoming notes.
+  const leftovers: { heading: string; body: string }[] = [];
+  given.sections.forEach((section, i) => {
+    if (used.has(i)) return;
+    const kind = headingKind(section.heading);
+    const target = kind && sections.find((entry) => headingKind(entry.heading) === kind);
+    if (target) target.body = [target.body.trim(), section.body.trim()].filter(Boolean).join("\n");
+    else leftovers.push(section);
+  });
+  const notes = [given.preamble, ...leftovers.map(({ heading, body }) => `### ${heading}\n${body}`.trim())]
+    .filter((part) => part.trim()).join("\n\n");
   if (notes) sections.push({ heading: "Additional notes", body: notes });
   return {
     document: joinSections({ preamble: "", sections }),
-    extraHeadings: extra.map(({ heading }) => heading),
+    extraHeadings: leftovers.map(({ heading }) => heading),
   };
 }

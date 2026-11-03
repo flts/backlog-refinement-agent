@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BacklogItemSchema, maxRevisions, type BacklogItem, type BacklogItemType } from "../domain/backlog-item";
+import { BacklogItemSchema, QualityAssessmentSchema, maxRevisions, type BacklogItem, type BacklogItemType } from "../domain/backlog-item";
 import { applySectionUpdates, conformToTemplate } from "../domain/document";
 import { DomainError } from "../domain/errors";
 import {
@@ -81,29 +81,51 @@ export class RefinementApplicationService {
 
   async proposeAssessment(sessionId: string, signal?: AbortSignal): Promise<RefinementProposal> {
     const { session, item, relatedItems, relationships } = await this.loadGenerationContext(sessionId);
-    const generated = await this.options.provider.generateAssessment({
+    const proposal = await this.generateValid((validationFeedback) => this.options.provider.generateAssessment({
       item,
       relatedItems,
       relationships,
       conversation: session.conversation,
-    }, signal);
-    const proposal = this.parseProposal(generated);
+      validationFeedback,
+    }, signal));
     if (proposal.kind !== "assessment" || proposal.itemId !== item.id) {
       throw new DomainError("Provider returned an assessment for the wrong item.", "INVALID_PROVIDER_PROPOSAL");
     }
     return proposal;
   }
 
+  /** Read-only quality check; only `quality` on the item changes. */
+  async assessQuality(itemId: string, signal?: AbortSignal): Promise<BacklogItem> {
+    const provider = this.options.provider;
+    if (!provider.generateQuality) throw new DomainError("This provider cannot assess quality.", "UNSUPPORTED");
+    const item = await this.options.store.getItem(itemId);
+    if (!item) throw new DomainError(`Backlog item ${itemId} was not found.`, "ITEM_NOT_FOUND");
+    const allRelationships = await this.options.store.listRelationships();
+    const relationships = allRelationships.filter((r) => r.sourceId === item.id || r.targetId === item.id);
+    const relatedIds = new Set(relationships.map((r) => r.sourceId === item.id ? r.targetId : r.sourceId));
+    const relatedItems = (await this.options.store.listItems()).filter((c) => relatedIds.has(c.id));
+    const generated = await provider.generateQuality({ item, relatedItems, relationships, conversation: [] }, signal);
+    const parsed = z.object({ quality: QualityAssessmentSchema }).safeParse(generated);
+    if (!parsed.success) {
+      console.error("[backlog-refinement] Quality response failed validation", parsed.error.issues, generated);
+      throw new DomainError(`The model response did not match the expected format (${parsed.error.issues[0]?.path.join(".") ?? "response"}: ${parsed.error.issues[0]?.message ?? "invalid"}). See the browser console for details.`, "INVALID_PROVIDER_PROPOSAL");
+    }
+    const latest = await this.options.store.getItem(itemId) ?? item;
+    const updated = { ...latest, quality: parsed.data.quality, updatedAt: isoNow(this.clock) };
+    await this.options.store.saveItem(updated);
+    return updated;
+  }
+
   async proposeDecomposition(sessionId: string, signal?: AbortSignal, childType?: BacklogItemType): Promise<RefinementProposal> {
     const { session, item, relatedItems, relationships } = await this.loadGenerationContext(sessionId);
-    const generated = await this.options.provider.generateDecomposition({
+    const proposal = await this.generateValid((validationFeedback) => this.options.provider.generateDecomposition({
       item,
       relatedItems,
       relationships,
       conversation: session.conversation,
       childType,
-    }, signal);
-    const proposal = this.parseProposal(generated);
+      validationFeedback,
+    }, signal));
     if (proposal.kind !== "decomposition" || proposal.parentItemId !== item.id) {
       throw new DomainError("Provider returned a decomposition for the wrong item.", "INVALID_PROVIDER_PROPOSAL");
     }
@@ -288,6 +310,17 @@ export class RefinementApplicationService {
       await store.saveRelationships(relationships);
       return created;
     });
+  }
+
+  /** Retries once, telling the model what was wrong with its first answer. */
+  private async generateValid(generate: (validationFeedback?: string) => Promise<unknown>): Promise<RefinementProposal> {
+    try {
+      return this.parseProposal(await generate());
+    } catch (cause) {
+      if (!(cause instanceof DomainError) || cause.code !== "INVALID_PROVIDER_PROPOSAL") throw cause;
+      console.warn("[backlog-refinement] Retrying once after an invalid model response");
+      return this.parseProposal(await generate(cause.message));
+    }
   }
 
   private parseProposal(generated: unknown): RefinementProposal {

@@ -51,7 +51,7 @@ describe('ProxyRefinementProvider', () => {
     expect(system).toContain('## Story');
     expect(system).not.toContain('PARENT-ONLY heading');
     expect(system).not.toContain('ENABLER heading');
-    expect(system).toContain('Open questions heading');
+    expect(system).toContain('"Story"');
   });
 
   it('uses the default principles and type instructions unless the user customized them', async () => {

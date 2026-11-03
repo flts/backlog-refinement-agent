@@ -67,4 +67,15 @@ describe("document helpers", () => {
     expect(extraHeadings).toEqual(["My own"]);
     expect(document).not.toContain("<!--");
   });
+
+  it("matches renamed question/assumption sections and merges them into the template lists", () => {
+    const template = "## Summary\n\n## Assumptions\n- [ ] \n\n## Open questions\n- [ ] ";
+    const { document, extraHeadings } = conformToTemplate(
+      template,
+      "## Summary\nS\n\n## Open questions (new)\n- [ ] Q1\n\n## Open Vragen\n- [ ] Q2\n\n## Notes\nN",
+    );
+    expect(document).toContain("## Open questions\n- [ ] Q1\n- [ ] Q2");
+    expect(document).toContain("## Additional notes\n### Notes\nN");
+    expect(extraHeadings).toEqual(["Notes"]);
+  });
 });

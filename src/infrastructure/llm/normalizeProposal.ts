@@ -16,7 +16,7 @@ function questionImportance(value: unknown): string {
 
 const kebab = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
 
-function normalizeQuality(quality: unknown): unknown {
+export function normalizeQuality(quality: unknown): unknown {
   if (!isObject(quality)) return quality;
   const result: Json = { ...quality };
   if (Array.isArray(quality.areas)) {
@@ -89,7 +89,17 @@ export function normalizeProposal(raw: unknown): unknown {
   if (raw.quality !== undefined) result.quality = normalizeQuality(raw.quality);
   if (Array.isArray(raw.children)) {
     result.children = mapArray(raw.children, (entry) => {
-      const child: Json = { ...entry, description: asText(entry.description) };
+      const fromSections = Array.isArray(entry.sections)
+        ? entry.sections.flatMap((section) => {
+          if (!isObject(section)) return [];
+          const heading = [section.heading, section.section, section.title].find((v) => typeof v === 'string' && v.trim());
+          return typeof heading === 'string'
+            ? [`## ${heading.replace(/^#+\s*/, '').trim()}\n${asText(section.markdown ?? section.content ?? section.body ?? section.text).trim()}`]
+            : [];
+        }).join('\n\n')
+        : '';
+      const child: Json = { ...entry, description: fromSections || asText(entry.description) };
+      delete child.sections;
       for (const key of ['contextValues', 'assumptions', 'openQuestions']) delete child[key];
       return typeof child.proposalId === 'string' && child.proposalId.trim()
         ? child

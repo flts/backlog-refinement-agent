@@ -260,4 +260,34 @@ describe("RefinementApplicationService", () => {
     await service.acceptProposal({ ...assessment, quality } as RefinementProposal);
     expect((await store.getItem(parent.id))?.quality).toEqual(quality);
   });
+
+  it("retries once with validation feedback when the model response is invalid", async () => {
+    const store = new MemoryStore();
+    const feedback: (string | undefined)[] = [];
+    const provider: RefinementProvider = {
+      generateAssessment: async (input) => {
+        feedback.push(input.validationFeedback);
+        return feedback.length === 1 ? { kind: "assessment" } : assessment;
+      },
+      generateDecomposition: async () => decomposition,
+    };
+    const service = new RefinementApplicationService({ store, provider, ids: new SequenceIds() });
+    await service.proposeAssessment(session.id);
+    expect(feedback[0]).toBeUndefined();
+    expect(feedback[1]).toContain("did not match the expected format");
+  });
+
+  it("assesses quality without touching the document or status", async () => {
+    const store = new MemoryStore();
+    const provider: RefinementProvider = {
+      generateAssessment: async () => assessment,
+      generateDecomposition: async () => decomposition,
+      generateQuality: async () => ({ quality: { overall: "ready", areas: [] } }),
+    };
+    const service = new RefinementApplicationService({ store, provider, ids: new SequenceIds() });
+    const updated = await service.assessQuality(parent.id);
+    expect(updated.quality?.overall).toBe("ready");
+    expect(updated.description).toBe(parent.description);
+    expect(updated.status).toBe(parent.status);
+  });
 });

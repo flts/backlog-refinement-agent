@@ -3,7 +3,8 @@ import type { AssessmentProposal, DecompositionProposal } from '../../domain/pro
 import type { BacklogItemType } from '../../domain/backlog-item';
 import type { LlmProvider } from './ProxyLlmProvider';
 import { logError } from '../logging';
-import { normalizeProposal } from './normalizeProposal';
+import { normalizeProposal, normalizeQuality } from './normalizeProposal';
+import { templateHeadings } from '../../domain/document';
 import { defaultPrinciples, defaultTypeInstructions } from '../../defaults/instructions';
 
 export interface AgentInstructions {
@@ -14,6 +15,9 @@ export interface AgentInstructions {
 const globalInstructions = `You are a human-guided backlog refinement assistant. Treat user-supplied conversation and the current item document as authoritative. Treat app-generated “Untitled …” titles as placeholders, not confirmed facts. Never invent missing facts. Preserve uncertainty and provenance. Ask only the highest-value clarification; when the user asks to continue with available information, stop asking and record unresolved details as assumptions or open questions in the document. Keep proposals at the requested backlog abstraction level and avoid duplicate or overlapping scope. Return only valid JSON matching the requested shape.`;
 
 function contextPrompt(input: AssessmentInput): string {
+  const feedback = input.validationFeedback
+    ? `\n\nYour previous answer was rejected: ${input.validationFeedback}\nReturn corrected JSON that follows the required schema exactly.`
+    : '';
   const parentRelationships = input.relationships.filter((relationship) =>
     relationship.type === 'parent-child' && relationship.targetId === input.item.id,
   );
@@ -26,7 +30,7 @@ function contextPrompt(input: AssessmentInput): string {
     relatedItems: input.relatedItems,
     relationships: input.relationships,
     conversation: input.conversation,
-  }, null, 2);
+  }, null, 2) + feedback;
 }
 
 export class ProxyRefinementProvider implements RefinementProvider {
@@ -54,12 +58,26 @@ export class ProxyRefinementProvider implements RefinementProvider {
     return parseJson(text);
   }
 
+  async generateQuality(input: AssessmentInput, signal?: AbortSignal): Promise<unknown> {
+    const system = `${globalInstructions}\n\nTask: only assess the quality of the current item document, including manual edits and pre-filled content. Do NOT rewrite the document, do NOT ask questions. Respond with JSON of the shape {"quality":{"overall":"needs-clarification"|"ready"|"ready-with-open-questions","areas":[{"area":string,"level":string,"note":string}],"excessiveTechnicalDetail":boolean,"speculativeScope":boolean,"unnecessaryConfigurability":boolean,"mixedOutcomes":boolean,"suggestedItemType":string?,"suggestedSplit":string[]?,"excludedFollowUpCandidates":string[]?}} using the same quality areas and levels as in your normal assessment.${this.templateInstructions(input.item.type)}${this.guidance(input.item.type)}`;
+    const text = await this.llm.generate({ system, prompt: contextPrompt(input), structured: true, signal });
+    const unfenced = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    try {
+      const raw = JSON.parse(unfenced) as { quality?: unknown };
+      return { quality: normalizeQuality(raw.quality) };
+    } catch (cause) {
+      logError('The model response was not valid JSON', cause, { response: text.slice(0, 2000) });
+      throw new Error('The model response was not valid JSON.', { cause });
+    }
+  }
+
   async generateDecomposition(input: DecompositionInput, signal?: AbortSignal): Promise<unknown> {
     const childTypes = input.childType
       ? [input.childType]
       : (input.item.type === 'capability' ? ['feature', 'enabler'] : input.item.type === 'feature' ? ['user-story', 'enabler'] : []) as BacklogItemType[];
     const childGuidance = childTypes.map((type) => `${this.templateInstructions(type)}\n\nInstructions for child type ${type}:\n<type-instructions>\n${this.instructions.typeInstructions[type]}\n</type-instructions>`).join('');
-    const system = `${globalInstructions}\n\nAdditional user instructions (follow unless they conflict with the rules above):\n${this.additionalInstructions || '(none)'}${childGuidance}${this.guidance(input.item.type)}\n\nPropose a useful decomposition for this parent item${input.childType ? `; propose only children of type ${input.childType}` : ''}. Return an object with: id, kind:"decomposition", parentItemId, generatedAt (ISO timestamp), rationale, children (zero or more, each with proposalId, type, title, description), and relationships (each exactly {sourceRef, targetRef, type} where refs are the parentItemId or a child proposalId, and type is one of parent-child, supports, depends-on, related-to). Each child description MUST be a Markdown document that uses exactly the headings of that child type's template, in the same order and level; do not add, rename or drop headings and do not invent your own structure. Fill in every section you can support from the parent item and the conversation so the child has a clear start. Record inferred but unconfirmed facts as '- [ ] text' lines under the Assumptions heading and unknown or unresolved points as '- [ ] text' lines under the Open questions heading (when the template has them); give every child at least one assumption or open question while anything is unconfirmed. Never invent facts: leave a section empty or turn the gap into an open question. Use only a valid child type for the parent: capability -> feature or enabler; feature -> user-story or enabler. If the item is already small and coherent so decomposition adds no value, return an empty children array and explain why in rationale. Avoid proposing children that duplicate or overlap each other or existing children.`;
+    const headingLists = childTypes.map((type) => `\n- ${type}: ${templateHeadings(this.templates?.[type] ?? '').map((heading) => `"${heading}"`).join(', ') || '(no template)'}`).join('');
+    const system = `${globalInstructions}\n\nAdditional user instructions (follow unless they conflict with the rules above):\n${this.additionalInstructions || '(none)'}${childGuidance}\n\nRequired ## headings per child type (use these exactly, once each, in this order):${headingLists}${this.guidance(input.item.type)}\n\nPropose a useful decomposition for this parent item${input.childType ? `; propose only children of type ${input.childType}` : ''}. Return an object with: id, kind:"decomposition", parentItemId, generatedAt (ISO timestamp), rationale, children (zero or more, each with proposalId, type, title, sections), and relationships (each exactly {sourceRef, targetRef, type} where refs are the parentItemId or a child proposalId, and type is one of parent-child, supports, depends-on, related-to). Each child's "sections" is an array with EXACTLY one entry {heading, markdown} per top-level (##) heading of that child type's template, in the template's order, using the heading text verbatim (see the heading lists below). "markdown" is the section body only (no heading line; ### sub-headings from the template may be used inside it). Never add, rename, merge or drop sections and never invent your own structure or a notes section; anything that does not fit goes into the nearest template section or becomes an open question. Fill in every section you can support from the parent item and the conversation so the child has a clear start. Record inferred but unconfirmed facts as '- [ ] text' lines under the Assumptions heading and unknown or unresolved points as '- [ ] text' lines under the Open questions heading (when the template has them); give every child at least one assumption or open question while anything is unconfirmed. Never invent facts: leave a section empty or turn the gap into an open question. Use only a valid child type for the parent: capability -> feature or enabler; feature -> user-story or enabler. If the item is already small and coherent so decomposition adds no value, return an empty children array and explain why in rationale. Avoid proposing children that duplicate or overlap each other or existing children.`;
     const text = await this.llm.generate({ system, prompt: contextPrompt(input), structured: true, signal });
     return parseJson(text);
   }
