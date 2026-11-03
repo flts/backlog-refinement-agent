@@ -1,5 +1,5 @@
 import type { Table } from 'dexie';
-import type { BacklogItem } from '../../domain/backlog-item';
+import { BacklogItemSchema, type BacklogItem } from '../../domain/backlog-item';
 import type { RefinementSession } from '../../domain/refinement-session';
 import type { BacklogRelationship } from '../../domain/relationship';
 import type { RefinementStore } from '../../application/ports';
@@ -8,12 +8,14 @@ import { BacklogDatabase, backlogDatabase } from './database';
 export class IndexedDbRefinementStore implements RefinementStore {
   constructor(private readonly db: BacklogDatabase = backlogDatabase) {}
 
-  getItem(id: string): Promise<BacklogItem | undefined> {
-    return this.db.backlogItems.get(id);
+  async getItem(id: string): Promise<BacklogItem | undefined> {
+    const stored = await this.db.backlogItems.get(id);
+    return stored && BacklogItemSchema.parse(stored);
   }
 
-  listItems(): Promise<BacklogItem[]> {
-    return this.db.backlogItems.orderBy('updatedAt').reverse().toArray();
+  async listItems(): Promise<BacklogItem[]> {
+    const stored = await this.db.backlogItems.orderBy('updatedAt').reverse().toArray();
+    return stored.map((item) => BacklogItemSchema.parse(item));
   }
 
   async saveItem(item: BacklogItem): Promise<void> {

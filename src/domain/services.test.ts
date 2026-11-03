@@ -21,7 +21,7 @@ const item = (id: string, status = "draft") => BacklogItemSchema.parse({
 });
 
 describe("backlog domain services", () => {
-  it("parses context provenance and defaults, and rejects invalid values", () => {
+  it("folds legacy structured fields into the document, applies defaults, and rejects invalid values", () => {
     const parsed = BacklogItemSchema.parse({
       id: "feature-1",
       type: "feature",
@@ -36,7 +36,8 @@ describe("backlog domain services", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(parsed.status).toBe("draft");
-    expect(parsed.contextValues[0].provenance.source).toBe("user");
+    expect(parsed.description).toContain("## audience\nsupport staff");
+    expect(parsed).not.toHaveProperty("contextValues");
     expect(() => BacklogItemSchema.parse({
       ...parsed,
       type: "epic",

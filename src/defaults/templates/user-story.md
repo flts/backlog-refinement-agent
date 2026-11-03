@@ -1,16 +1,22 @@
-# {{title}}
+# User story
 
-## User story
-{{description}}
+## Story
+<!-- As a <role>, I want <goal>, so that <benefit>. -->
+
+## Context
+<!-- Relevant background and the situation in which the need arises. -->
 
 ## Acceptance criteria
-{{field:Acceptance criteria}}
+<!-- Observable, testable conditions (for example Given / When / Then). -->
 
-## Edge cases
-{{field:Edge cases}}
+## Out of scope
+<!-- What this story deliberately does not cover. -->
+
+## Dependencies
+<!-- Other items or systems this relies on. -->
 
 ## Assumptions
-{{assumptions}}
+<!-- One task per line: "- [ ] assumption". The user confirms or rejects them. -->
 
 ## Open questions
-{{openQuestions}}
+<!-- One task per line: "- [ ] question". Mark "- [x]" once answered. -->

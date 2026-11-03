@@ -10,9 +10,9 @@ describe('source backlog templates', () => {
       'enabler',
     ]);
     for (const template of Object.values(defaultBacklogTemplates)) {
-      expect(template).toMatch(/^# \{\{title}}/);
-      expect(template).toContain('{{assumptions}}');
-      expect(template).toContain('{{openQuestions}}');
+      expect(template).not.toContain('{{');
+      expect(template).toMatch(/^## Assumptions$/m);
+      expect(template).toMatch(/^## Open questions$/m);
     }
   });
 });

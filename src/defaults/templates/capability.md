@@ -1,25 +1,31 @@
-# {{title}}
+# Capability
 
-## Desired outcome
-{{field:Desired outcome}}
+## Summary
+<!-- One or two sentences: the business ability this capability provides. -->
 
-## Problem
-{{field:Problem}}
+## Objective and outcome
+<!-- What should the organisation be able to do, and what outcome follows? -->
 
 ## Beneficiaries
-{{field:Beneficiaries}}
+<!-- Who benefits (roles, teams, customers)? -->
 
 ## Business value
-{{field:Business value}}
+<!-- Why does this matter? Prefer measurable value. -->
 
 ## Scope
-{{field:Scope}}
+### In scope
+<!-- What is included. -->
+### Out of scope
+<!-- What is explicitly excluded. -->
 
 ## Success measures
-{{field:Success measures}}
+<!-- How do we know the capability is achieved? -->
+
+## Dependencies and constraints
+<!-- Other capabilities, teams, systems, deadlines or rules. -->
 
 ## Assumptions
-{{assumptions}}
+<!-- One task per line: "- [ ] assumption". The user confirms or rejects them. -->
 
 ## Open questions
-{{openQuestions}}
+<!-- One task per line: "- [ ] question". Mark "- [x]" once answered. -->

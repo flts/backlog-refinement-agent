@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { convertPlaceholderTemplate } from '../../domain/document';
 import { defaultBacklogTemplates } from '../../defaults/templates';
 import { defaultPrinciples, defaultTypeInstructions } from '../../defaults/instructions';
 import { BacklogDatabase, backlogDatabase, type StoredAppSettings } from './database';
@@ -42,9 +43,9 @@ export const defaultUserSettings: UserSettings = {
 };
 
 function normalizeTemplate(value: string | string[] | undefined, fallback: string): string {
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return convertPlaceholderTemplate(value);
   if (!value) return fallback;
-  return value.map((section) => `## ${section}\n{{field:${section}}}`).join('\n\n');
+  return value.map((section) => `## ${section}`).join('\n\n');
 }
 
 export class SettingsRepository {
@@ -78,7 +79,8 @@ export class SettingsRepository {
       'user-story': storedTypes['user-story'] ?? defaultTypeInstructions['user-story'],
       enabler: storedTypes.enabler ?? defaultTypeInstructions.enabler,
     };
-    if (Object.values(parsed.data.templates).some(Array.isArray)) {
+    const storedTemplates = parsed.data.templates as Record<string, unknown>;
+    if (Object.entries(migrated.templates).some(([type, value]) => storedTemplates[type] !== undefined && storedTemplates[type] !== value)) {
       await this.save(migrated);
     }
     return migrated;

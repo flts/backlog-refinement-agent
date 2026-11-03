@@ -14,6 +14,7 @@ import type { UserSettings } from '../infrastructure/storage/SettingsRepository'
 import { defaultBacklogTemplates } from '../defaults/templates';
 import { defaultPrinciples, defaultTypeInstructions } from '../defaults/instructions';
 import type { BacklogRelationship } from '../domain/relationship';
+import { diffDocuments, parseChecklistSections, updateChecklistLine, convertPlaceholderTemplate } from '../domain/document';
 import { logError } from '../infrastructure/logging';
 
 const refinementStore = new IndexedDbRefinementStore();
@@ -35,6 +36,7 @@ function makeRefinementService(settings: UserSettings): RefinementApplicationSer
       settings.templates,
       { principles: settings.principles, typeInstructions: settings.typeInstructions },
     ),
+    templates: settings.templates,
     ids: { nextId: () => crypto.randomUUID() },
   });
 }
@@ -51,21 +53,8 @@ function qualityDiagnostics(quality: NonNullable<BacklogItem['quality']>): strin
   ].filter((entry): entry is string => Boolean(entry));
 }
 
-function markdownFor(item: BacklogItem, template: string): string {
-  const context = new Map(item.contextValues.map((value) => [value.key.toLowerCase(), value.value]));
-  const fields: Record<string, string> = {
-    title: item.title,
-    description: item.description,
-    assumptions: item.assumptions.map((assumption) => `- [${assumption.confirmed ? 'x' : ' '}] ${assumption.text}`).join('\n'),
-    openQuestions: item.openQuestions
-      .filter((question) => question.status === 'open')
-      .map((question) => `- ${question.text}`)
-      .join('\n'),
-  };
-  return template
-    .replace(/\{\{field:([^}]+)}}/g, (_match, key: string) => context.get(key.trim().toLowerCase()) ?? '')
-    .replace(/\{\{([a-zA-Z]+)}}/g, (_match, key: string) => fields[key] ?? '')
-    .trim();
+function markdownFor(item: BacklogItem): string {
+  return `# ${item.title}\n\n${item.description}`.trim();
 }
 
 function childTypeOptions(type: BacklogItemType): BacklogItemType[] {
@@ -217,24 +206,25 @@ export default function App() {
     }
   }
 
-  async function submitMessage(event?: FormEvent, force = false) {
+  async function submitMessage(event?: FormEvent, force = false, overrideText?: string) {
     event?.preventDefault();
-    if (!session || !selectedItem || busy || (!message.trim() && !force)) return;
+    if (!session || !selectedItem || busy || (!message.trim() && !force && !overrideText)) return;
     setBusy(true); setError(''); setNotice('');
     const signal = startRequest();
     let messageSaved = false;
-    const humanText = force ? 'Continue with the current information. Do not ask more questions; capture uncertainty as open questions.' : message.trim();
+    const humanText = overrideText ?? (force ? 'Continue with the current information. Do not ask more questions; capture uncertainty as open questions.' : message.trim());
     try {
       let currentItem = await refinement.beginRefinement(session.id);
       setItems((current) => current.map((item) => item.id === currentItem.id ? currentItem : item));
       let currentSession = await refinement.recordHumanMessage(session.id, humanText);
       messageSaved = true;
       setSession(currentSession);
-      if (!force) setMessage('');
+      if (!force && !overrideText) setMessage('');
       if (force) currentSession = await workspace.setForceGeneration(session.id, true);
       const response = await refinement.proposeAssessment(currentSession.id, signal);
       if (response.kind !== 'assessment') throw new Error('The model returned the wrong response type.');
       const [updated] = await refinement.acceptProposal(response);
+      if (refinement.lastWarnings.length) setNotice(refinement.lastWarnings.join(' '));
       const currentStatus = response.suggestedStatus ?? updated.status;
       const agentText = response.questions.length
         ? `${response.summary}\n\n${response.questions.map((question) => `• ${question.text}`).join('\n')}`
@@ -274,6 +264,7 @@ export default function App() {
       const response = await refinement.proposeAssessment(retryState.sessionId, signal);
       if (response.kind !== 'assessment') throw new Error('The model returned the wrong response type.');
       const [updated] = await refinement.acceptProposal(response);
+      if (refinement.lastWarnings.length) setNotice(refinement.lastWarnings.join(' '));
       const agentText = response.questions.length
         ? `${response.summary}\n\n${response.questions.map((question) => `• ${question.text}`).join('\n')}`
         : response.summary;
@@ -296,7 +287,7 @@ export default function App() {
     setBusy(true); setError(''); setNotice('');
     const signal = startRequest();
     try {
-      const generated = await refinement.proposeDecomposition(session.id, signal);
+      const generated = await refinement.proposeDecomposition(session.id, signal, type);
       if (generated.kind !== 'decomposition') throw new Error('The model returned the wrong response type.');
       const children = generated.children.filter((child) => child.type === type);
       const refs = new Set([generated.parentItemId, ...children.map((child) => child.proposalId)]);
@@ -331,7 +322,11 @@ export default function App() {
     finally { setBusy(false); }
   }
 
+  const assessQualityPrompt = 'Assess the quality of the current item document as it is now, including any manual edits and pre-filled content. Update the quality assessment, status, and open questions. Do not rewrite sections unless something is clearly wrong or contradictory.';
+  const [menuOpen, setMenuOpen] = useState(false);
+
   async function deleteSelected() {
+    setMenuOpen(false);
     if (!selectedItem || !window.confirm(`Delete “${selectedItem.title}” and its refinement sessions? Related items will be kept.`)) return;
     try {
       await workspace.deleteItemAndReferences(selectedItem.id);
@@ -364,7 +359,7 @@ export default function App() {
   }
 
   function exportConfig() {
-    const json = JSON.stringify({ version: 3, settings }, null, 2);
+    const json = JSON.stringify({ version: 4, settings }, null, 2);
     downloadFile('backlog-refinement-config.json', json, 'application/json');
   }
 
@@ -376,7 +371,7 @@ export default function App() {
         'user-story': z.string(), enabler: z.string(),
       });
       const v3ConfigSchema = z.object({
-        version: z.literal(3),
+        version: z.union([z.literal(3), z.literal(4)]),
         settings: z.object({
           templates: typeMap,
           instructions: z.string(),
@@ -406,53 +401,46 @@ export default function App() {
       });
       const parsed = z.union([v3ConfigSchema, currentConfigSchema, legacyConfigSchema]).parse(JSON.parse(await file.text()));
       const templates = parsed.version !== 1
-        ? parsed.settings.templates
+        ? Object.fromEntries(Object.entries(parsed.settings.templates).map(([type, value]) => [type, convertPlaceholderTemplate(value)])) as UserSettings['templates']
         : Object.fromEntries(
           (Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => [
             type,
             parsed.settings.templates[type].length
-              ? `# {{title}}\n\n${parsed.settings.templates[type].map((section) => `## ${section}\n{{field:${section}}}`).join('\n\n')}`
+              ? parsed.settings.templates[type].map((section) => `## ${section}`).join('\n\n')
               : defaultBacklogTemplates[type],
           ]),
         ) as UserSettings['templates'];
       const saved = await settingsRepository.save({
         instructions: parsed.settings.instructions ?? '',
         templates,
-        principles: parsed.version === 3 ? parsed.settings.principles : defaultPrinciples,
-        typeInstructions: parsed.version === 3 ? parsed.settings.typeInstructions : defaultTypeInstructions,
+        principles: 'principles' in parsed.settings ? parsed.settings.principles : defaultPrinciples,
+        typeInstructions: 'typeInstructions' in parsed.settings ? parsed.settings.typeInstructions : defaultTypeInstructions,
       });
       setSettings(saved); setNotice('Configuration imported.');
     } catch (cause) { setError(`Could not import configuration: ${errorText(cause)}`); }
   }
 
-  async function resolveAssumption(assumptionId: string, confirmed: boolean) {
+  async function resolveChecklist(line: number, action: 'check' | 'remove', message: string) {
     if (!selectedItem) return;
-    const assumption = selectedItem.assumptions.find((value) => value.id === assumptionId);
-    if (!assumption) return;
-    const assumptions = selectedItem.assumptions.filter((value) => value.id !== assumptionId);
-    const contextValues = confirmed
-      ? [...selectedItem.contextValues.filter((value) => value.key !== (assumption.relatedField ?? 'Assumption')), {
-          key: assumption.relatedField ?? 'Assumption', value: assumption.text,
-          knowledgeStatus: 'known' as const, provenance: { source: 'user' as const },
-        }]
-      : selectedItem.contextValues;
-    const saved = await updateSelected({ assumptions, contextValues });
-    if (saved) setNotice(confirmed ? 'Assumption confirmed as known.' : 'Assumption rejected.');
+    const description = updateChecklistLine(selectedItem.description, line, action);
+    if (description === selectedItem.description) return;
+    const saved = await updateSelected({ description });
+    if (saved) setNotice(message);
   }
 
-  async function resolveQuestion(questionId: string) {
+  async function undoLastChange() {
     if (!selectedItem) return;
-    const openQuestions = selectedItem.openQuestions.map((question) =>
-      question.id === questionId ? { ...question, status: 'answered' as const } : question,
-    );
-    const saved = await updateSelected({ openQuestions });
-    if (saved) setNotice('Question marked resolved.');
+    try {
+      const restored = await refinement.undoLastChange(selectedItem.id);
+      setItems((current) => current.map((item) => item.id === restored.id ? restored : item));
+      setNotice('Restored the version before the last AI change.');
+    } catch (cause) { logError('Could not undo', cause); setError(`Could not undo: ${errorText(cause)}`); }
   }
 
   async function copyMarkdown() {
     if (!selectedItem) return;
     try {
-      await navigator.clipboard.writeText(markdownFor(selectedItem, settings.templates[selectedItem.type]));
+      await navigator.clipboard.writeText(markdownFor(selectedItem));
       setNotice('Markdown copied to clipboard.');
     } catch (cause) { setError(`Could not copy Markdown: ${errorText(cause)}`); }
   }
@@ -468,6 +456,9 @@ export default function App() {
     return () => cancelAnimationFrame(frame);
   }, [busy, currentMessages.length, selectedId]);
   const parentRelationship = selectedItem && relationships.find((relationship) => relationship.type === 'parent-child' && relationship.targetId === selectedItem.id);
+  const checklist = useMemo(() => selectedItem ? parseChecklistSections(selectedItem.description) : [], [selectedItem]);
+  const lastRevision = selectedItem?.revisions[selectedItem.revisions.length - 1];
+  const lastChange = selectedItem && lastRevision ? diffDocuments(lastRevision.description, selectedItem.description) : undefined;
   const parentItem = parentRelationship && items.find((item) => item.id === parentRelationship.sourceId);
 
   if (loading) return <main className="loading-screen"><span className="brand-mark">b.</span><p>Opening your local backlog…</p></main>;
@@ -498,13 +489,13 @@ export default function App() {
 
         <section className={`refinement-column panel-${mobilePanel}`} aria-label="Refinement workspace">
           {selectedItem ? <>
-            <div className="refine-heading"><div><span className="eyebrow">REFINEMENT WORKSPACE</span><h1>{selectedItem.title}</h1><p>{parentItem ? <><button className="text-link" onClick={() => void selectItem(parentItem.id)}>{parentItem.title}</button><span className="crumb-sep">/</span></> : null}{itemTypeLabel[selectedItem.type]} <span className="crumb-sep">·</span> {selectedItem.status.replaceAll('-', ' ')}</p></div><div className="heading-actions">{sessions.length > 1 && <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} onChange={(event) => void switchSession(event.target.value)}>{sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}</select>}<button className="new-session-button" onClick={() => void startNewSession()} aria-label="Start a new refinement session" title="New refinement session">＋</button><button className="more-button" aria-label="Delete current item" onClick={() => void deleteSelected()}>···</button></div></div>
+            <div className="refine-heading"><div><span className="eyebrow">REFINEMENT WORKSPACE</span><h1>{selectedItem.title}</h1><p>{parentItem ? <><button className="text-link" onClick={() => void selectItem(parentItem.id)}>{parentItem.title}</button><span className="crumb-sep">/</span></> : null}{itemTypeLabel[selectedItem.type]} <span className="crumb-sep">·</span> {selectedItem.status.replaceAll('-', ' ')}</p></div><div className="heading-actions">{sessions.length > 1 && <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} onChange={(event) => void switchSession(event.target.value)}>{sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}</select>}<button className="new-session-button" onClick={() => void startNewSession()} aria-label="Start a new refinement session" title="New refinement session">＋</button><div className="menu-wrap"><button className="more-button" aria-label="More actions" aria-haspopup="menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} onBlur={(event) => { if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) setMenuOpen(false); }}>···</button>{menuOpen && <div className="menu-popover" role="menu" onBlur={(event) => { if (!event.currentTarget.parentElement?.contains(event.relatedTarget)) setMenuOpen(false); }}><button role="menuitem" className="menu-item menu-danger" onClick={() => void deleteSelected()}>🗑 Delete item</button></div>}</div></div></div>
             {parentItem && <div className="context-banner"><span className="context-icon">↳</span><span>Refining within <strong>{parentItem.title}</strong></span><button onClick={() => void selectItem(parentItem.id)}>View parent</button></div>}
             <div ref={conversationRef} className="conversation-scroll" aria-live="polite">
               {currentMessages.length === 0 && <div className="welcome-card"><div className="agent-icon">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span>↳</span> What outcome should this work make possible?</div></div></div>}
               {currentMessages.map((entry) => <div key={entry.id} className={`message-row ${entry.role === 'user' ? 'message-user' : ''}`}><div className={entry.role === 'user' ? 'user-avatar' : 'agent-icon'}>{entry.role === 'user' ? 'F' : '✳'}</div><div className="message-content"><span className="message-author">{entry.role === 'user' ? 'You' : 'Refinement agent'} <time>{formatTime(entry.createdAt)}</time></span><p>{entry.content}</p></div></div>)}
               {busy && <div className="message-row"><div className="agent-icon">✳</div><div className="message-content"><span className="message-author">Refinement agent</span><p className="typing"><i /><i /><i /><span>Thinking through the details</span></p></div></div>}
-              {proposal && <div className="proposal-panel"><div className="proposal-heading"><div><span className="eyebrow">DECOMPOSITION PROPOSAL</span><h3>Possible next pieces</h3></div><button className="close-button" onClick={() => setProposal(undefined)} aria-label="Dismiss proposal">×</button></div><p className="proposal-rationale">{proposal.rationale}</p><div className="proposal-list">{proposal.children.map((child) => <label className="proposal-item" key={child.proposalId}><input type="checkbox" checked={selectedProposals.includes(child.proposalId)} onChange={(event) => setSelectedProposals((current) => event.target.checked ? [...current, child.proposalId] : current.filter((id) => id !== child.proposalId))} /><span className="proposal-copy"><input aria-label="Proposal title" value={child.title} onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, title: event.target.value } : value) })} /><textarea aria-label="Proposal description" value={child.description} placeholder="Add a short description before accepting" onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, description: event.target.value } : value) })} /></span><span className="type-pill">{typeShort[child.type]}</span></label>)}</div><div className="proposal-actions"><span>{selectedProposals.length} selected</span><button className="button button-primary button-small" disabled={!selectedProposals.length || busy} onClick={() => void acceptSelectedProposals()}>Add selected items <span>→</span></button></div></div>}
+              {proposal && <div className="proposal-panel"><div className="proposal-heading"><div><span className="eyebrow">DECOMPOSITION PROPOSAL</span><h3>Possible next pieces</h3></div><button className="close-button" onClick={() => setProposal(undefined)} aria-label="Dismiss proposal">×</button></div><p className="proposal-rationale">{proposal.rationale}</p><div className="proposal-list">{proposal.children.map((child) => <label className="proposal-item" key={child.proposalId}><input type="checkbox" checked={selectedProposals.includes(child.proposalId)} onChange={(event) => setSelectedProposals((current) => event.target.checked ? [...current, child.proposalId] : current.filter((id) => id !== child.proposalId))} /><span className="proposal-copy"><input aria-label="Proposal title" value={child.title} onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, title: event.target.value } : value) })} /><small className="muted-copy">{parseChecklistSections(child.description).filter((entry) => entry.kind === 'assumption').length} assumptions · {parseChecklistSections(child.description).filter((entry) => entry.kind === 'question').length} open questions</small><textarea aria-label="Proposal description" rows={10} value={child.description} placeholder="Add a short description before accepting" onChange={(event) => setProposal({ ...proposal, children: proposal.children.map((value) => value.proposalId === child.proposalId ? { ...value, description: event.target.value } : value) })} /></span><span className="type-pill">{typeShort[child.type]}</span></label>)}</div><div className="proposal-actions"><span>{selectedProposals.length} selected</span><button className="button button-primary button-small" disabled={!selectedProposals.length || busy} onClick={() => void acceptSelectedProposals()}>Add selected items <span>→</span></button></div></div>}
             </div>
             <div className="composer-wrap"><div className="composer-tools"><span><span className="green-spark">✳</span> Refine with AI</span><span className="composer-hint">Enter to send · Shift+Enter for new line</span></div><form className="composer" onSubmit={(event) => void submitMessage(event)}><textarea value={message} onChange={(event) => setMessage(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (message.trim() && !busy) void submitMessage(); } }} placeholder="Share context, answer a question, or describe what you know…" rows={3} aria-label="Message the refinement agent" disabled={busy} /><div className="composer-bottom"><div className="composer-tip"><span>↗</span> Your structured item updates as you refine</div><button className="send-button" type="submit" disabled={busy || !message.trim()} aria-label="Send message">{busy ? '…' : '↑'}</button></div></form><div className="composer-actions">{busy && <button className="retry-button" onClick={cancelRequest}>■ Cancel request</button>}{retryState?.sessionId === session?.id && <button className="retry-button" onClick={() => void retryAssessment()} disabled={busy}>↻ Retry last request</button>}<button className="continue-button" onClick={() => void submitMessage(undefined, true)} disabled={busy || !session}><span>◷</span> Continue with current information <span className="continue-note">Stop asking and capture what’s still unknown</span></button></div></div>
           </> : <div className="no-selection"><div className="empty-icon">✳</div><h2>Choose what to refine</h2><p>Select an item from your backlog or create something new.</p><button className="button button-primary" onClick={() => { setNewParentId(undefined); setShowNew(true); }}>Create backlog item</button></div>}
@@ -516,13 +507,13 @@ export default function App() {
             <div className="preview-scroll">
               <div className="preview-type"><span className="type-icon">{typeShort[selectedItem.type]}</span><span>{itemTypeLabel[selectedItem.type]}</span><span className={`status-chip status-${selectedItem.status}`}>{statusText(selectedItem.status)}</span></div>
               <label className="field-label" htmlFor="item-title">TITLE</label><input id="item-title" className="preview-title-input" value={selectedItem.title} onChange={(event) => void updateSelected({ title: event.target.value })} />
-              <label className="field-label" htmlFor="item-description">DESCRIPTION</label><textarea id="item-description" className="preview-description" value={selectedItem.description} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => void updateSelected({ description: event.target.value })} rows={4} />
-              {selectedItem.contextValues.map((context) => <section className="preview-section" key={context.key}><div className="preview-section-head"><h3>{context.key}</h3><span className={`knowledge-tag knowledge-${context.knowledgeStatus}`}>{context.knowledgeStatus}</span></div><p>{context.value}</p><span className="provenance">Source: {context.provenance.source.replace('-', ' ')}</span></section>)}
-              {selectedItem.assumptions.length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions</h3><span className="count-badge amber">{selectedItem.assumptions.length}</span></div>{selectedItem.assumptions.map((assumption) => <div className="uncertainty-card assumption-card" key={assumption.id}><span>◇</span><p>{assumption.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => void resolveAssumption(assumption.id, true)}>✓</button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => void resolveAssumption(assumption.id, false)}>×</button></div>)}</section>}
-              {selectedItem.openQuestions.filter((question) => question.status === 'open').length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{selectedItem.openQuestions.filter((question) => question.status === 'open').length}</span></div>{selectedItem.openQuestions.filter((question) => question.status === 'open').map((question) => <div className="uncertainty-card question-card" key={question.id}><span>?</span><p>{question.text}<small className="importance-label">{question.importance}</small></p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => void resolveQuestion(question.id)}>✓</button></div>)}</section>}
+              <label className="field-label" htmlFor="item-description">DOCUMENT (MARKDOWN)</label><textarea id="item-description" className="preview-description" value={selectedItem.description} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => void updateSelected({ description: event.target.value })} rows={14} />
+              {checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions to confirm</h3><span className="count-badge amber">{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).map((entry) => <div className="uncertainty-card assumption-card" key={entry.line}><span>◇</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => void resolveChecklist(entry.line, 'check', 'Assumption confirmed.')}>✓</button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => void resolveChecklist(entry.line, 'remove', 'Assumption rejected.')}>×</button></div>)}</section>}
+              {checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).map((entry) => <div className="uncertainty-card question-card" key={entry.line}><span>?</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => void resolveChecklist(entry.line, 'check', 'Question marked resolved.')}>✓</button></div>)}</section>}
+              {selectedItem.revisions.length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>AI changes</h3><span className="subtle-label">{selectedItem.revisions.length} saved</span></div>{lastChange && <ul className="quality-list">{lastChange.removed.slice(0, 5).map((line) => <li key={`r-${line}`} className="quality-missing"><span>− {line}</span></li>)}{lastChange.added.slice(0, 5).map((line) => <li key={`a-${line}`} className="quality-clear"><span>+ {line}</span></li>)}</ul>}<button className="button button-secondary button-small" onClick={() => void undoLastChange()}>Undo last AI change</button></section>}
               <section className="preview-section"><div className="preview-section-head"><h3>Structure</h3><span className="subtle-label">{relationships.filter((relationship) => relationship.sourceId === selectedItem.id || relationship.targetId === selectedItem.id).length} links</span></div>{parentItem ? <button className="related-item" onClick={() => void selectItem(parentItem.id)}><span className="type-icon tiny">{typeShort[parentItem.type]}</span>{parentItem.title}<span>↗</span></button> : <p className="muted-copy">No parent item linked.</p>}{items.filter((item) => relationships.some((relationship) => relationship.type === 'parent-child' && relationship.sourceId === selectedItem.id && relationship.targetId === item.id)).map((item) => <button className="related-item" key={item.id} onClick={() => void selectItem(item.id)}><span className="type-icon tiny">{typeShort[item.type]}</span>{item.title}<span>↗</span></button>)}</section>
               {selectedItem.quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {selectedItem.quality.overall === 'ready' ? 'Ready' : selectedItem.quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{selectedItem.quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(selectedItem.quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(selectedItem.quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
-              <section className="preview-section quality-section"><div className="preview-section-head"><h3>Refinement status</h3><span className="status-indicator"><i /> {statusText(selectedItem.status)}</span></div><p>{selectedItem.status === 'ready-with-open-questions' ? 'Ready to move forward with a few details to resolve.' : selectedItem.status === 'ready' || selectedItem.status === 'complete' ? 'This item has enough clarity to move forward.' : 'Keep refining to clarify the outcome, value, and boundaries.'}</p><button className="button button-secondary button-small" onClick={() => void changeSelectedStatus(selectedItem.status === 'complete' ? 'refining' : selectedItem.status === 'ready' ? 'complete' : 'ready')}>{selectedItem.status === 'complete' ? 'Reopen item' : selectedItem.status === 'ready' ? 'Mark complete' : 'Mark ready'}</button></section>
+              <section className="preview-section quality-section"><div className="preview-section-head"><h3>Refinement status</h3><span className="status-indicator"><i /> {statusText(selectedItem.status)}</span></div><p>{selectedItem.status === 'ready-with-open-questions' ? 'Ready to move forward with a few details to resolve.' : selectedItem.status === 'ready' || selectedItem.status === 'complete' ? 'This item has enough clarity to move forward.' : 'Keep refining to clarify the outcome, value, and boundaries.'}</p><button className="button button-secondary button-small" onClick={() => void changeSelectedStatus(selectedItem.status === 'complete' ? 'refining' : selectedItem.status === 'ready' ? 'complete' : 'ready')}>{selectedItem.status === 'complete' ? 'Reopen item' : selectedItem.status === 'ready' ? 'Mark complete' : 'Mark ready'}</button> <button className="button button-secondary button-small" disabled={busy || !session} onClick={() => void submitMessage(undefined, false, assessQualityPrompt)}>Assess quality</button></section>
             </div>
             <div className="decompose-area"><div className="decompose-title"><span>✳</span><div><strong>Break this down</strong><small>Propose child items for your review</small></div></div><div className="decompose-buttons">{childTypeOptions(selectedItem.type).map((type) => <button key={type} className="button button-secondary button-small" disabled={busy || !session} onClick={() => void proposeChildren(type)}>＋ {type === 'feature' ? 'Features' : type === 'user-story' ? 'User stories' : 'Enablers'}</button>)}</div></div>
           </> : <div className="preview-empty"><span className="type-icon">↗</span><h3>Your item preview</h3><p>Choose an item to see its structure and refinement details.</p></div>}
@@ -533,7 +524,7 @@ export default function App() {
 
       {showNew && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowNew(false); }}><form className="modal" onSubmit={(event) => void createItem(event)}><button type="button" className="close-button modal-close" onClick={() => setShowNew(false)} aria-label="Close">×</button><span className="eyebrow">NEW BACKLOG ITEM</span><h2>What are we shaping?</h2><p>Start with the item type and a working title. You can refine it as you go.</p><label htmlFor="new-type">Item type</label><select id="new-type" value={newType} onChange={(event) => setNewType(event.target.value as BacklogItemType)}>{Object.entries(itemTypeLabel).map(([type, label]) => <option value={type} key={type}>{label}</option>)}</select><label htmlFor="new-title">Working title <span>Optional</span></label><input id="new-title" value={newTitle} onChange={(event) => setNewTitle(event.target.value)} placeholder={`Untitled ${itemTypeLabel[newType]}`} autoFocus /><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => setShowNew(false)}>Cancel</button><button className="button button-primary" type="submit">Create and refine <span>→</span></button></div></form></div>}
 
-      {showSettings && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowSettings(false); }}><form className="modal settings-modal" onSubmit={(event) => void saveSettings(event)}><button type="button" className="close-button modal-close" onClick={() => setShowSettings(false)} aria-label="Close">×</button><span className="eyebrow">PERSONALIZE YOUR AGENT</span><h2>Instructions & templates</h2><p>Customize agent behavior and the complete Markdown templates used for each backlog item type.</p><div className="env-config-note"><strong>LLM connection</strong><span className={llmConfigurationReady ? 'env-ready' : 'env-missing'}>{llmConfigurationReady ? 'Endpoint and model detected' : 'Missing VITE_LLM_ENDPOINT or VITE_LLM_MODEL'}</span><code>VITE_LLM_ENDPOINT · VITE_LLM_MODEL</code><small>In local development only, LOCAL_LLM_API_KEY from .env.local is attached to requests. Production builds omit this key and send requests without browser-held credentials.</small></div><div className="template-editor"><h3>Base refinement principles</h3><p>Stable rules applied to every backlog item. Restoring defaults reloads them from <code>src/defaults/instructions/principles.md</code>.</p><textarea className="markdown-template-input" id="principles" name="principles" aria-label="Base refinement principles" rows={10} defaultValue={settings.principles} /></div><div className="template-editor"><h3>Instructions per item type</h3><p>Added to the base principles for the type being refined.</p>{(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => <React.Fragment key={type}><label htmlFor={`type-instructions-${type}`}>{itemTypeLabel[type]} instructions</label><textarea className="markdown-template-input" id={`type-instructions-${type}`} name={`type-instructions-${type}`} rows={6} defaultValue={settings.typeInstructions[type]} /></React.Fragment>)}</div><label htmlFor="instructions">Additional agent instructions <span>Optional</span></label><textarea id="instructions" name="instructions" rows={4} placeholder="Add local instructions for how the agent should refine your backlog…" defaultValue={settings.instructions} /><div className="template-editor"><h3>Complete Markdown templates</h3><p>Edit the full template. Use {'{{title}}'}, {'{{description}}'}, {'{{field:Field name}}'}, {'{{assumptions}}'}, and {'{{openQuestions}}'} as placeholders.</p>{(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => <React.Fragment key={type}><label htmlFor={`template-${type}`}>{itemTypeLabel[type]}</label><textarea className="markdown-template-input" id={`template-${type}`} name={`template-${type}`} rows={8} defaultValue={settings.templates[type]} /></React.Fragment>)}</div><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => { void settingsRepository.restoreDefaults().then(setSettings).then(() => { setShowSettings(false); setNotice('Instructions and templates restored to source defaults.'); }).catch((cause: unknown) => setError(`Could not restore defaults: ${errorText(cause)}`)); }}>Restore source defaults</button><button className="button button-primary" type="submit">Save customization</button></div></form></div>}
+      {showSettings && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setShowSettings(false); }}><form className="modal settings-modal" onSubmit={(event) => void saveSettings(event)}><button type="button" className="close-button modal-close" onClick={() => setShowSettings(false)} aria-label="Close">×</button><span className="eyebrow">PERSONALIZE YOUR AGENT</span><h2>Instructions & templates</h2><p>Customize agent behavior and the complete Markdown templates used for each backlog item type.</p><div className="env-config-note"><strong>LLM connection</strong><span className={llmConfigurationReady ? 'env-ready' : 'env-missing'}>{llmConfigurationReady ? 'Endpoint and model detected' : 'Missing VITE_LLM_ENDPOINT or VITE_LLM_MODEL'}</span><code>VITE_LLM_ENDPOINT · VITE_LLM_MODEL</code><small>In local development only, LOCAL_LLM_API_KEY from .env.local is attached to requests. Production builds omit this key and send requests without browser-held credentials.</small></div><div className="template-editor"><h3>Base refinement principles</h3><p>Stable rules applied to every backlog item. Restoring defaults reloads them from <code>src/defaults/instructions/principles.md</code>.</p><textarea className="markdown-template-input" id="principles" name="principles" aria-label="Base refinement principles" rows={10} defaultValue={settings.principles} /></div><div className="template-editor"><h3>Instructions per item type</h3><p>Added to the base principles for the type being refined.</p>{(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => <React.Fragment key={type}><label htmlFor={`type-instructions-${type}`}>{itemTypeLabel[type]} instructions</label><textarea className="markdown-template-input" id={`type-instructions-${type}`} name={`type-instructions-${type}`} rows={6} defaultValue={settings.typeInstructions[type]} /></React.Fragment>)}</div><label htmlFor="instructions">Additional agent instructions <span>Optional</span></label><textarea id="instructions" name="instructions" rows={4} placeholder="Add local instructions for how the agent should refine your backlog…" defaultValue={settings.instructions} /><div className="template-editor"><h3>Complete Markdown templates</h3><p>Edit the full template as plain Markdown: headings plus optional &lt;!-- hints --&gt; for the agent. The agent decides what to fill in. Keep &quot;Assumptions&quot; and &quot;Open questions&quot; sections (one &quot;- [ ] item&quot; per line) to get confirm/reject/resolve buttons.</p>{(Object.keys(itemTypeLabel) as BacklogItemType[]).map((type) => <React.Fragment key={type}><label htmlFor={`template-${type}`}>{itemTypeLabel[type]}</label><textarea className="markdown-template-input" id={`template-${type}`} name={`template-${type}`} rows={8} defaultValue={settings.templates[type]} /></React.Fragment>)}</div><div className="modal-actions"><button type="button" className="button button-secondary" onClick={() => { void settingsRepository.restoreDefaults().then(setSettings).then(() => { setShowSettings(false); setNotice('Instructions and templates restored to source defaults.'); }).catch((cause: unknown) => setError(`Could not restore defaults: ${errorText(cause)}`)); }}>Restore source defaults</button><button className="button button-primary" type="submit">Save customization</button></div></form></div>}
     </div>
   );
 }

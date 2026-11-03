@@ -1,11 +1,5 @@
 import { z } from "zod";
-import {
-  AssumptionSchema,
-  BacklogItemSchema,
-  QualityAssessmentSchema,
-  ContextValueSchema,
-  OpenQuestionSchema,
-} from "./backlog-item";
+import { backlogItemTypeSchema, QualityAssessmentSchema } from "./backlog-item";
 import { relationshipTypes } from "./relationship";
 
 const nonEmptyString = z.string().trim().min(1);
@@ -18,6 +12,12 @@ export const ClarificationQuestionSchema = z.object({
   rationale: z.string().optional(),
 });
 
+export const SectionUpdateSchema = z.object({
+  heading: nonEmptyString,
+  markdown: z.string(),
+  mode: z.enum(["replace", "append"]).default("replace"),
+});
+
 export const AssessmentProposalSchema = z.object({
   id: nonEmptyString,
   kind: z.literal("assessment"),
@@ -26,22 +26,16 @@ export const AssessmentProposalSchema = z.object({
   summary: nonEmptyString,
   questions: z.array(ClarificationQuestionSchema).default([]),
   suggestedTitle: nonEmptyString.optional(),
-  suggestedDescription: z.string().optional(),
+  sectionUpdates: z.array(SectionUpdateSchema).default([]),
   suggestedStatus: z.enum(["ready", "ready-with-open-questions"]).optional(),
   quality: QualityAssessmentSchema.optional(),
-  contextValues: z.array(ContextValueSchema).default([]),
-  assumptions: z.array(AssumptionSchema).default([]),
-  openQuestions: z.array(OpenQuestionSchema).default([]),
 });
 
 const ProposedChildSchema = z.object({
   proposalId: nonEmptyString,
-  type: BacklogItemSchema.shape.type,
+  type: backlogItemTypeSchema,
   title: nonEmptyString,
   description: z.string().default(""),
-  contextValues: z.array(ContextValueSchema).default([]),
-  assumptions: z.array(AssumptionSchema).default([]),
-  openQuestions: z.array(OpenQuestionSchema).default([]),
 });
 
 export const ProposedRelationshipSchema = z.object({

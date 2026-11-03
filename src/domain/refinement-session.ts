@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { OpenQuestionSchema } from "./backlog-item";
 import { DomainError } from "./errors";
 
 const nonEmptyString = z.string().trim().min(1);
@@ -34,12 +33,6 @@ export const RefinementSessionSchema = z.object({
 export type ConversationMessage = z.infer<typeof ConversationMessageSchema>;
 export type PendingQuestion = z.infer<typeof PendingQuestionSchema>;
 export type RefinementSession = z.infer<typeof RefinementSessionSchema>;
-
-export function getUnansweredQuestions(
-  questions: readonly z.infer<typeof OpenQuestionSchema>[],
-): z.infer<typeof OpenQuestionSchema>[] {
-  return questions.filter((question) => question.status === "open");
-}
 
 export function transitionSessionStatus(
   session: RefinementSession,

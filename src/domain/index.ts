@@ -4,3 +4,4 @@ export * from "./proposal";
 export * from "./refinement-session";
 export * from "./relationship";
 export * from "./services";
+export * from "./document";

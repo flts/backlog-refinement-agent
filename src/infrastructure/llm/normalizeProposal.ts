@@ -1,3 +1,4 @@
+import { splitSections } from '../../domain/document';
 import { assessmentLevels, backlogItemTypes, qualityAreas } from '../../domain/backlog-item';
 
 type Json = Record<string, unknown>;
@@ -11,31 +12,6 @@ function questionImportance(value: unknown): string {
   if (/(block|critical|urgent|must)/.test(text)) return 'blocking';
   if (/(low|minor|optional|nice)/.test(text)) return 'non-blocking';
   return 'important';
-}
-
-function openQuestionImportance(value: unknown): string {
-  return questionImportance(value) === 'non-blocking' ? 'non-blocking' : 'important';
-}
-
-function knowledgeStatus(value: unknown): string {
-  const text = String(value ?? '').toLowerCase();
-  if (['known', 'assumed', 'unknown', 'unclear'].includes(text)) return text;
-  if (/(provided|confirmed|given|stated|user|explicit)/.test(text)) return 'known';
-  if (/(assum|infer|likely|suggest)/.test(text)) return 'assumed';
-  if (/(missing|none|absent)/.test(text)) return 'unknown';
-  return 'unclear';
-}
-
-function provenance(value: unknown): Json {
-  if (isObject(value) && typeof value.source === 'string') {
-    const source = ['user', 'existing-item', 'parent-item', 'agent'].includes(value.source) ? value.source : 'agent';
-    return { ...value, source };
-  }
-  const text = String(isObject(value) ? value.source ?? '' : value ?? '').toLowerCase();
-  if (/(conversation|user|human|message)/.test(text)) return { source: 'user' };
-  if (/parent/.test(text)) return { source: 'parent-item' };
-  if (/(current|existing|item)/.test(text)) return { source: 'existing-item' };
-  return { source: 'agent' };
 }
 
 const kebab = (value: unknown) => String(value ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
@@ -70,47 +46,51 @@ function mapArray(value: unknown, map: (entry: Json) => Json): unknown {
   return Array.isArray(value) ? value.map((entry) => (isObject(entry) ? map(entry) : entry)) : value;
 }
 
-const normalizeContext = (entry: Json): Json => ({
-  ...entry,
-  knowledgeStatus: knowledgeStatus(entry.knowledgeStatus),
-  provenance: provenance(entry.provenance),
-});
-
 const withId = (entry: Json, prefix: string): Json =>
   typeof entry.id === 'string' && entry.id.trim() ? entry : { ...entry, id: `${prefix}-${crypto.randomUUID()}` };
 
-const normalizeAssumption = (entry: Json): Json => ({
-  ...withId(entry, 'assumption'),
-  ...(entry.source === undefined || ['agent', 'parent-item', 'existing-item'].includes(String(entry.source))
-    ? {}
-    : { source: 'agent' }),
-});
+const asText = (value: unknown): string =>
+  Array.isArray(value) ? value.map(asText).join('\n') : typeof value === 'string' ? value : '';
 
-const normalizeOpenQuestion = (entry: Json): Json => ({
-  ...withId(entry, 'question'),
-  ...(entry.importance === undefined ? {} : { importance: openQuestionImportance(entry.importance) }),
-});
+/** Accepts sectionUpdates in a few shapes and converts a full suggestedDescription into replace-updates. */
+function normalizeSectionUpdates(raw: Json): unknown[] {
+  const updates: unknown[] = [];
+  const list = Array.isArray(raw.sectionUpdates) ? raw.sectionUpdates : [];
+  for (const entry of list) {
+    if (!isObject(entry)) continue;
+    const heading = [entry.heading, entry.section, entry.title].find((v) => typeof v === 'string' && v.trim());
+    const markdown = asText(entry.markdown ?? entry.content ?? entry.body ?? entry.text);
+    if (typeof heading !== 'string') continue;
+    updates.push({ heading: heading.replace(/^#+\s*/, '').trim(), markdown, mode: entry.mode === 'append' ? 'append' : 'replace' });
+  }
+  if (!updates.length && typeof raw.suggestedDescription === 'string' && raw.suggestedDescription.trim()) {
+    for (const { heading, body } of splitSections(raw.suggestedDescription).sections) {
+      updates.push({ heading, markdown: body, mode: 'replace' });
+    }
+  }
+  return updates;
+}
 
 /** Coerces common, harmless deviations in model output; Zod still validates the result. */
 export function normalizeProposal(raw: unknown): unknown {
   if (!isObject(raw)) return raw;
-  const normalizeNested = (entry: Json): Json => ({
-    ...entry,
-    contextValues: mapArray(entry.contextValues, normalizeContext),
-    assumptions: mapArray(entry.assumptions, normalizeAssumption),
-    openQuestions: mapArray(entry.openQuestions, normalizeOpenQuestion),
-  });
   const result: Json = {
-    ...normalizeNested(raw),
+    ...raw,
     questions: mapArray(raw.questions, (entry) => ({
       ...withId(entry, 'question'),
       importance: questionImportance(entry.importance),
     })),
   };
+  if (raw.kind === 'assessment' || raw.sectionUpdates !== undefined || raw.suggestedDescription !== undefined) {
+    result.sectionUpdates = normalizeSectionUpdates(raw);
+  }
+  delete result.suggestedDescription;
+  for (const key of ['contextValues', 'assumptions', 'openQuestions']) delete result[key];
   if (raw.quality !== undefined) result.quality = normalizeQuality(raw.quality);
   if (Array.isArray(raw.children)) {
     result.children = mapArray(raw.children, (entry) => {
-      const child = normalizeNested(entry);
+      const child: Json = { ...entry, description: asText(entry.description) };
+      for (const key of ['contextValues', 'assumptions', 'openQuestions']) delete child[key];
       return typeof child.proposalId === 'string' && child.proposalId.trim()
         ? child
         : { ...child, proposalId: `child-${crypto.randomUUID()}` };
@@ -124,7 +104,7 @@ export function normalizeProposal(raw: unknown): unknown {
       targetRef: pick(entry, ['targetRef', 'targetId', 'targetProposalId', 'toProposalId', 'toId', 'to', 'target']),
     }));
   }
-  for (const key of ['questions', 'children', 'contextValues', 'assumptions', 'openQuestions']) {
+  for (const key of ['questions', 'children']) {
     if (result[key] === undefined || result[key] === null) delete result[key];
   }
   return result;

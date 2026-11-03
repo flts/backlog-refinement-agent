@@ -13,9 +13,7 @@ const parent: BacklogItem = {
   title: "Account management",
   description: "",
   status: "draft",
-  contextValues: [],
-  assumptions: [],
-  openQuestions: [],
+  revisions: [],
   createdAt: timestamp,
   updatedAt: timestamp,
 };
@@ -68,27 +66,25 @@ class SequenceIds {
   nextId() { this.next += 1; return `generated-${this.next}`; }
 }
 
-const assessment: RefinementProposal = {
+const assessment: Extract<RefinementProposal, { kind: "assessment" }> = {
   id: "assessment-1",
   kind: "assessment",
   itemId: parent.id,
   generatedAt: timestamp,
   summary: "The capability needs a measurable outcome.",
   questions: [],
-  contextValues: [],
-  assumptions: [],
-  openQuestions: [],
+  sectionUpdates: [{ heading: "Summary", markdown: "Manage accounts.", mode: "replace" }],
   suggestedTitle: "Manage accounts",
 };
-const decomposition: RefinementProposal = {
+const decomposition: Extract<RefinementProposal, { kind: "decomposition" }> = {
   id: "decomposition-1",
   kind: "decomposition",
   parentItemId: parent.id,
   generatedAt: timestamp,
   rationale: "Separate sign-in from profile changes.",
   children: [
-    { proposalId: "sign-in", type: "feature", title: "Sign in", description: "", contextValues: [], assumptions: [], openQuestions: [] },
-    { proposalId: "profile", type: "user-story", title: "Update profile", description: "", contextValues: [], assumptions: [], openQuestions: [] },
+    { proposalId: "sign-in", type: "feature", title: "Sign in", description: "" },
+    { proposalId: "profile", type: "user-story", title: "Update profile", description: "" },
   ],
   relationships: [
     { sourceRef: parent.id, targetRef: "sign-in", type: "parent-child" },
@@ -114,7 +110,44 @@ describe("RefinementApplicationService", () => {
     const generated = await service.proposeAssessment(session.id);
     expect(generated).toEqual(assessment);
     expect((await store.getItem(parent.id))?.title).toBe(parent.title);
-    expect(await service.acceptProposal(generated)).toMatchObject([{ title: "Manage accounts" }]);
+    expect(await service.acceptProposal(generated)).toMatchObject([{ title: "Manage accounts", description: "## Summary\nManage accounts." }]);
+  });
+
+  it("keeps confirmed items when a section is replaced and supports undo", async () => {
+    const store = new MemoryStore();
+    await store.saveItem({ ...parent, description: "## Assumptions\n- [x] Confirmed\n- [ ] Open" });
+    const provider: RefinementProvider = {
+      generateAssessment: async () => assessment,
+      generateDecomposition: async () => decomposition,
+    };
+    const service = new RefinementApplicationService({ store, provider, ids: new SequenceIds() });
+    const withUpdate = { ...assessment, sectionUpdates: [{ heading: "Assumptions", markdown: "- [ ] New", mode: "replace" as const }] };
+    const [updated] = await service.acceptProposal(withUpdate);
+    expect(updated.description).toContain("- [x] Confirmed");
+    expect(updated.description).not.toContain("- [ ] Open");
+    expect(service.lastWarnings).toHaveLength(1);
+    const restored = await service.undoLastChange(parent.id);
+    expect(restored.description).toBe("## Assumptions\n- [x] Confirmed\n- [ ] Open");
+  });
+
+  it("conforms proposed children to the child template when previewing and accepting", async () => {
+    const store = new MemoryStore();
+    const filled = {
+      ...decomposition,
+      children: [{ ...decomposition.children[0], description: "## Open questions\n- [ ] Which methods?\n\n## Invented\nX" }],
+      relationships: [],
+    };
+    const provider: RefinementProvider = {
+      generateAssessment: async () => assessment,
+      generateDecomposition: async () => filled,
+    };
+    const templates = { feature: "## Summary\n<!-- h -->\n\n## Open questions\n- [ ] " };
+    const service = new RefinementApplicationService({ store, provider, ids: new SequenceIds(), templates });
+    const preview = await service.proposeDecomposition(session.id, undefined, "feature");
+    expect(preview.kind === "decomposition" && preview.children[0].description)
+      .toBe("## Summary\n\n## Open questions\n- [ ] Which methods?\n\n## Additional notes\n### Invented\nX");
+    const [created] = await service.acceptProposal(preview);
+    expect(created.description).toContain("- [ ] Which methods?");
   });
 
   it("ignores relationships that point at children no longer in the proposal", async () => {

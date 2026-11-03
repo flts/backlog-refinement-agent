@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { legacyFieldsToDocument } from "./document";
 
 export const backlogItemTypes = [
   "capability",
@@ -15,37 +16,7 @@ export const backlogItemStatuses = [
   "complete",
 ] as const;
 
-export const knowledgeStatuses = ["known", "assumed", "unknown", "unclear"] as const;
-export const contextSources = ["user", "existing-item", "parent-item", "agent"] as const;
-
 const nonEmptyString = z.string().trim().min(1);
-
-export const ContextValueSchema = z.object({
-  key: nonEmptyString,
-  value: z.string(),
-  knowledgeStatus: z.enum(knowledgeStatuses),
-  provenance: z.object({
-    source: z.enum(contextSources),
-    sourceId: nonEmptyString.optional(),
-  }),
-});
-
-export const AssumptionSchema = z.object({
-  id: nonEmptyString,
-  text: nonEmptyString,
-  relatedField: nonEmptyString.optional(),
-  confirmed: z.boolean().default(false),
-  source: z.enum(["agent", "parent-item", "existing-item"]).optional(),
-});
-
-export const OpenQuestionSchema = z.object({
-  id: nonEmptyString,
-  text: nonEmptyString,
-  status: z.enum(["open", "answered"]).default("open"),
-  importance: z.enum(["important", "non-blocking"]).default("important"),
-  relatedField: nonEmptyString.optional(),
-  answer: z.string().optional(),
-});
 
 export const assessmentLevels = ["clear", "unclear", "missing", "not-applicable"] as const;
 export const qualityAreas = [
@@ -83,24 +54,48 @@ export const QualityAssessmentSchema = z.object({
   excludedFollowUpCandidates: z.array(z.string()).optional(),
 });
 
-export const BacklogItemSchema = z.object({
+export const RevisionSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  savedAt: z.string().datetime(),
+});
+
+export const maxRevisions = 10;
+
+const BacklogItemBaseSchema = z.object({
   id: nonEmptyString,
   type: z.enum(backlogItemTypes),
   title: nonEmptyString,
+  /** The item's Markdown document; its structure follows the item type's template. */
   description: z.string().default(""),
   status: z.enum(backlogItemStatuses).default("draft"),
-  contextValues: z.array(ContextValueSchema).default([]),
-  assumptions: z.array(AssumptionSchema).default([]),
-  openQuestions: z.array(OpenQuestionSchema).default([]),
   createdAt: z.string().datetime(),
   quality: QualityAssessmentSchema.optional(),
+  revisions: z.array(RevisionSchema).default([]),
   updatedAt: z.string().datetime(),
 });
+
+/** Items saved before the single-document model carried structured fields; fold them into the document. */
+function migrateLegacyItem(value: unknown): unknown {
+  if (typeof value !== "object" || value === null) return value;
+  const { contextValues, assumptions, openQuestions, ...rest } = value as Record<string, unknown>;
+  if (!contextValues && !assumptions && !openQuestions) return rest;
+  return {
+    ...rest,
+    description: legacyFieldsToDocument({
+      description: typeof rest.description === "string" ? rest.description : "",
+      contextValues: Array.isArray(contextValues) ? contextValues : [],
+      assumptions: Array.isArray(assumptions) ? assumptions : [],
+      openQuestions: Array.isArray(openQuestions) ? openQuestions : [],
+    }),
+  };
+}
+
+export const backlogItemTypeSchema = BacklogItemBaseSchema.shape.type;
+export const BacklogItemSchema = z.preprocess(migrateLegacyItem, BacklogItemBaseSchema);
 
 export type QualityAssessment = z.infer<typeof QualityAssessmentSchema>;
 export type BacklogItemType = (typeof backlogItemTypes)[number];
 export type BacklogItemStatus = (typeof backlogItemStatuses)[number];
-export type ContextValue = z.infer<typeof ContextValueSchema>;
-export type Assumption = z.infer<typeof AssumptionSchema>;
-export type OpenQuestion = z.infer<typeof OpenQuestionSchema>;
-export type BacklogItem = z.infer<typeof BacklogItemSchema>;
+export type Revision = z.infer<typeof RevisionSchema>;
+export type BacklogItem = z.infer<typeof BacklogItemBaseSchema>;

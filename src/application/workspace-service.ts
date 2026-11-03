@@ -85,9 +85,6 @@ export class WorkspaceApplicationService {
       title,
       description: '',
       status: 'draft',
-      contextValues: [],
-      assumptions: [],
-      openQuestions: [],
       createdAt: now,
       updatedAt: now,
     });

@@ -3,26 +3,25 @@ import { RefinementProposalSchema } from '../../domain/proposal';
 import { normalizeProposal } from './normalizeProposal';
 
 describe('normalizeProposal', () => {
-  it('coerces near-miss enum values and string provenance so the proposal validates', () => {
+  it('coerces question importance and generates missing ids', () => {
     const parsed = RefinementProposalSchema.parse(normalizeProposal({
       id: 'a', kind: 'assessment', itemId: 'i', generatedAt: '2026-11-03T00:00:00.000Z', summary: 's',
-      questions: [{ id: 'q', text: 'What?', importance: 'high' }],
-      contextValues: [{ key: 'Title', value: 'test', knowledgeStatus: 'provided', provenance: 'conversation:123' }],
+      questions: [{ text: 'What?', importance: 'high' }],
     }));
-    expect(parsed.kind === 'assessment' && parsed.questions[0].importance).toBe('important');
-    expect(parsed.kind === 'assessment' && parsed.contextValues[0]).toMatchObject({
-      knowledgeStatus: 'known', provenance: { source: 'user' },
-    });
+    expect(parsed.kind === 'assessment' && parsed.questions[0]).toMatchObject({ importance: 'important' });
+    expect(parsed.kind === 'assessment' && parsed.questions[0].id).toMatch(/^question-/);
   });
 
-  it('generates missing ids for open questions and assumptions', () => {
+  it('converts a full suggestedDescription into per-section replace updates', () => {
     const parsed = RefinementProposalSchema.parse(normalizeProposal({
       id: 'a', kind: 'assessment', itemId: 'i', generatedAt: '2026-11-03T00:00:00.000Z', summary: 's',
-      openQuestions: [{ text: 'Which retention period?', importance: 'important' }],
-      assumptions: [{ text: 'DUTO applies' }],
+      suggestedDescription: '## Summary\nHello\n\n## Scope\nSmall',
+      contextValues: [{ key: 'x' }],
     }));
-    expect(parsed.kind === 'assessment' && parsed.openQuestions[0].id).toMatch(/^question-/);
-    expect(parsed.kind === 'assessment' && parsed.assumptions[0].id).toMatch(/^assumption-/);
+    expect(parsed.kind === 'assessment' && parsed.sectionUpdates).toEqual([
+      { heading: 'Summary', markdown: 'Hello', mode: 'replace' },
+      { heading: 'Scope', markdown: 'Small', mode: 'replace' },
+    ]);
   });
 
   it('maps relationship endpoint aliases', () => {

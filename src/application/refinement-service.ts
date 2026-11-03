@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { BacklogItemSchema, type BacklogItem } from "../domain/backlog-item";
+import { BacklogItemSchema, maxRevisions, type BacklogItem, type BacklogItemType } from "../domain/backlog-item";
+import { applySectionUpdates, conformToTemplate } from "../domain/document";
 import { DomainError } from "../domain/errors";
 import {
   addRelationship,
@@ -16,6 +17,8 @@ export interface RefinementServiceOptions {
   provider: RefinementProvider;
   ids: IdGenerator;
   clock?: Clock;
+  /** Current (default or user-modified) template per item type; children are conformed to it. */
+  templates?: Partial<Record<BacklogItemType, string>>;
 }
 
 export interface AutonomousRunResult {
@@ -28,18 +31,6 @@ const systemClock: Clock = { now: () => new Date() };
 
 function isoNow(clock: Clock): string {
   return clock.now().toISOString();
-}
-
-function mergeById<T extends { id: string }>(current: readonly T[], additions: readonly T[]): T[] {
-  const merged = new Map(current.map((value) => [value.id, value]));
-  for (const value of additions) merged.set(value.id, value);
-  return [...merged.values()];
-}
-
-function mergeByKey<T>(current: readonly T[], additions: readonly T[], keyOf: (value: T) => string): T[] {
-  const merged = new Map(current.map((value) => [keyOf(value), value]));
-  for (const value of additions) merged.set(keyOf(value), value);
-  return [...merged.values()];
 }
 
 export class RefinementApplicationService {
@@ -103,19 +94,20 @@ export class RefinementApplicationService {
     return proposal;
   }
 
-  async proposeDecomposition(sessionId: string, signal?: AbortSignal): Promise<RefinementProposal> {
+  async proposeDecomposition(sessionId: string, signal?: AbortSignal, childType?: BacklogItemType): Promise<RefinementProposal> {
     const { session, item, relatedItems, relationships } = await this.loadGenerationContext(sessionId);
     const generated = await this.options.provider.generateDecomposition({
       item,
       relatedItems,
       relationships,
       conversation: session.conversation,
+      childType,
     }, signal);
     const proposal = this.parseProposal(generated);
     if (proposal.kind !== "decomposition" || proposal.parentItemId !== item.id) {
       throw new DomainError("Provider returned a decomposition for the wrong item.", "INVALID_PROVIDER_PROPOSAL");
     }
-    return proposal;
+    return { ...proposal, children: proposal.children.map((child) => this.conformChild(child)) };
   }
 
   /**
@@ -167,6 +159,26 @@ export class RefinementApplicationService {
     return { proposalId: validated.id, rejected: true };
   }
 
+  /** Warnings (e.g. kept confirmed items) from the most recent accepted assessment. */
+  lastWarnings: string[] = [];
+
+  /** Restore the most recent revision of an item (undo the last AI change). */
+  async undoLastChange(itemId: string): Promise<BacklogItem> {
+    const item = await this.options.store.getItem(itemId);
+    if (!item) throw new DomainError(`Backlog item ${itemId} was not found.`, "ITEM_NOT_FOUND");
+    const previous = item.revisions[item.revisions.length - 1];
+    if (!previous) throw new DomainError("There is no earlier version to restore.", "NO_REVISION");
+    const restored = BacklogItemSchema.parse({
+      ...item,
+      title: previous.title,
+      description: previous.description,
+      revisions: item.revisions.slice(0, -1),
+      updatedAt: isoNow(this.clock),
+    });
+    await this.options.store.saveItem(restored);
+    return restored;
+  }
+
   async acceptProposal(
     proposalInput: RefinementProposal,
     selectedProposalIds?: readonly string[],
@@ -175,15 +187,20 @@ export class RefinementApplicationService {
     if (proposal.kind === "assessment") {
       const item = await this.options.store.getItem(proposal.itemId);
       if (!item) throw new DomainError(`Backlog item ${proposal.itemId} was not found.`, "ITEM_NOT_FOUND");
+      const merged = applySectionUpdates(item.description, proposal.sectionUpdates);
+      const title = proposal.suggestedTitle ?? item.title;
+      const changed = merged.document !== item.description || title !== item.title;
+      this.lastWarnings = merged.warnings;
+      const now = isoNow(this.clock);
       const updated: BacklogItem = {
         ...item,
-        title: proposal.suggestedTitle ?? item.title,
-        description: proposal.suggestedDescription ?? item.description,
-        contextValues: mergeByKey(item.contextValues, proposal.contextValues, ({ key }) => key),
-        assumptions: mergeById(item.assumptions, proposal.assumptions),
-        openQuestions: mergeById(item.openQuestions, proposal.openQuestions),
+        title,
+        description: merged.document,
+        revisions: changed
+          ? [...item.revisions, { title: item.title, description: item.description, savedAt: now }].slice(-maxRevisions)
+          : item.revisions,
         quality: proposal.quality ?? item.quality,
-        updatedAt: isoNow(this.clock),
+        updatedAt: now,
       };
       const withStatus = proposal.suggestedStatus
         ? transitionItemStatus(updated, proposal.suggestedStatus, isoNow(this.clock))
@@ -195,6 +212,16 @@ export class RefinementApplicationService {
     return this.acceptSelectedChildren(proposal, selectedProposalIds);
   }
 
+  private conformChild<T extends { type: BacklogItemType; title: string; description: string }>(child: T): T {
+    const template = this.options.templates?.[child.type];
+    if (!template?.trim()) return child;
+    const { document, extraHeadings } = conformToTemplate(template, child.description);
+    if (extraHeadings.length) {
+      console.warn(`[backlog-refinement] Child "${child.title}" used headings outside the template; kept under "Additional notes"`, extraHeadings);
+    }
+    return { ...child, description: document };
+  }
+
   private async acceptSelectedChildren(
     proposal: Extract<RefinementProposal, { kind: "decomposition" }>,
     selectedProposalIds: readonly string[] = proposal.children.map(({ proposalId }) => proposalId),
@@ -204,7 +231,9 @@ export class RefinementApplicationService {
     if (selected.size !== selectedProposalIds.length) {
       throw new DomainError("A proposed child may only be selected once.", "DUPLICATE_SELECTION");
     }
-    const selectedChildren = proposal.children.filter(({ proposalId }) => selected.has(proposalId));
+    const selectedChildren = proposal.children
+      .filter(({ proposalId }) => selected.has(proposalId))
+      .map((child) => this.conformChild(child));
     if (selectedChildren.length !== selected.size) {
       throw new DomainError("Selection contains an unknown proposed child.", "UNKNOWN_SELECTION");
     }
@@ -221,9 +250,6 @@ export class RefinementApplicationService {
           title: child.title,
           description: child.description,
           status: "draft",
-          contextValues: child.contextValues,
-          assumptions: child.assumptions,
-          openQuestions: child.openQuestions,
           createdAt: now,
           updatedAt: now,
         }),

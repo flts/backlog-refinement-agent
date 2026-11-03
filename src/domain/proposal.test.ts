@@ -16,10 +16,9 @@ describe("proposal schemas", () => {
       kind: "assessment",
       itemId: "item-1",
       summary: "The story needs measurable acceptance criteria.",
-      assumptions: [{ id: "a1", text: "Users have an account." }],
-      openQuestions: [{ id: "q1", text: "Which roles need access?" }],
+      sectionUpdates: [{ heading: "Assumptions", markdown: "- [ ] Users have an account." }],
     });
-    expect(proposal.openQuestions[0].status).toBe("open");
+    expect(proposal.sectionUpdates[0].mode).toBe("replace");
   });
 
   it("requires decomposition relationship endpoints to reference proposal members", () => {

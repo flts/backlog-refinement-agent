@@ -1,4 +1,4 @@
-import type { BacklogItem } from "../domain/backlog-item";
+import type { BacklogItem, BacklogItemType } from "../domain/backlog-item";
 import type { BacklogRelationship } from "../domain/relationship";
 import type { ConversationMessage, RefinementSession } from "../domain/refinement-session";
 import type {
@@ -13,7 +13,10 @@ export interface AssessmentInput {
   conversation: readonly ConversationMessage[];
 }
 
-export interface DecompositionInput extends AssessmentInput {}
+export interface DecompositionInput extends AssessmentInput {
+  /** Type of the children the user asked for; their template is what the descriptions must follow. */
+  childType?: BacklogItemType;
+}
 
 /** Provider contract is intentionally protocol- and model-agnostic. */
 export interface RefinementProvider {

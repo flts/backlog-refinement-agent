@@ -1,25 +1,25 @@
-# {{title}}
+# Enabler
 
-## Enabling outcome
-{{description}}
+## Summary
+<!-- One or two sentences: what this enabler makes possible. -->
 
-## Rationale
-{{field:Rationale}}
+## Reason
+<!-- Why is this needed (technical, architectural, compliance or process need)? -->
 
-## Technical scope
-{{field:Technical scope}}
+## Enables
+<!-- Which features or stories depend on it or benefit from it? -->
 
-## Constraints
-{{field:Constraints}}
-
-## Expected result / evidence
-{{field:Expected result}}
+## Scope
+<!-- What is included and excluded. -->
 
 ## Acceptance criteria
-{{field:Acceptance criteria}}
+<!-- Observable, testable conditions. -->
+
+## Risks and dependencies
+<!-- Risks, dependencies and constraints. -->
 
 ## Assumptions
-{{assumptions}}
+<!-- One task per line: "- [ ] assumption". The user confirms or rejects them. -->
 
 ## Open questions
-{{openQuestions}}
+<!-- One task per line: "- [ ] question". Mark "- [x]" once answered. -->
