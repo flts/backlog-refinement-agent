@@ -20,3 +20,5 @@
 
 .menu-wrap{position:relative}.menu-popover{position:absolute;right:0;top:32px;z-index:6;min-width:140px;background:#fff;border:1px solid #e4e6ea;border-radius:8px;box-shadow:0 8px 24px #17291d1f;padding:4px}.menu-item{width:100%;text-align:left;border:0;background:transparent;border-radius:5px;padding:7px 9px;font-size:10px}.menu-item:hover{background:#f5f6f8}.menu-danger{color:#a24433}
 .workspace-grid>.preview-column{order:2}.workspace-grid>.refinement-column{order:3}
+
+.review-toggle { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
