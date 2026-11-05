@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { defaultUserSettings } from '../infrastructure/storage/SettingsRepository';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
+import { clearLlmOverrides, getLlmEnvironment, loadLlmOverrides, resolveLlmConnection, saveLlmOverrides, type LlmOverrides } from '../infrastructure/llm/llmConfig';
 import { parseConfig, serializeConfig, downloadFile } from './config-io';
 import { settingsRepository } from './services';
 import { errorText, type Notifications } from './useNotifications';
@@ -9,6 +10,10 @@ export function useSettings({ setError, setNotice }: Notifications) {
   const [settings, setSettings] = useState<UserSettings>(defaultUserSettings);
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
+  const [llm, setLlm] = useState<LlmOverrides>(() => loadLlmOverrides());
+  const llmEnvironment = getLlmEnvironment();
+  const connection = resolveLlmConnection(llm, llmEnvironment);
+  const llmReady = Boolean(connection.endpoint && connection.model);
 
   useEffect(() => {
     let cancelled = false;
@@ -19,8 +24,13 @@ export function useSettings({ setError, setNotice }: Notifications) {
     return () => { cancelled = true; };
   }, []);
 
-  async function save(values: UserSettings) {
+  function saveLlm(values: LlmOverrides) { setLlm(saveLlmOverrides(values)); }
+
+  function clearLlm() { setLlm(clearLlmOverrides()); setNotice('Saved LLM connection removed; environment values are used again.'); }
+
+  async function save(values: UserSettings, llmValues?: LlmOverrides) {
     try {
+      if (llmValues) saveLlm(llmValues);
       setSettings(await settingsRepository.save(values));
       setOpen(false); setNotice('Instructions and templates saved locally in IndexedDB.');
     } catch (cause) { setError(`Could not save settings: ${errorText(cause)}`); }
@@ -45,5 +55,5 @@ export function useSettings({ setError, setNotice }: Notifications) {
     downloadFile('backlog-refinement-config.json', serializeConfig(settings), 'application/json');
   }
 
-  return { settings, loaded, open, setOpen, save, restore, importConfig, exportConfig };
+  return { settings, llm, llmEnvironment, llmReady, clearLlm, loaded, open, setOpen, save, restore, importConfig, exportConfig };
 }

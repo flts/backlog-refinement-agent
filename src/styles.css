@@ -2056,3 +2056,22 @@ select:focus-visible {
     border-top: 0;
     padding: 12px 0 0
 }
+.llm-connection {
+    border: 1px solid #eceef1;
+    border-radius: 8px;
+    padding: 4px 12px 12px;
+    margin: 0 0 6px
+}
+
+.llm-connection legend {
+    font: 700 11px var(--font-display);
+    padding: 0 6px
+}
+
+.llm-connection input {
+    width: 100%;
+    border: 1px solid #e3e6e9;
+    border-radius: 7px;
+    padding: 9px 10px;
+    font-size: 12px
+}
