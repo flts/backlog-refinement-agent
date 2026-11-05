@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { BacklogItemType } from '../domain/backlog-item';
-import { getLlmConfiguration } from '../infrastructure/llm/llmConfig';
 import { ChatPanel } from './ChatPanel';
 import { PreviewPanel } from './PreviewPanel';
 import { SettingsModal } from './SettingsModal';
@@ -24,10 +23,8 @@ export default function App() {
   const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const refinement = useMemo(() => makeRefinementService(settings), [settings]);
+  const refinement = useMemo(() => makeRefinementService(settings, config.llm), [settings, config.llm]);
   const flow = useRefinementFlow(backlog, refinement, notifications);
-  const llmConfiguration = useMemo(() => getLlmConfiguration(), []);
-  const llmReady = Boolean(llmConfiguration.endpoint && llmConfiguration.model);
 
   function selectItem(id: string) {
     flow.reset();
@@ -121,7 +118,7 @@ export default function App() {
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
-      {config.open && <SettingsModal settings={settings} llmReady={llmReady} onClose={() => config.setOpen(false)} onSave={(values) => void config.save(values)} onRestore={() => void config.restore()} />}
+      {config.open && <SettingsModal settings={settings} llmReady={config.llmReady} llm={config.llm} llmEnvironment={config.llmEnvironment} onClearLlm={config.clearLlm} onClose={() => config.setOpen(false)} onSave={(values, llmValues) => void config.save(values, llmValues)} onRestore={() => void config.restore()} />}
     </div>
   );
 }

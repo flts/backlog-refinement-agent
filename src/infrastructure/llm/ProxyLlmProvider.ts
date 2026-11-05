@@ -108,7 +108,7 @@ export class ProxyLlmProvider implements LlmProvider {
   async generate(request: LlmCompletionRequest): Promise<string> {
     const { endpoint, model, apiKey, streaming = false, timeoutMs = 60_000 } = this.configuration;
     if (!endpoint.trim() || !model.trim()) {
-      throw new LlmProviderError('Configure VITE_LLM_ENDPOINT and VITE_LLM_MODEL before using AI refinement.');
+      throw new LlmProviderError('Set the LLM endpoint and model in Settings (or VITE_LLM_ENDPOINT and VITE_LLM_MODEL) before using AI refinement.');
     }
 
     let parsedEndpoint: URL;

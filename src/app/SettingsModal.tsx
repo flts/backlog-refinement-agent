@@ -1,6 +1,7 @@
 import React, { useState, type FormEvent } from 'react';
 import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
+import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
 import { itemTypeLabel, itemTypes } from './labels';
 
 type Tab = 'general' | BacklogItemType;
@@ -9,14 +10,18 @@ const tabs: { id: Tab; label: string }[] = [
   ...itemTypes.map((type) => ({ id: type, label: itemTypeLabel[type] })),
 ];
 
-export function SettingsModal({ settings, llmReady, onSave, onRestore, onClose }: {
+export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClearLlm, onSave, onRestore, onClose }: {
   settings: UserSettings;
   llmReady: boolean;
-  onSave: (values: UserSettings) => void;
+  llm: LlmOverrides;
+  llmEnvironment: LlmOverrides;
+  onClearLlm: () => void;
+  onSave: (values: UserSettings, llm?: LlmOverrides) => void;
   onRestore: () => void;
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>('general');
+  const [llmFormKey, setLlmFormKey] = useState(0);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,6 +32,10 @@ export function SettingsModal({ settings, llmReady, onSave, onRestore, onClose }
       principles: String(form.get('principles') ?? ''),
       templates: byType('template') as UserSettings['templates'],
       typeInstructions: byType('type-instructions') as UserSettings['typeInstructions'],
+    }, {
+      endpoint: String(form.get('llm-endpoint') ?? ''),
+      model: String(form.get('llm-model') ?? ''),
+      apiKey: String(form.get('llm-api-key') ?? ''),
     });
   }
 
@@ -57,7 +66,19 @@ export function SettingsModal({ settings, llmReady, onSave, onRestore, onClose }
         </div>
         <div className="settings-body">
           <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={tab !== 'general'}>
-            <div className="env-config-note"><strong>LLM connection</strong><span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model detected' : 'Missing VITE_LLM_ENDPOINT or VITE_LLM_MODEL'}</span><code>VITE_LLM_ENDPOINT · VITE_LLM_MODEL</code><small>In local development only, LOCAL_LLM_API_KEY from .env.local is attached to requests. Production builds omit this key and send requests without browser-held credentials.</small></div>
+            <fieldset className="llm-connection" key={llmFormKey}>
+              <legend>LLM connection</legend>
+              <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
+              <p className="settings-help">Values entered here are stored in this browser (localStorage) and override the environment variables. Leave a field empty to use the environment value. They are not part of the configuration export.</p>
+              <label htmlFor="llm-endpoint">Endpoint {llmEnvironment.endpoint && !llm.endpoint && <span>From VITE_LLM_ENDPOINT</span>}{llm.endpoint && <span>Saved override</span>}</label>
+              <input id="llm-endpoint" name="llm-endpoint" type="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example/v1/chat/completions'} />
+              <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From VITE_LLM_MODEL</span>}{llm.model && <span>Saved override</span>}</label>
+              <input id="llm-model" name="llm-model" type="text" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'your-model'} />
+              <label htmlFor="llm-api-key">API key {llmEnvironment.apiKey && !llm.apiKey && <span>Set via LOCAL_LLM_API_KEY (development)</span>}{llm.apiKey && <span>Saved override</span>}</label>
+              <input id="llm-api-key" name="llm-api-key" type="password" autoComplete="new-password" defaultValue={llm.apiKey} placeholder={llmEnvironment.apiKey ? '•••••••• (from environment, type to override)' : 'Optional'} />
+              <small className="settings-help">The key is sent from your browser with each request, so only use it with a trusted endpoint.</small>
+              <div><button type="button" className="button button-secondary button-small" disabled={!llm.endpoint && !llm.model && !llm.apiKey} onClick={() => { onClearLlm(); setLlmFormKey((key) => key + 1); }}>Remove saved connection</button></div>
+            </fieldset>
             <label htmlFor="principles">Base refinement principles</label>
             <p className="settings-help">Stable rules applied to every backlog item. Restoring defaults reloads them from <code>src/defaults/instructions/principles.md</code>.</p>
             <textarea className="markdown-template-input" id="principles" name="principles" rows={12} defaultValue={settings.principles} />
