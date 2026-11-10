@@ -55,7 +55,7 @@ export function parseRuntimeLlmConfig(data: unknown, allowApiKey: boolean): Runt
 export async function loadRuntimeLlmConfig(
   fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init),
   allowApiKey: boolean = import.meta.env.DEV,
-  url = `${import.meta.env.BASE_URL}config.json`,
+  url = '/config.json',
 ): Promise<RuntimeLlmConfig> {
   try {
     const response = await fetcher(url, { cache: 'no-store' });

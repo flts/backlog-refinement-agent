@@ -21,7 +21,7 @@ Copy `.env.example` to `.env.local` for local development:
 cp .env.example .env.local
 ```
 
-Nothing from the environment is compiled into the bundle. The app reads its defaults at runtime from `/config.json` (`{ "endpoint": "...", "model": "...", "streaming": false }`). `public/config.json` ships empty; replace it per deployment (for example by mounting a file). In development the Vite server generates `/config.json` from `.env.local` (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, and the development-only `LOCAL_LLM_API_KEY`); restart the dev server after changing it. The endpoint is only the **base URL** of an OpenAI-compatible API (for example `https://proxy.example`); the app appends `/v1/chat/completions` and `/v1/models` itself.
+Nothing from the environment is compiled into the bundle. The app reads its defaults at runtime from `/config.json` at the origin root, independent of any app subpath (`{ "endpoint": "...", "model": "...", "streaming": false }`). In development the Vite server generates `/config.json` from `.env.local` (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, and the development-only `LOCAL_LLM_API_KEY`); restart the dev server after changing it. In production, the host must serve `/config.json` from its runtime configuration; the Caddy container below uses container environment variables. The endpoint can be an absolute HTTP(S) URL (for example `https://proxy.example`) or a root-relative same-origin path such as `/api`. The app appends `/v1/chat/completions` and `/v1/models` itself; relative paths resolve against the origin only, not the current app path.
 
 **Docker/Caddy:** the `Dockerfile` builds the app and serves it with Caddy. The `Caddyfile` generates `/config.json` per request from the container's runtime environment variables `LLM_ENDPOINT`, `LLM_MODEL` and `LLM_STREAMING` (also `PORT`, default 8080), so one image works for every deployment:
 
@@ -30,7 +30,15 @@ docker build -t backlog-refinement-agent .
 docker run -p 8080:8080 -e LLM_ENDPOINT=https://proxy.example -e LLM_MODEL=my-model backlog-refinement-agent
 ```
 
-Values must not contain double quotes or backslashes (they are inserted into JSON verbatim). `LOCAL_LLM_API_KEY` is intentionally not supported here.
+`LLM_ENDPOINT` and `LLM_MODEL` default to empty strings; `LLM_STREAMING` defaults to the JSON boolean `false` and, when set, must be `true` or `false`. Values must not contain double quotes or backslashes (they are inserted into JSON verbatim). `LOCAL_LLM_API_KEY` is intentionally not supported here.
+
+For Kubernetes/Helm, configure these variables on the same container that runs Caddy. Caddy reads them when it loads the Caddyfile, so changing a value requires rolling out pods with the updated environment. If `/config.json` is unexpectedly empty, check that the request reaches the intended pod, verify `LLM_ENDPOINT` is non-empty in that pod, and confirm the pod runs an image containing the current `Caddyfile`. To check the variable without printing its value:
+
+```sh
+kubectl exec <pod> -- sh -c 'test -n "$LLM_ENDPOINT" && echo LLM_ENDPOINT is set || echo LLM_ENDPOINT is empty'
+```
+
+When there are multiple replicas, check each pod; an ingress or service may still route requests to an older pod.
 
 You can also enter the base URL, model and API key in Settings > General (the key field is masked). Those values are stored in this browser's localStorage, override the config values per field, and can be removed with "Remove saved connection". They are never included in the configuration export. "Load models from /v1/models" fetches the model list from the endpoint's OpenAI-compatible `/models` route; if it fails or returns nothing, type the model name manually.
 

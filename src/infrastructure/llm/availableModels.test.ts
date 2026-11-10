@@ -7,6 +7,7 @@ describe('available models', () => {
     expect(modelsUrl('https://proxy/prefix/').href).toBe('https://proxy/prefix/v1/models');
     expect(modelsUrl('https://proxy/v1/chat/completions/?x=1').href).toBe('https://proxy/v1/models');
     expect(modelsUrl('https://proxy/v1').href).toBe('https://proxy/v1/models');
+    expect(modelsUrl('/api').href).toBe(`${window.location.origin}/api/v1/models`);
   });
 
   it('returns sorted unique model ids and sends the API key', async () => {

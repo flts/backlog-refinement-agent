@@ -43,4 +43,13 @@ describe('LLM connection overrides', () => {
     expect(await loadRuntimeLlmConfig(async () => new Response('<html>'), false)).toEqual(empty);
     expect(await loadRuntimeLlmConfig(async () => Response.json({ model: 'x' }), false)).toEqual({ ...empty, model: 'x' });
   });
+
+  it('loads runtime config from the origin root regardless of the app base path', async () => {
+    let requestedUrl = '';
+    await loadRuntimeLlmConfig(async (input) => {
+      requestedUrl = String(input);
+      return Response.json({});
+    }, false);
+    expect(requestedUrl).toBe('/config.json');
+  });
 });

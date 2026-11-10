@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 // Serves /config.json from .env.local during development only. Nothing from the
-// environment is compiled into the bundle; deployments provide their own config.json.
+// environment is compiled into the bundle; production provides runtime configuration.
 function devRuntimeConfig(env: Record<string, string>): Plugin {
   return {
     name: 'dev-runtime-config',
@@ -27,6 +27,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     plugins: [react(), devRuntimeConfig(env)],
+    base: './',
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',

@@ -116,7 +116,7 @@ export class ProxyLlmProvider implements LlmProvider {
     try {
       parsedEndpoint = llmApiUrl(endpoint, 'chat/completions');
     } catch (cause) {
-      throw new LlmProviderError('The LLM endpoint must be a complete base URL such as https://proxy.example.', { cause });
+      throw new LlmProviderError('The LLM endpoint must be an HTTP(S) URL or a same-origin path such as /api.', { cause });
     }
     if (parsedEndpoint.protocol !== 'https:' && parsedEndpoint.protocol !== 'http:') {
       throw new LlmProviderError('The proxy endpoint must use HTTP or HTTPS.');
@@ -189,8 +189,8 @@ export class ProxyLlmProvider implements LlmProvider {
         throw new LlmProviderError('The LLM proxy request timed out.', { cause });
       }
       if (request.signal?.aborted) throw new LlmProviderError('The LLM proxy request was cancelled.', { cause });
-      logError('Could not reach the LLM proxy (network, CORS, or TLS problem)', cause, { endpoint, model });
-      throw new LlmProviderError('Could not reach the LLM proxy.', { cause });
+      logError('Could not reach the LLM proxy (network, CORS, or TLS problem)', cause, { endpoint, requestUrl: parsedEndpoint.href, model });
+      throw new LlmProviderError(`Could not reach the LLM proxy at ${parsedEndpoint.href} (network, CORS, or TLS problem; see the browser console).`, { cause });
     } finally {
       clearTimeout(timeout);
       request.signal?.removeEventListener('abort', onAbort);

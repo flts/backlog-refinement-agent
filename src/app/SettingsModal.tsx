@@ -3,6 +3,7 @@ import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
 import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
 import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
+import { isValidLlmEndpoint } from '../infrastructure/llm/apiUrl';
 import { itemTypeLabel, itemTypes } from './labels';
 
 type Tab = 'general' | BacklogItemType;
@@ -30,6 +31,7 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
     const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
     const endpoint = value('llm-endpoint') || llmEnvironment.endpoint;
     if (!endpoint) { setModelStatus('Enter an endpoint first.'); return; }
+    if (!isValidLlmEndpoint(endpoint)) { setModelStatus('Enter an HTTP(S) URL or a same-origin path such as /api.'); return; }
     setModelStatus('Loading models…');
     const found = await fetchAvailableModels(endpoint, value('llm-api-key') || llmEnvironment.apiKey);
     setModels(found);
@@ -39,6 +41,14 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const endpoint = String(form.get('llm-endpoint') ?? '').trim();
+    const endpointInput = event.currentTarget.elements.namedItem('llm-endpoint');
+    if (endpointInput instanceof HTMLInputElement) {
+      endpointInput.setCustomValidity(endpoint && !isValidLlmEndpoint(endpoint)
+        ? 'Enter an HTTP(S) URL or a same-origin path such as /api.'
+        : '');
+      if (!endpointInput.reportValidity()) return;
+    }
     const byType = (prefix: string) => Object.fromEntries(itemTypes.map((type) => [type, String(form.get(`${prefix}-${type}`) ?? '')]));
     onSave({
       instructions: String(form.get('instructions') ?? ''),
@@ -84,7 +94,8 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
               <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
               <p className="settings-help">Values entered here are stored in this browser (localStorage) and override config.json. Leave a field empty to use the configured value. They are not part of the configuration export.</p>
               <label htmlFor="llm-endpoint">Base URL {llmEnvironment.endpoint && !llm.endpoint && <span>From config.json</span>}{llm.endpoint && <span>Saved override</span>}</label>
-              <input id="llm-endpoint" name="llm-endpoint" type="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'} />
+              <input id="llm-endpoint" name="llm-endpoint" type="text" inputMode="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'} />
+              <small className="settings-help">Use an absolute HTTP(S) URL or a same-origin path such as /api.</small>
               <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From config.json</span>}{llm.model && <span>Saved override</span>}</label>
               <input id="llm-model" name="llm-model" type="text" list="llm-model-options" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'Type a model name or load the list'} />
               <datalist id="llm-model-options">{models.map((id) => <option key={id} value={id} />)}</datalist>

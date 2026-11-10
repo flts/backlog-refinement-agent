@@ -82,6 +82,24 @@ describe('SettingsModal', () => {
     expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '', model: 'mine', apiKey: '' });
   });
 
+  it('accepts a root-relative same-origin LLM endpoint', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    await user.type(screen.getByLabelText(/Base URL/), '/api');
+    await user.click(screen.getByRole('button', { name: 'Save customization' }));
+    expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '/api', model: '', apiKey: '' });
+  });
+
+  it('rejects a non-root-relative endpoint path', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    await user.type(screen.getByLabelText(/Base URL/), 'api');
+    await user.click(screen.getByRole('button', { name: 'Save customization' }));
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
   it('clears the LLM fields when removing the saved connection', async () => {
     const user = userEvent.setup();
     const onClear = vi.fn();

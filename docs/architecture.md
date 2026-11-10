@@ -36,11 +36,11 @@ Dependency direction: `app → application → domain`; `infrastructure` impleme
 
 ### LLM configuration
 
-- **Base URL only.** `endpoint` is the base of an OpenAI-compatible API. The app appends `/v1/chat/completions` and `/v1/models` (`infrastructure/llm/apiUrl.ts`; a legacy trailing `/v1` or `/v1/chat/completions` is tolerated).
-- **Runtime config, never bundled.** Defaults come from `GET /config.json` (`{endpoint, model, streaming}`), loaded by `loadRuntimeLlmConfig`. No environment variable is compiled into the build.
+- **Base URL only.** `endpoint` is an absolute HTTP(S) URL or a root-relative same-origin path such as `/api`. Root-relative paths resolve against the origin only, not the current app path or query. The app appends `/v1/chat/completions` and `/v1/models` (`infrastructure/llm/apiUrl.ts`; a legacy trailing `/v1` or `/v1/chat/completions` is tolerated).
+- **Runtime config, never bundled.** Defaults come from `GET /config.json` at the origin root (independent of the app base path), loaded by `loadRuntimeLlmConfig`. No environment variable is compiled into the build.
   - Dev: a Vite plugin (`vite.config.ts`) serves `/config.json` from `.env.local` (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, `LOCAL_LLM_API_KEY`). The API key is only honoured in development.
-  - Docker: `Caddyfile` substitutes container ENV (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, `PORT`) when Caddy loads its configuration, then serves those values at `/config.json`. Changing values requires a container restart with the new environment or an explicit Caddy reload in a process with the updated environment.
-  - Static hosting: replace `public/config.json`.
+  - Docker/Kubernetes: `Caddyfile` substitutes container ENV (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, `PORT`) when Caddy loads its configuration, then serves those values at `/config.json`. `endpoint` and `model` default to empty strings; `streaming` defaults to the JSON boolean `false` and accepts only `true` or `false`. Changing values requires a container restart or pod rollout with the new environment, or an explicit Caddy reload in a process with the updated environment. In Kubernetes, set the variables on the Caddy container and verify each pod when diagnosing stale or empty config.
+  - Other production hosting: serve `/config.json` from that host's runtime/deployment configuration.
 - **User overrides:** endpoint/model/API key entered in Settings are stored only in `localStorage` (`llm-connection-overrides`), win per field over config, are removable, and are never part of the configuration export or IndexedDB settings.
 - **Models:** listed via `GET /v1/models`; if that fails or is empty the user types a model name.
 - **Streaming:** optional SSE; the UI still only renders the complete validated JSON.
