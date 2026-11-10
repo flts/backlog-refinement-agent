@@ -31,16 +31,43 @@ export function clearLlmOverrides(storage: Pick<Storage, 'removeItem'> = localSt
   return emptyLlmOverrides;
 }
 
-export function getLlmEnvironment(): LlmOverrides {
+export interface RuntimeLlmConfig extends LlmOverrides {
+  streaming: boolean;
+}
+
+export const emptyRuntimeLlmConfig: RuntimeLlmConfig = { ...emptyLlmOverrides, streaming: false };
+
+export function parseRuntimeLlmConfig(data: unknown, allowApiKey: boolean): RuntimeLlmConfig {
+  const source = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
+  const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
   return {
-    endpoint: import.meta.env.VITE_LLM_ENDPOINT?.trim() ?? '',
-    model: import.meta.env.VITE_LLM_MODEL?.trim() ?? '',
-    apiKey: import.meta.env.DEV ? import.meta.env.LOCAL_LLM_API_KEY?.trim() ?? '' : '',
+    endpoint: text(source.endpoint),
+    model: text(source.model),
+    apiKey: allowApiKey ? text(source.apiKey) : '',
+    streaming: source.streaming === true || text(source.streaming).toLowerCase() === 'true',
   };
 }
 
-/** Values entered in the settings screen win over environment variables. */
-export function resolveLlmConnection(overrides: LlmOverrides, environment: LlmOverrides = getLlmEnvironment()): LlmOverrides {
+/**
+ * Deployment settings are read at runtime from /config.json, never compiled into the bundle.
+ * The API key is only honoured in development, where the Vite dev server serves it from .env.local.
+ */
+export async function loadRuntimeLlmConfig(
+  fetcher: typeof fetch = (input, init) => globalThis.fetch(input, init),
+  allowApiKey: boolean = import.meta.env.DEV,
+  url = `${import.meta.env.BASE_URL}config.json`,
+): Promise<RuntimeLlmConfig> {
+  try {
+    const response = await fetcher(url, { cache: 'no-store' });
+    if (!response.ok) return emptyRuntimeLlmConfig;
+    return parseRuntimeLlmConfig(await response.json(), allowApiKey);
+  } catch {
+    return emptyRuntimeLlmConfig;
+  }
+}
+
+/** Values entered in the settings screen win over runtime configuration. */
+export function resolveLlmConnection(overrides: LlmOverrides, environment: LlmOverrides): LlmOverrides {
   return {
     endpoint: overrides.endpoint || environment.endpoint,
     model: overrides.model || environment.model,
@@ -48,9 +75,6 @@ export function resolveLlmConnection(overrides: LlmOverrides, environment: LlmOv
   };
 }
 
-export function getLlmConfiguration(overrides: LlmOverrides = loadLlmOverrides()): LlmConfiguration {
-  return {
-    ...resolveLlmConnection(overrides),
-    streaming: import.meta.env.VITE_LLM_STREAMING?.trim().toLowerCase() === 'true',
-  };
+export function getLlmConfiguration(overrides: LlmOverrides, runtime: RuntimeLlmConfig): LlmConfiguration {
+  return { ...resolveLlmConnection(overrides, runtime), streaming: runtime.streaming };
 }

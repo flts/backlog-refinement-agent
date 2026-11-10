@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveLlmConnection, loadLlmOverrides, saveLlmOverrides, clearLlmOverrides } from './llmConfig';
+import { parseRuntimeLlmConfig, loadRuntimeLlmConfig, resolveLlmConnection, loadLlmOverrides, saveLlmOverrides, clearLlmOverrides } from './llmConfig';
 
 function memoryStorage() {
   const data = new Map<string, string>();
@@ -28,5 +28,19 @@ describe('LLM connection overrides', () => {
   it('ignores corrupt stored data', () => {
     const storage = { getItem: () => '{nope' };
     expect(loadLlmOverrides(storage)).toEqual({ endpoint: '', model: '', apiKey: '' });
+  });
+
+  it('parses runtime config and drops the API key outside development', () => {
+    const data = { endpoint: ' https://a ', model: 'm', apiKey: 'k', streaming: 'true' };
+    expect(parseRuntimeLlmConfig(data, true)).toEqual({ endpoint: 'https://a', model: 'm', apiKey: 'k', streaming: true });
+    expect(parseRuntimeLlmConfig(data, false).apiKey).toBe('');
+    expect(parseRuntimeLlmConfig(null, true)).toEqual({ endpoint: '', model: '', apiKey: '', streaming: false });
+  });
+
+  it('falls back to empty runtime config when config.json is missing or invalid', async () => {
+    const empty = { endpoint: '', model: '', apiKey: '', streaming: false };
+    expect(await loadRuntimeLlmConfig(async () => new Response('', { status: 404 }), false)).toEqual(empty);
+    expect(await loadRuntimeLlmConfig(async () => new Response('<html>'), false)).toEqual(empty);
+    expect(await loadRuntimeLlmConfig(async () => Response.json({ model: 'x' }), false)).toEqual({ ...empty, model: 'x' });
   });
 });

@@ -21,11 +21,22 @@ Copy `.env.example` to `.env.local` for local development:
 cp .env.example .env.local
 ```
 
-Set `VITE_LLM_ENDPOINT` and `VITE_LLM_MODEL` for both development and deployment. For local development only, you may also set `LOCAL_LLM_API_KEY` in `.env.local`; the Vite development server adds it as a Bearer token. The production build deliberately replaces this value with an empty string, even if it is present in the build environment. Restart the dev server after changing `.env.local`. The endpoint must be an OpenAI-compatible Chat Completions URL. You can also enter the endpoint, model and API key in Settings > General (the key field is masked). Those values are stored in this browser's localStorage, override the environment values per field, show which values come from the environment, and can be removed with "Remove saved connection". They are never included in the configuration export.
+Nothing from the environment is compiled into the bundle. The app reads its defaults at runtime from `/config.json` (`{ "endpoint": "...", "model": "...", "streaming": false }`). `public/config.json` ships empty; replace it per deployment (for example by mounting a file). In development the Vite server generates `/config.json` from `.env.local` (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, and the development-only `LOCAL_LLM_API_KEY`); restart the dev server after changing it. The endpoint is only the **base URL** of an OpenAI-compatible API (for example `https://proxy.example`); the app appends `/v1/chat/completions` and `/v1/models` itself.
 
-**Security:** The local-development key is sent to the browser served by the Vite dev server and appears in its network requests, so use this only for a trusted local session. Production builds do not include or send `LOCAL_LLM_API_KEY`. If a deployed endpoint requires authentication, configure it to authenticate requests at the endpoint/proxy boundary; do not add a privileged key to `VITE_*` variables or the browser bundle.
+**Docker/Caddy:** the `Dockerfile` builds the app and serves it with Caddy. The `Caddyfile` generates `/config.json` per request from the container's runtime environment variables `LLM_ENDPOINT`, `LLM_MODEL` and `LLM_STREAMING` (also `PORT`, default 8080), so one image works for every deployment:
 
-In development, requests include a Bearer authorization header only when `LOCAL_LLM_API_KEY` is set. Production requests are unauthenticated from the browser. Configure the endpoint and CORS policy accordingly.
+```sh
+docker build -t backlog-refinement-agent .
+docker run -p 8080:8080 -e LLM_ENDPOINT=https://proxy.example -e LLM_MODEL=my-model backlog-refinement-agent
+```
+
+Values must not contain double quotes or backslashes (they are inserted into JSON verbatim). `LOCAL_LLM_API_KEY` is intentionally not supported here.
+
+You can also enter the base URL, model and API key in Settings > General (the key field is masked). Those values are stored in this browser's localStorage, override the config values per field, and can be removed with "Remove saved connection". They are never included in the configuration export. "Load models from /v1/models" fetches the model list from the endpoint's OpenAI-compatible `/models` route; if it fails or returns nothing, type the model name manually.
+
+**Security:** The API key is only served in development, sent to the browser and visible in network requests, so use it only for a trusted local session. `config.json` in production never has its `apiKey` honoured; authenticate at the endpoint/proxy boundary instead. Production requests are unauthenticated from the browser unless a user enters a key in Settings. Configure the endpoint and CORS policy accordingly (including for `/models`).
+
+Set `"streaming": true` in `config.json` (or `LLM_STREAMING=true` in development) to request OpenAI-compatible Server-Sent Events (SSE) streaming; the default is `false`. Streaming sends `"stream": true` and reads the response as SSE chunks, but the assistant response is structured JSON, so the UI only displays it after the complete response has been received and validated. While the request is in flight, the chat automatically scrolls to the bottom and shows the thinking indicator.
 
 Backlog content is only sent when the user requests refinement or decomposition. The app transmits the selected item, its directly linked items and relationships, and that item's refinement conversation; unrelated backlog items are excluded.
 

@@ -7,7 +7,7 @@ describe('ProxyLlmProvider', () => {
       new Response(JSON.stringify({ choices: [{ message: { content: '{"status":"ready"}' } }] })),
     );
     const provider = new ProxyLlmProvider(
-      { endpoint: 'https://proxy.example/v1/chat/completions', model: 'team-model', apiKey: 'test-proxy-key' },
+      { endpoint: 'https://proxy.example', model: 'team-model', apiKey: 'test-proxy-key' },
       fetcher,
     );
 
@@ -42,7 +42,7 @@ describe('ProxyLlmProvider', () => {
   it('requires only endpoint and model, allowing production endpoints without browser credentials', async () => {
     const provider = new ProxyLlmProvider({ endpoint: '', model: '', apiKey: '' }, vi.fn<typeof fetch>());
 
-    await expect(provider.generate({ system: '', prompt: '' })).rejects.toThrow('VITE_LLM_ENDPOINT');
+    await expect(provider.generate({ system: '', prompt: '' })).rejects.toThrow('config.json');
   });
 
   it('does not send an authorization header when no local development key is configured', async () => {
@@ -50,7 +50,7 @@ describe('ProxyLlmProvider', () => {
       new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] })),
     );
     const provider = new ProxyLlmProvider(
-      { endpoint: 'https://proxy.example/v1/chat/completions', model: 'team-model', apiKey: '' },
+      { endpoint: 'https://proxy.example', model: 'team-model', apiKey: '' },
       fetcher,
     );
 
@@ -78,7 +78,7 @@ describe('ProxyLlmProvider', () => {
       new Response(body, { headers: { 'content-type': 'text/event-stream' } }),
     );
     const provider = new ProxyLlmProvider(
-      { endpoint: 'https://proxy.example/v1/chat/completions', model: 'team-model', apiKey: '', streaming: true },
+      { endpoint: 'https://proxy.example', model: 'team-model', apiKey: '', streaming: true },
       fetcher,
     );
 
@@ -96,7 +96,7 @@ describe('ProxyLlmProvider', () => {
   it('reports proxy HTTP errors without exposing response content', async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('sensitive proxy detail', { status: 502 }));
     const provider = new ProxyLlmProvider(
-      { endpoint: 'https://proxy.example/v1/chat/completions', model: 'team-model', apiKey: 'test-proxy-key' },
+      { endpoint: 'https://proxy.example', model: 'team-model', apiKey: 'test-proxy-key' },
       fetcher,
     );
 
@@ -106,7 +106,7 @@ describe('ProxyLlmProvider', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('Failed to fetch'));
     const provider = new ProxyLlmProvider(
-      { endpoint: 'https://proxy.example/v1/chat/completions', model: 'team-model', apiKey: '' },
+      { endpoint: 'https://proxy.example', model: 'team-model', apiKey: '' },
       fetcher,
     );
 
@@ -114,7 +114,7 @@ describe('ProxyLlmProvider', () => {
     expect(spy).toHaveBeenCalledWith(
       expect.stringContaining('Could not reach the LLM proxy'),
       expect.any(TypeError),
-      expect.objectContaining({ endpoint: 'https://proxy.example/v1/chat/completions' }),
+      expect.objectContaining({ endpoint: 'https://proxy.example' }),
     );
     spy.mockRestore();
   });

@@ -76,7 +76,7 @@ describe('SettingsModal', () => {
     const onSave = vi.fn();
     render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: 'https://env/v1', model: 'env-model', apiKey: 'k' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
     expect(screen.getByLabelText(/API key/)).toHaveAttribute('type', 'password');
-    expect(screen.getByLabelText(/Endpoint/)).toHaveAttribute('placeholder', 'https://env/v1');
+    expect(screen.getByLabelText(/Base URL/)).toHaveAttribute('placeholder', 'https://env/v1');
     await user.type(screen.getByLabelText(/Model/), 'mine');
     await user.click(screen.getByRole('button', { name: 'Save customization' }));
     expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '', model: 'mine', apiKey: '' });
@@ -94,7 +94,7 @@ describe('SettingsModal', () => {
     expect(screen.getByLabelText(/Model/)).toHaveValue('m');
     await user.click(screen.getByRole('button', { name: 'Remove saved connection' }));
     expect(onClear).toHaveBeenCalled();
-    expect(screen.getByLabelText(/Endpoint/)).toHaveValue('');
+    expect(screen.getByLabelText(/Base URL/)).toHaveValue('');
     expect(screen.getByLabelText(/Model/)).toHaveValue('');
     expect(screen.getByLabelText(/API key/)).toHaveValue('');
   });

@@ -1,6 +1,7 @@
 import React, { useState, type FormEvent } from 'react';
 import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
+import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
 import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
 import { itemTypeLabel, itemTypes } from './labels';
 
@@ -22,6 +23,18 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
 }) {
   const [tab, setTab] = useState<Tab>('general');
   const [llmFormKey, setLlmFormKey] = useState(0);
+  const [models, setModels] = useState<string[]>([]);
+  const [modelStatus, setModelStatus] = useState('');
+
+  async function loadModels() {
+    const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
+    const endpoint = value('llm-endpoint') || llmEnvironment.endpoint;
+    if (!endpoint) { setModelStatus('Enter an endpoint first.'); return; }
+    setModelStatus('Loading models…');
+    const found = await fetchAvailableModels(endpoint, value('llm-api-key') || llmEnvironment.apiKey);
+    setModels(found);
+    setModelStatus(found.length ? `${found.length} models found.` : 'No models returned by /v1/models; type the model name manually.');
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -69,13 +82,15 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
             <fieldset className="llm-connection" key={llmFormKey}>
               <legend>LLM connection</legend>
               <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
-              <p className="settings-help">Values entered here are stored in this browser (localStorage) and override the environment variables. Leave a field empty to use the environment value. They are not part of the configuration export.</p>
-              <label htmlFor="llm-endpoint">Endpoint {llmEnvironment.endpoint && !llm.endpoint && <span>From VITE_LLM_ENDPOINT</span>}{llm.endpoint && <span>Saved override</span>}</label>
-              <input id="llm-endpoint" name="llm-endpoint" type="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example/v1/chat/completions'} />
-              <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From VITE_LLM_MODEL</span>}{llm.model && <span>Saved override</span>}</label>
-              <input id="llm-model" name="llm-model" type="text" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'your-model'} />
-              <label htmlFor="llm-api-key">API key {llmEnvironment.apiKey && !llm.apiKey && <span>Set via LOCAL_LLM_API_KEY (development)</span>}{llm.apiKey && <span>Saved override</span>}</label>
-              <input id="llm-api-key" name="llm-api-key" type="password" autoComplete="new-password" defaultValue={llm.apiKey} placeholder={llmEnvironment.apiKey ? '•••••••• (from environment, type to override)' : 'Optional'} />
+              <p className="settings-help">Values entered here are stored in this browser (localStorage) and override config.json. Leave a field empty to use the configured value. They are not part of the configuration export.</p>
+              <label htmlFor="llm-endpoint">Base URL {llmEnvironment.endpoint && !llm.endpoint && <span>From config.json</span>}{llm.endpoint && <span>Saved override</span>}</label>
+              <input id="llm-endpoint" name="llm-endpoint" type="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'} />
+              <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From config.json</span>}{llm.model && <span>Saved override</span>}</label>
+              <input id="llm-model" name="llm-model" type="text" list="llm-model-options" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'Type a model name or load the list'} />
+              <datalist id="llm-model-options">{models.map((id) => <option key={id} value={id} />)}</datalist>
+              <div><button type="button" className="button button-secondary button-small" onClick={() => void loadModels()}>Load models from /v1/models</button> <small className="settings-help" role="status">{modelStatus}</small></div>
+              <label htmlFor="llm-api-key">API key {llmEnvironment.apiKey && !llm.apiKey && <span>From development config</span>}{llm.apiKey && <span>Saved override</span>}</label>
+              <input id="llm-api-key" name="llm-api-key" type="password" autoComplete="new-password" defaultValue={llm.apiKey} placeholder={llmEnvironment.apiKey ? '•••••••• (from development config, type to override)' : 'Optional'} />
               <small className="settings-help">The key is sent from your browser with each request, so only use it with a trusted endpoint.</small>
               <div><button type="button" className="button button-secondary button-small" disabled={!llm.endpoint && !llm.model && !llm.apiKey} onClick={() => { onClearLlm(); setLlmFormKey((key) => key + 1); }}>Remove saved connection</button></div>
             </fieldset>

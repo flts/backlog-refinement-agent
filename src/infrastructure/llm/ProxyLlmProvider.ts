@@ -1,3 +1,4 @@
+import { llmApiUrl } from './apiUrl';
 import { logError } from '../logging';
 
 export interface LlmConfiguration {
@@ -108,14 +109,14 @@ export class ProxyLlmProvider implements LlmProvider {
   async generate(request: LlmCompletionRequest): Promise<string> {
     const { endpoint, model, apiKey, streaming = false, timeoutMs = 60_000 } = this.configuration;
     if (!endpoint.trim() || !model.trim()) {
-      throw new LlmProviderError('Set the LLM endpoint and model in Settings (or VITE_LLM_ENDPOINT and VITE_LLM_MODEL) before using AI refinement.');
+      throw new LlmProviderError('Set the LLM endpoint and model in Settings (or config.json) before using AI refinement.');
     }
 
     let parsedEndpoint: URL;
     try {
-      parsedEndpoint = new URL(endpoint);
+      parsedEndpoint = llmApiUrl(endpoint, 'chat/completions');
     } catch (cause) {
-      throw new LlmProviderError('The proxy endpoint must be a complete URL.', { cause });
+      throw new LlmProviderError('The LLM endpoint must be a complete base URL such as https://proxy.example.', { cause });
     }
     if (parsedEndpoint.protocol !== 'https:' && parsedEndpoint.protocol !== 'http:') {
       throw new LlmProviderError('The proxy endpoint must use HTTP or HTTPS.');
