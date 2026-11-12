@@ -1,4 +1,3 @@
-import { splitSections } from '../../domain/document';
 import { assessmentLevels, backlogItemTypes, qualityAreas } from '../../domain/backlog-item';
 
 type Json = Record<string, unknown>;
@@ -52,7 +51,7 @@ const withId = (entry: Json, prefix: string): Json =>
 const asText = (value: unknown): string =>
   Array.isArray(value) ? value.map(asText).join('\n') : typeof value === 'string' ? value : '';
 
-/** Accepts sectionUpdates in a few shapes and converts a full suggestedDescription into replace-updates. */
+/** Normalize common section update shapes. */
 function normalizeSectionUpdates(raw: Json): unknown[] {
   const updates: unknown[] = [];
   const list = Array.isArray(raw.sectionUpdates) ? raw.sectionUpdates : [];
@@ -63,17 +62,13 @@ function normalizeSectionUpdates(raw: Json): unknown[] {
     if (typeof heading !== 'string') continue;
     updates.push({ heading: heading.replace(/^#+\s*/, '').trim(), markdown, mode: entry.mode === 'append' ? 'append' : 'replace' });
   }
-  if (!updates.length && typeof raw.suggestedDescription === 'string' && raw.suggestedDescription.trim()) {
-    for (const { heading, body } of splitSections(raw.suggestedDescription).sections) {
-      updates.push({ heading, markdown: body, mode: 'replace' });
-    }
-  }
   return updates;
 }
 
 /** Coerces common, harmless deviations in model output; Zod still validates the result. */
 export function normalizeProposal(raw: unknown): unknown {
   if (!isObject(raw)) return raw;
+  if ('suggestedDescription' in raw) throw new Error('The model returned an unsupported suggestedDescription; use sectionUpdates instead.');
   const result: Json = {
     ...raw,
     questions: mapArray(raw.questions, (entry) => ({
@@ -81,11 +76,9 @@ export function normalizeProposal(raw: unknown): unknown {
       importance: questionImportance(entry.importance),
     })),
   };
-  if (raw.kind === 'assessment' || raw.sectionUpdates !== undefined || raw.suggestedDescription !== undefined) {
+  if (raw.kind === 'assessment' || raw.sectionUpdates !== undefined) {
     result.sectionUpdates = normalizeSectionUpdates(raw);
   }
-  delete result.suggestedDescription;
-  for (const key of ['contextValues', 'assumptions', 'openQuestions']) delete result[key];
   if (raw.quality !== undefined) result.quality = normalizeQuality(raw.quality);
   if (Array.isArray(raw.children)) {
     result.children = mapArray(raw.children, (entry) => {
@@ -100,7 +93,6 @@ export function normalizeProposal(raw: unknown): unknown {
         : '';
       const child: Json = { ...entry, description: fromSections || asText(entry.description) };
       delete child.sections;
-      for (const key of ['contextValues', 'assumptions', 'openQuestions']) delete child[key];
       return typeof child.proposalId === 'string' && child.proposalId.trim()
         ? child
         : { ...child, proposalId: `child-${crypto.randomUUID()}` };

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseConfig, serializeConfig, markdownFilename } from './config-io';
 import { defaultUserSettings } from '../infrastructure/storage/SettingsRepository';
-import { defaultPrinciples } from '../defaults/instructions';
 import type { BacklogItem } from '../domain/backlog-item';
 
 describe('config-io', () => {
@@ -9,12 +8,22 @@ describe('config-io', () => {
     expect(parseConfig(serializeConfig(defaultUserSettings))).toEqual(defaultUserSettings);
   });
 
-  it('upgrades a v1 config with section lists to Markdown headings and default principles', () => {
-    const v1 = { version: 1, settings: { templates: { capability: ['Goal', 'Scope'], feature: [], 'user-story': [], enabler: [] } } };
-    const result = parseConfig(JSON.stringify(v1));
-    expect(result.templates.capability).toBe('## Goal\n\n## Scope');
-    expect(result.templates.feature).toBe(defaultUserSettings.templates.feature);
-    expect(result.principles).toBe(defaultPrinciples);
+  it.each([1, 2, 3])('rejects legacy version %s imports', (version) => {
+    expect(() => parseConfig(JSON.stringify({ version, settings: {} }))).toThrow();
+  });
+
+  it('rejects a version 4 import with placeholder templates', () => {
+    const settings = {
+      ...defaultUserSettings,
+      templates: { ...defaultUserSettings.templates, feature: '## Scope\n{{scope}}' },
+    };
+    expect(() => parseConfig(JSON.stringify({ version: 4, settings }))).toThrow(/placeholders/);
+    expect(() => serializeConfig(settings)).toThrow(/placeholders/);
+  });
+
+  it('accepts a version 4 import with current settings', () => {
+    expect(parseConfig(JSON.stringify({ version: 4, settings: defaultUserSettings })))
+      .toEqual(defaultUserSettings);
   });
 
   it('rejects invalid input', () => {

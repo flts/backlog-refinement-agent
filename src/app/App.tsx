@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { BacklogItemType } from '../domain/backlog-item';
 import { ChatPanel } from './ChatPanel';
@@ -7,26 +7,30 @@ import { SettingsModal } from './SettingsModal';
 import { SidebarPanel } from './SidebarPanel';
 import { NewItemModal } from './NewItemModal';
 import { downloadFile, markdownFilename, markdownFor } from './config-io';
-import { makeRefinementService } from './services';
+import { makeRefinementService, makeWorkspace } from './services';
+import type { Project } from '../domain/project';
+import { getLlmConfiguration } from '../infrastructure/llm/llmConfig';
 import { useSettings } from './useSettings';
 import { errorText, useNotifications } from './useNotifications';
 import { useBacklog } from './useBacklog';
 import { useRefinementFlow } from './useRefinementFlow';
 
-export default function App() {
+export default function App({ project, projectBusy, renderProjectPanel }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean, endpoint: string) => ReactNode }) {
   const notifications = useNotifications();
   const { error, notice, setError, setNotice, clear } = notifications;
-  const backlog = useBacklog(notifications);
+  const workspace = useMemo(() => makeWorkspace(project.id), [project.id]);
+  const backlog = useBacklog(notifications, workspace);
   const { selectedItem } = backlog;
   const config = useSettings(notifications);
   const { settings } = config;
   const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const refinement = useMemo(() => makeRefinementService(settings, config.llm), [settings, config.llm]);
+  const refinement = useMemo(() => makeRefinementService(settings, config.llm, project.id), [settings, config.llm, project.id]);
   const flow = useRefinementFlow(backlog, refinement, notifications);
 
   function selectItem(id: string) {
+    if (flow.busy) return;
     flow.reset();
     backlog.selectItem(id);
     setMobilePanel('refine');
@@ -39,6 +43,11 @@ export default function App() {
 
   async function switchSession(id: string) {
     if (await backlog.switchSession(id)) flow.reset();
+  }
+
+  async function deleteSession() {
+    if (flow.busy) return;
+    if (await backlog.deleteCurrentSession()) flow.reset();
   }
 
   async function deleteSelected() {
@@ -63,9 +72,11 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <a className="brand" href="#" aria-label="Backlog Studio home" onClick={(event) => event.preventDefault()}><span className="brand-mark">b.</span><span>backlog<span className="brand-light">studio</span></span></a>
-        <div className="topbar-center"><span className="workspace-dot" /> Personal workspace <span className="topbar-divider">/</span> Product backlog</div>
+        <div className="topbar-center"><span className="workspace-dot" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
         <div className="topbar-actions"><span className="local-badge"><span /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}>⚙</button><button className="avatar" aria-label="Local workspace profile">;-)</button></div>
       </header>
+
+      {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm).endpoint)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} onClick={() => setMobilePanel('tree')}>Backlog</button>
@@ -73,7 +84,7 @@ export default function App() {
         <button className={mobilePanel === 'preview' ? 'active' : ''} onClick={() => setMobilePanel('preview')}>Item preview</button>
       </nav>
 
-      <main className="workspace-grid">
+      <main className="workspace-grid" inert={projectBusy}>
         <SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
           items={backlog.items} relationships={backlog.relationships} selectedId={backlog.selectedId}
@@ -89,7 +100,8 @@ export default function App() {
           item={selectedItem} parentItem={backlog.parentItem} session={backlog.session} sessions={backlog.sessions} busy={flow.busy}
           canRetry={flow.retryState?.sessionId === backlog.session?.id} message={flow.message} reviewChanges={flow.reviewChanges}
           pending={flow.pending} proposal={flow.proposal} selectedProposals={flow.selectedProposals}
-          onSelectItem={selectItem} onNewSession={() => void backlog.startNewSession()} onSwitchSession={(id) => void switchSession(id)}
+          onSelectItem={selectItem} onNewSession={() => { flow.reset(); void backlog.startNewSession(); }} onSwitchSession={(id) => void switchSession(id)}
+          onDeleteSession={() => void deleteSession()}
           onMessageChange={flow.setMessage} onSubmit={() => void flow.submitMessage()} onContinue={() => void flow.submitMessage(true)}
           onCancel={flow.cancelRequest} onRetry={() => void flow.retryAssessment()} onToggleReview={flow.toggleReview}
           onApplyPending={() => void flow.applyPending()} onDiscardPending={() => void flow.discardPending()}

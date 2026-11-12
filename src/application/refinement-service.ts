@@ -10,6 +10,7 @@ import {
 import { RefinementProposalSchema, type RefinementProposal } from "../domain/proposal";
 import { RefinementSessionSchema, type RefinementSession } from "../domain/refinement-session";
 import type { BacklogRelationship } from "../domain/relationship";
+import type { ProjectSource } from "../domain/project";
 import type { Clock, IdGenerator, RefinementProvider, RefinementStore } from "./ports";
 
 export interface RefinementServiceOptions {
@@ -19,6 +20,7 @@ export interface RefinementServiceOptions {
   clock?: Clock;
   /** Current (default or user-modified) template per item type; children are conformed to it. */
   templates?: Partial<Record<BacklogItemType, string>>;
+  loadProjectSources?: (projectId: string) => Promise<readonly ProjectSource[]>;
 }
 
 export interface AutonomousRunResult {
@@ -81,11 +83,13 @@ export class RefinementApplicationService {
 
   async proposeAssessment(sessionId: string, signal?: AbortSignal): Promise<RefinementProposal> {
     const { session, item, relatedItems, relationships } = await this.loadGenerationContext(sessionId);
+    const sources = await this.selectedSources(item.projectId);
     const proposal = await this.generateValid((validationFeedback) => this.options.provider.generateAssessment({
       item,
       relatedItems,
       relationships,
       conversation: session.conversation,
+      sources,
       validationFeedback,
     }, signal));
     if (proposal.kind !== "assessment" || proposal.itemId !== item.id) {
@@ -104,7 +108,8 @@ export class RefinementApplicationService {
     const relationships = allRelationships.filter((r) => r.sourceId === item.id || r.targetId === item.id);
     const relatedIds = new Set(relationships.map((r) => r.sourceId === item.id ? r.targetId : r.sourceId));
     const relatedItems = (await this.options.store.listItems()).filter((c) => relatedIds.has(c.id));
-    const generated = await provider.generateQuality({ item, relatedItems, relationships, conversation: [] }, signal);
+    const sources = await this.selectedSources(item.projectId);
+    const generated = await provider.generateQuality({ item, relatedItems, relationships, conversation: [], sources }, signal);
     const parsed = z.object({ quality: QualityAssessmentSchema }).safeParse(generated);
     if (!parsed.success) {
       console.error("[backlog-refinement] Quality response failed validation", parsed.error.issues, generated);
@@ -118,11 +123,13 @@ export class RefinementApplicationService {
 
   async proposeDecomposition(sessionId: string, signal?: AbortSignal, childType?: BacklogItemType): Promise<RefinementProposal> {
     const { session, item, relatedItems, relationships } = await this.loadGenerationContext(sessionId);
+    const sources = await this.selectedSources(item.projectId);
     const proposal = await this.generateValid((validationFeedback) => this.options.provider.generateDecomposition({
       item,
       relatedItems,
       relationships,
       conversation: session.conversation,
+      sources,
       childType,
       validationFeedback,
     }, signal));
@@ -268,6 +275,7 @@ export class RefinementApplicationService {
       const created = selectedChildren.map((child) =>
         BacklogItemSchema.parse({
           id: this.options.ids.nextId(),
+          projectId: parent.projectId,
           type: child.type,
           title: child.title,
           description: child.description,
@@ -396,6 +404,21 @@ export class RefinementApplicationService {
     const session = await this.options.store.getSession(sessionId);
     if (!session) throw new DomainError(`Refinement session ${sessionId} was not found.`, "SESSION_NOT_FOUND");
     return session;
+  }
+
+  private async selectedSources(projectId: string): Promise<{ name: string; url?: string; text: string }[]> {
+    if (!this.options.loadProjectSources) return [];
+    const sources = (await this.options.loadProjectSources(projectId)).filter((source) => source.selected);
+    if (sources.some((source) => source.projectId !== projectId)) {
+      throw new DomainError("Selected sources must belong to this project.", "INVALID_PROJECT_SOURCE");
+    }
+    if (sources.some((source) => !source.text.trim())) {
+      throw new DomainError("A selected source has no text. Add text or deselect it before using AI.", "EMPTY_PROJECT_SOURCE");
+    }
+    if (sources.reduce((total, source) => total + source.text.length, 0) > 100_000) {
+      throw new DomainError("Selected project sources exceed 100,000 characters. Deselect sources before using AI.", "PROJECT_CONTEXT_TOO_LARGE");
+    }
+    return sources.map(({ name, url, text }) => ({ name, ...(url ? { url } : {}), text }));
   }
 }
 

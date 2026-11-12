@@ -1,37 +1,30 @@
 import { z } from 'zod';
-import { convertPlaceholderTemplate } from '../../domain/document';
 import { defaultBacklogTemplates } from '../../defaults/templates';
 import { defaultPrinciples, defaultTypeInstructions } from '../../defaults/instructions';
 import { BacklogDatabase, backlogDatabase, type StoredAppSettings } from './database';
 
+const typeMapSchema = z.object({
+  capability: z.string(),
+  feature: z.string(),
+  'user-story': z.string(),
+  enabler: z.string(),
+}).strict();
+const templateSchema = z.string().refine((value) => !value.includes('{{'), {
+  message: 'Templates must not contain placeholders',
+});
 const templatesSchema = z.object({
-  capability: z.union([z.string(), z.array(z.string())]).optional(),
-  feature: z.union([z.string(), z.array(z.string())]).optional(),
-  'user-story': z.union([z.string(), z.array(z.string())]).optional(),
-  enabler: z.union([z.string(), z.array(z.string())]).optional(),
-}).partial();
-
-const userTemplatesSchema = z.object({
-  capability: z.string(),
-  feature: z.string(),
-  'user-story': z.string(),
-  enabler: z.string(),
-});
-
-const typeInstructionsSchema = z.object({
-  capability: z.string(),
-  feature: z.string(),
-  'user-story': z.string(),
-  enabler: z.string(),
-});
-
-const storedSettingsSchema = z.object({
-  id: z.literal('app'),
-  instructions: z.string().default(''),
-  templates: templatesSchema.default({}),
-  principles: z.string().optional(),
-  typeInstructions: typeInstructionsSchema.partial().default({}),
-});
+  capability: templateSchema,
+  feature: templateSchema,
+  'user-story': templateSchema,
+  enabler: templateSchema,
+}).strict();
+const userSettingsSchema = z.object({
+  instructions: z.string(),
+  templates: templatesSchema,
+  principles: z.string(),
+  typeInstructions: typeMapSchema,
+}).strict();
+const storedSettingsSchema = userSettingsSchema.extend({ id: z.literal('app') }).strict();
 
 export type UserSettings = Omit<StoredAppSettings, 'id'>;
 
@@ -41,12 +34,6 @@ export const defaultUserSettings: UserSettings = {
   principles: defaultPrinciples,
   typeInstructions: defaultTypeInstructions,
 };
-
-function normalizeTemplate(value: string | string[] | undefined, fallback: string): string {
-  if (typeof value === 'string') return value.trim() ? convertPlaceholderTemplate(value) : fallback;
-  if (!value) return fallback;
-  return value.map((section) => `## ${section}`).join('\n\n');
-}
 
 export class SettingsRepository {
   constructor(private readonly db: BacklogDatabase = backlogDatabase) {}
@@ -60,39 +47,12 @@ export class SettingsRepository {
       throw new Error(`Saved settings are invalid: ${parsed.error.message}`);
     }
 
-    const migrated: UserSettings = {
-      principles: defaultPrinciples,
-      typeInstructions: defaultTypeInstructions,
-      instructions: parsed.data.instructions,
-      templates: {
-        capability: normalizeTemplate(parsed.data.templates.capability, defaultBacklogTemplates.capability),
-        feature: normalizeTemplate(parsed.data.templates.feature, defaultBacklogTemplates.feature),
-        'user-story': normalizeTemplate(parsed.data.templates['user-story'], defaultBacklogTemplates['user-story']),
-        enabler: normalizeTemplate(parsed.data.templates.enabler, defaultBacklogTemplates.enabler),
-      },
-    };
-    const storedTypes = parsed.data.typeInstructions;
-    migrated.principles = parsed.data.principles ?? defaultPrinciples;
-    migrated.typeInstructions = {
-      capability: storedTypes.capability ?? defaultTypeInstructions.capability,
-      feature: storedTypes.feature ?? defaultTypeInstructions.feature,
-      'user-story': storedTypes['user-story'] ?? defaultTypeInstructions['user-story'],
-      enabler: storedTypes.enabler ?? defaultTypeInstructions.enabler,
-    };
-    const storedTemplates = parsed.data.templates as Record<string, unknown>;
-    if (Object.entries(migrated.templates).some(([type, value]) => storedTemplates[type] !== undefined && storedTemplates[type] !== value)) {
-      await this.save(migrated);
-    }
-    return migrated;
+    const { id: _id, ...settings } = parsed.data;
+    return settings;
   }
 
   async save(settings: UserSettings): Promise<UserSettings> {
-    const validated = z.object({
-      instructions: z.string(),
-      templates: userTemplatesSchema,
-      principles: z.string(),
-      typeInstructions: typeInstructionsSchema,
-    }).parse(settings);
+    const validated = userSettingsSchema.parse(settings);
     const value: StoredAppSettings = {
       id: 'app',
       instructions: validated.instructions,

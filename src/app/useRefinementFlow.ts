@@ -5,12 +5,11 @@ import type { AssessmentProposal, DecompositionProposal } from '../domain/propos
 import type { RefinementApplicationService } from '../application/refinement-service';
 import { logError } from '../infrastructure/logging';
 import { itemTypeLabel } from './labels';
-import { workspace } from './services';
 import { errorText, type Notifications } from './useNotifications';
 import type { Backlog } from './useBacklog';
 
 export function useRefinementFlow(backlog: Backlog, refinement: RefinementApplicationService, { setError, setNotice }: Notifications) {
-  const { selectedItem, session, setItems, setSession, updateSelected, refresh } = backlog;
+  const { selectedItem, session, setItems, setSession, updateSelected, refresh, workspace } = backlog;
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState(false);
   const [retryState, setRetryState] = useState<{ sessionId: string; force: boolean }>();
@@ -35,9 +34,10 @@ export function useRefinementFlow(backlog: Backlog, refinement: RefinementApplic
   }
 
   async function changeSelectedStatus(status: BacklogItem['status']) {
-    if (!selectedItem || !session) return;
+    if (!selectedItem) return;
     try {
       if (selectedItem.status === 'draft' && status === 'ready') {
+        if (!session) throw new Error('A refinement session is required to mark a draft ready.');
         const refiningItem = await refinement.beginRefinement(session.id);
         setItems((current) => current.map((item) => item.id === refiningItem.id ? refiningItem : item));
       }

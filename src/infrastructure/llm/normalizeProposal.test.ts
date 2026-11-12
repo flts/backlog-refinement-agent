@@ -12,16 +12,11 @@ describe('normalizeProposal', () => {
     expect(parsed.kind === 'assessment' && parsed.questions[0].id).toMatch(/^question-/);
   });
 
-  it('converts a full suggestedDescription into per-section replace updates', () => {
-    const parsed = RefinementProposalSchema.parse(normalizeProposal({
+  it('rejects legacy suggestedDescription instead of converting it', () => {
+    expect(() => normalizeProposal({
       id: 'a', kind: 'assessment', itemId: 'i', generatedAt: '2026-11-03T00:00:00.000Z', summary: 's',
       suggestedDescription: '## Summary\nHello\n\n## Scope\nSmall',
-      contextValues: [{ key: 'x' }],
-    }));
-    expect(parsed.kind === 'assessment' && parsed.sectionUpdates).toEqual([
-      { heading: 'Summary', markdown: 'Hello', mode: 'replace' },
-      { heading: 'Scope', markdown: 'Small', mode: 'replace' },
-    ]);
+    })).toThrow(/unsupported suggestedDescription/);
   });
 
   it('maps relationship endpoint aliases', () => {

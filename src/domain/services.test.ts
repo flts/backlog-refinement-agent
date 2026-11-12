@@ -5,6 +5,7 @@ import { RefinementSessionSchema, transitionSessionStatus } from "./refinement-s
 import {
   addRelationship,
   assertItemCanBeDeleted,
+  canTransitionItemStatus,
   shouldStopAutonomousRefinement,
   transitionItemStatus,
   validateItemDeletion,
@@ -13,6 +14,7 @@ import {
 const timestamp = "2026-01-01T00:00:00.000Z";
 const item = (id: string, status = "draft") => BacklogItemSchema.parse({
   id,
+  projectId: "project-1",
   type: "feature",
   title: id,
   status,
@@ -21,9 +23,10 @@ const item = (id: string, status = "draft") => BacklogItemSchema.parse({
 });
 
 describe("backlog domain services", () => {
-  it("folds legacy structured fields into the document, applies defaults, and rejects invalid values", () => {
+  it("does not fold legacy structured fields into the document and rejects invalid values", () => {
     const parsed = BacklogItemSchema.parse({
       id: "feature-1",
+      projectId: "project-1",
       type: "feature",
       title: "Search",
       contextValues: [{
@@ -36,8 +39,9 @@ describe("backlog domain services", () => {
       updatedAt: "2026-01-01T00:00:00.000Z",
     });
     expect(parsed.status).toBe("draft");
-    expect(parsed.description).toContain("## audience\nsupport staff");
+    expect(parsed.description).toBe("");
     expect(parsed).not.toHaveProperty("contextValues");
+    expect(() => BacklogItemSchema.parse({ ...parsed, projectId: undefined })).toThrow();
     expect(() => BacklogItemSchema.parse({
       ...parsed,
       type: "epic",
@@ -48,6 +52,11 @@ describe("backlog domain services", () => {
     expect(transitionItemStatus(item("a"), "refining", timestamp).status).toBe("refining");
     expect(() => transitionItemStatus(item("a"), "ready", timestamp)).toThrow(DomainError);
     expect(transitionItemStatus(item("a", "refining"), "ready", timestamp).status).toBe("ready");
+    for (const status of ["ready", "ready-with-open-questions", "complete"] as const) {
+      expect(canTransitionItemStatus(status, "refining")).toBe(true);
+      expect(transitionItemStatus(item("a", status), "refining", timestamp).status).toBe("refining");
+    }
+    expect(canTransitionItemStatus("draft", "ready")).toBe(false);
   });
 
   it("prevents self-links, duplicates, multiple parents, and parent cycles", () => {

@@ -158,37 +158,6 @@ export function updateChecklistLine(document: string, line: number, action: "che
   return lines.join("\n");
 }
 
-/** Fold structured data of the former model into one Markdown document. */
-export function legacyFieldsToDocument(item: {
-  description?: string;
-  contextValues?: readonly { key: string; value: string }[];
-  assumptions?: readonly { text: string; confirmed?: boolean }[];
-  openQuestions?: readonly { text: string; status?: string }[];
-}): string {
-  const parts: string[] = [];
-  if (item.description?.trim()) parts.push(item.description.trim());
-  for (const { key, value } of item.contextValues ?? []) if (value.trim()) parts.push(`## ${key}\n${value.trim()}`);
-  if (item.assumptions?.length) {
-    parts.push(`## Assumptions\n${item.assumptions.map(({ text, confirmed }) => `- [${confirmed ? "x" : " "}] ${text}`).join("\n")}`);
-  }
-  if (item.openQuestions?.length) {
-    parts.push(`## Open questions\n${item.openQuestions.map(({ text, status }) => `- [${status === "answered" ? "x" : " "}] ${text}`).join("\n")}`);
-  }
-  return parts.join("\n\n");
-}
-
-/** Convert a template that uses `{{…}}` placeholders into a plain Markdown template. */
-export function convertPlaceholderTemplate(template: string): string {
-  if (!/\{\{[^}]+}}/.test(template)) return template;
-  const converted = template
-    .replace(/^#\s*\{\{title}}\s*$/gm, "# Title")
-    .replace(/^\s*\{\{(?:field:[^}]*|[a-zA-Z]+)}}\s*$/gm, "")
-    .replace(/\{\{[^}]+}}/g, "")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-  return converted.replace(/^(##\s+(?:.*(?:assumption|aanname).*|.*open\s+question.*))$/gim, "$1\n- [ ] ");
-}
-
 const stripHints = (markdown: string): string => markdown.replace(/<!--[\s\S]*?-->/g, "");
 
 /**
