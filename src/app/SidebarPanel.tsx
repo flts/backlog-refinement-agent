@@ -21,7 +21,7 @@ export function SidebarPanel({ className, items, relationships, selectedId, onSe
   };
   return (
     <aside className={className}>
-      <div className="sidebar-head"><div><span className="eyebrow">WORKSPACE</span><h2>Backlog</h2></div><button className="add-button" aria-label="Create backlog item" onClick={() => onCreate()}>+</button></div>
+      <div className="sidebar-head"><div><span className="eyebrow">Workspace</span><h2>Backlog</h2></div><button className="add-button" aria-label="Create backlog item" onClick={() => onCreate()}><span aria-hidden="true">+</span></button></div>
       <div className="backlog-summary"><span>{items.length} {items.length === 1 ? 'item' : 'items'}</span><span className="summary-dot">·</span><span>{items.filter((item) => item.status === 'ready' || item.status === 'ready-with-open-questions').length} ready</span></div>
       <div className="tree-list">
         {roots.length ? roots.map((root) => <TreeItem key={root.id} item={root} allItems={ordered} relationships={relationships} selectedId={selectedId} onSelect={onSelect} onAddChild={addChild} />) : <div className="tree-empty"><span className="empty-icon">⌘</span><strong>Your backlog starts here</strong><p>Add a capability, feature, story, or enabler to begin shaping the work.</p><button className="button button-secondary button-small" onClick={() => onCreate()}>Create first item</button></div>}

@@ -2,6 +2,8 @@ import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { expectNoAxeViolations } from '../test/axe';
+import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { ChatPanel, type ChatPanelProps } from './ChatPanel';
 import { ProjectPanel } from './ProjectPanel';
@@ -136,5 +138,43 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toHaveValue('s');
     rerender(<ChatPanel {...base({ session, sessions: [session], busy: true })} />);
     expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toBeDisabled();
+  });
+});
+
+describe('accessibility', () => {
+  const chatProps = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
+    className: 'chat', item, sessions: [], busy: false, canRetry: false, message: '', reviewChanges: false, selectedProposals: [],
+    session: { id: 's', backlogItemId: 'i1', conversation: [{ id: 'm1', role: 'user', content: 'Hello agent', createdAt: '2026-01-01T10:00:00Z' }] } as unknown as RefinementSession,
+    onSelectItem: vi.fn(), onNewSession: vi.fn(), onSwitchSession: vi.fn(), onDeleteSession: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
+    onCancel: vi.fn(), onRetry: vi.fn(), onToggleReview: vi.fn(), onApplyPending: vi.fn(), onDiscardPending: vi.fn(), onProposalChange: vi.fn(),
+    onSelectedProposalsChange: vi.fn(), onAcceptProposals: vi.fn(), onDismissProposal: vi.fn(), onCreateItem: vi.fn(), ...overrides,
+  });
+
+  it('ChatPanel has no axe violations and announces agent activity', async () => {
+    const { container, rerender } = render(<ChatPanel {...chatProps()} />);
+    expect(screen.getByRole('log', { name: 'Conversation' })).toBeInTheDocument();
+    await expectNoAxeViolations(container);
+    rerender(<ChatPanel {...chatProps({ busy: true })} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/responding/);
+    rerender(<ChatPanel {...chatProps({ busy: false })} />);
+    expect(screen.getByRole('status')).toHaveTextContent(/finished/);
+  });
+
+  it('PreviewPanel has no axe violations', async () => {
+    const { container } = render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
+    await expectNoAxeViolations(container);
+  });
+
+  it('NewItemModal is a labelled dialog without axe violations that closes on Escape', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { container } = render(<NewItemModal type="feature" title="" onTypeChange={vi.fn()} onTitleChange={vi.fn()} onSubmit={vi.fn()} onClose={onClose} />);
+    expect(screen.getByRole('dialog', { name: 'What are we shaping?' })).toBeInTheDocument();
+    await expectNoAxeViolations(container);
+    await user.click(screen.getByRole('textbox'));
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalled();
   });
 });

@@ -31,6 +31,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      // Lets styles.contrast.test.ts read the real stylesheet via ?raw.
+      css: { include: [/styles\.css/] },
     },
   };
 });
