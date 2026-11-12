@@ -26,7 +26,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
   const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const refinement = useMemo(() => makeRefinementService(settings, config.llm, project.id), [settings, config.llm, project.id]);
+  const refinement = useMemo(() => makeRefinementService(settings, config.llm, config.llmEnvironment, project.id), [settings, config.llm, config.llmEnvironment, project.id]);
   const flow = useRefinementFlow(backlog, refinement, notifications);
 
   function selectItem(id: string) {
@@ -76,7 +76,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
         <div className="topbar-actions"><span className="local-badge"><span /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}>⚙</button><button className="avatar" aria-label="Local workspace profile">;-)</button></div>
       </header>
 
-      {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm).endpoint)}
+      {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm, config.llmEnvironment).endpoint)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} onClick={() => setMobilePanel('tree')}>Backlog</button>

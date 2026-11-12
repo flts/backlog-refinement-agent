@@ -9,12 +9,22 @@ import { serializeProjectBackup } from '../application/project-backup';
 beforeEach(async () => { await backlogDatabase.open(); });
 afterEach(async () => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
   backlogDatabase.close();
   await backlogDatabase.delete();
 });
 
 describe('project workspace', () => {
+  it('discloses the resolved runtime AI endpoint for selected project sources', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ endpoint: 'https://proxy.example', model: 'model', streaming: false }),
+    }));
+    await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' });
+    render(<Projects />);
+    expect(await screen.findByText(/0 selected sources sent to https:\/\/proxy\.example/)).toBeInTheDocument();
+  });
+
   it('imports a project and imports an existing project as a separate copy', async () => {
     const time = '2026-01-01T00:00:00.000Z';
     const json = await serializeProjectBackup({
