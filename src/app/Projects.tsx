@@ -12,12 +12,14 @@ import App from './App';
 const backups = new ProjectBackupRepository();
 const now = () => new Date().toISOString();
 const id = () => crypto.randomUUID();
+const selectedProjectKey = 'selected-project-id';
 
 export function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<string>();
   const [sources, setSources] = useState<ProjectSource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -27,13 +29,25 @@ export function Projects() {
   const refresh = useCallback(async (preferred?: string) => {
     const list = await projectRepository.listProjects();
     setProjects(list);
+    setProjectsLoaded(true);
     setProjectId((current) => list.some((item) => item.id === preferred) ? preferred
       : list.some((item) => item.id === current) ? current : list[0]?.id);
   }, []);
 
   useEffect(() => {
-    refresh().catch((cause: unknown) => setError(`Could not load projects: ${errorText(cause)}`)).finally(() => setLoading(false));
+    let saved: string | undefined;
+    try { saved = localStorage.getItem(selectedProjectKey) ?? undefined; }
+    catch (cause) { setError(`Could not restore the selected project: ${errorText(cause)}`); }
+    refresh(saved).catch((cause: unknown) => setError(`Could not load projects: ${errorText(cause)}`)).finally(() => setLoading(false));
   }, [refresh]);
+
+  useEffect(() => {
+    if (loading || !projectsLoaded) return;
+    try {
+      if (projectId) localStorage.setItem(selectedProjectKey, projectId);
+      else localStorage.removeItem(selectedProjectKey);
+    } catch (cause) { setError(`Could not remember the selected project: ${errorText(cause)}`); }
+  }, [loading, projectId, projectsLoaded]);
 
   useEffect(() => {
     let active = true;

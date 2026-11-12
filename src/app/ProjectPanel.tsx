@@ -30,6 +30,7 @@ export function ProjectPanel(props: Props) {
   const [editing, setEditing] = useState<string>();
   const [editedText, setEditedText] = useState('');
   const importInput = useRef<HTMLInputElement>(null);
+  const sourceInput = useRef<HTMLInputElement>(null);
 
   async function createProject() {
     if (await props.onCreate(name)) setName('');
@@ -71,7 +72,11 @@ export function ProjectPanel(props: Props) {
     {project && <details>
       <summary>Project sources ({sources.length})</summary>
       <p>Only selected sources are sent to the AI endpoint {props.endpoint || '(not configured)'} when refining, decomposing, or assessing an item. Sources begin unselected.</p>
-      <label>Add PDF or text file <input type="file" accept=".pdf,.txt,.md,.markdown,text/plain,text/markdown,application/pdf" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onAddFile(file); }} /></label>
+      <div className="project-file-upload">
+        <button type="button" className="button button-secondary button-small" disabled={busy} onClick={() => sourceInput.current?.click()}>Add PDF or text file</button>
+        <span>PDF, TXT or Markdown</span>
+        <input ref={sourceInput} aria-label="Add PDF or text file" type="file" accept=".pdf,.txt,.md,.markdown,text/plain,text/markdown,application/pdf" disabled={busy} hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onAddFile(file); }} />
+      </div>
       <form className="project-reference-form" onSubmit={(event) => { event.preventDefault(); void addReference(); }}>
         <input aria-label="Reference name" placeholder="Reference name" value={referenceName} onChange={(event) => setReferenceName(event.target.value)} maxLength={200} required disabled={busy} />
         <input aria-label="Reference URL" type="url" placeholder="https://example.com" value={url} onChange={(event) => setUrl(event.target.value)} required disabled={busy} />

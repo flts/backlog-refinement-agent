@@ -90,9 +90,6 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
           items={backlog.items} relationships={backlog.relationships} selectedId={backlog.selectedId}
           onSelect={selectItem}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
-          onOpenSettings={() => config.setOpen(true)}
-          onExport={config.exportConfig}
-          onImport={(file) => void config.importConfig(file)}
         />
 
         <ChatPanel
@@ -130,7 +127,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
-      {config.open && <SettingsModal settings={settings} llmReady={config.llmReady} llm={config.llm} llmEnvironment={config.llmEnvironment} onClearLlm={config.clearLlm} onClose={() => config.setOpen(false)} onSave={(values, llmValues) => void config.save(values, llmValues)} onRestore={() => void config.restore()} />}
+      {config.open && <SettingsModal settings={settings} llmReady={config.llmReady} llm={config.llm} llmEnvironment={config.llmEnvironment} onClearLlm={config.clearLlm} onClose={() => config.setOpen(false)} onSave={(values, llmValues) => void config.save(values, llmValues)} onRestore={() => void config.restore()} onExport={config.exportConfig} onImport={config.importConfig} />}
     </div>
   );
 }

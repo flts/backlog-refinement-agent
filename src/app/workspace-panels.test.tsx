@@ -1,9 +1,10 @@
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PreviewPanel } from './PreviewPanel';
 import { ChatPanel, type ChatPanelProps } from './ChatPanel';
+import { ProjectPanel } from './ProjectPanel';
 import type { BacklogItem } from '../domain/backlog-item';
 import type { RefinementSession } from '../domain/refinement-session';
 
@@ -11,6 +12,25 @@ const item = {
   id: 'i1', projectId: 'project-1', type: 'feature', title: 'Export', status: 'draft', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
   description: '## Assumptions\n- [ ] Users are logged in\n\n## Open questions\n- [ ] Which format?', revisions: [],
 } as unknown as BacklogItem;
+
+describe('ProjectPanel', () => {
+  it('opens the styled file picker and passes the selected file to its handler', async () => {
+    const user = userEvent.setup();
+    const onAddFile = vi.fn();
+    const project = { id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
+    const { container } = render(<ProjectPanel projects={[project]} project={project} sources={[]} busy={false} endpoint=""
+      onSelect={vi.fn()} onCreate={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onAddFile={onAddFile} onAddUrl={vi.fn()}
+      onEditText={vi.fn()} onFetch={vi.fn()} onToggle={vi.fn()} onRemove={vi.fn()} onExport={vi.fn()} onImport={vi.fn()} />);
+    await user.click(screen.getByText('Project sources (0)'));
+    const input = container.querySelector<HTMLInputElement>('input[accept^=".pdf"]')!;
+    const click = vi.spyOn(input, 'click');
+    await user.click(screen.getByRole('button', { name: 'Add PDF or text file' }));
+    expect(click).toHaveBeenCalledOnce();
+    const file = new File(['Context'], 'context.txt', { type: 'text/plain' });
+    fireEvent.change(input, { target: { files: [file] } });
+    expect(onAddFile).toHaveBeenCalledWith(file);
+  });
+});
 
 describe('PreviewPanel', () => {
   it('lists open uncertainty, edits the title and triggers quality assessment', async () => {
@@ -108,5 +128,13 @@ describe('ChatPanel', () => {
     render(<ChatPanel {...empty} />);
     await user.click(screen.getByRole('button', { name: 'Create backlog item' }));
     expect(empty.onCreateItem).toHaveBeenCalledOnce();
+  });
+
+  it('shows the session selector even for one session and disables it while busy', () => {
+    const session: RefinementSession = { id: 's', backlogItemId: 'i1', conversation: [], pendingQuestions: [], status: 'active', forceGeneration: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
+    const { rerender } = render(<ChatPanel {...base({ session, sessions: [session] })} />);
+    expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toHaveValue('s');
+    rerender(<ChatPanel {...base({ session, sessions: [session], busy: true })} />);
+    expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toBeDisabled();
   });
 });

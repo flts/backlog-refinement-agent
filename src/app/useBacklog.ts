@@ -50,6 +50,7 @@ export function useBacklog({ setError, setNotice }: Notifications, workspace: Wo
   }, [selectedId]);
 
   function selectItem(id: string) {
+    if (id === selectedId) return;
     setError(''); setSession(undefined); setSessions([]); setSelectedId(id);
     const selected = items.find((item) => item.id === id);
     if (selected) setNotice(`${itemTypeLabel[selected.type]} selected`);
