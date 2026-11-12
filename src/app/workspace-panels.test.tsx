@@ -62,6 +62,20 @@ describe('PreviewPanel', () => {
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Mark ready' })).toBeDisabled();
   });
+
+  it.each([
+    ['draft', ['Mark ready']],
+    ['refining', ['Mark ready']],
+    ['ready', ['Mark complete', 'Return to refining']],
+    ['ready-with-open-questions', ['Mark ready', 'Return to refining']],
+    ['complete', ['Reopen item']],
+  ] as const)('disables %s status actions during a request', (status, labels) => {
+    const selected = { ...item, status };
+    render(<PreviewPanel className="preview" item={selected} items={[selected]} relationships={[]} session={{ id: 's' } as RefinementSession} busy menuActions={[]}
+      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
+    for (const label of labels) expect(screen.getByRole('button', { name: label })).toBeDisabled();
+  });
 });
 
 describe('ChatPanel', () => {

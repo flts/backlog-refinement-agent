@@ -73,9 +73,9 @@ export function PreviewPanel({ className, item, items, relationships, parentItem
                   <h3>Refinement status</h3><span className="status-indicator"><i /> {statusText(item.status)}</span>
                 </div>
                 <p>{item.status === 'ready-with-open-questions' ? 'Ready to move forward with a few details to resolve.' : item.status === 'ready' || item.status === 'complete' ? 'This item has enough clarity to move forward.' : 'Keep refining to clarify the outcome, value, and boundaries.'}</p>
-                {(canTransitionItemStatus(item.status, 'ready') || (item.status === 'draft' && canTransitionItemStatus('draft', 'refining') && canTransitionItemStatus('refining', 'ready'))) && <button className="button button-secondary button-small" disabled={item.status === 'draft' && !session} onClick={() => onChangeStatus('ready')}>Mark ready</button>}
-                {item.status === 'ready' && canTransitionItemStatus(item.status, 'complete') && <button className="button button-secondary button-small" onClick={() => onChangeStatus('complete')}>Mark complete</button>}
-                {item.status !== 'draft' && canTransitionItemStatus(item.status, 'refining') && <button className="button button-secondary button-small" onClick={() => onChangeStatus('refining')}>{item.status === 'complete' ? 'Reopen item' : 'Return to refining'}</button>}
+                {(canTransitionItemStatus(item.status, 'ready') || (item.status === 'draft' && canTransitionItemStatus('draft', 'refining') && canTransitionItemStatus('refining', 'ready'))) && <button className="button button-secondary button-small" disabled={busy || (item.status === 'draft' && !session)} onClick={() => onChangeStatus('ready')}>Mark ready</button>}
+                {item.status === 'ready' && canTransitionItemStatus(item.status, 'complete') && <button className="button button-secondary button-small" disabled={busy} onClick={() => onChangeStatus('complete')}>Mark complete</button>}
+                {item.status !== 'draft' && canTransitionItemStatus(item.status, 'refining') && <button className="button button-secondary button-small" disabled={busy} onClick={() => onChangeStatus('refining')}>{item.status === 'complete' ? 'Reopen item' : 'Return to refining'}</button>}
                 <button className="button button-secondary button-small" disabled={busy} onClick={() => onAssessQuality()}>Assess quality</button>
               </section>
                 <div className="decompose-area">
