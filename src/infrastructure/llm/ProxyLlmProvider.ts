@@ -107,7 +107,7 @@ export class ProxyLlmProvider implements LlmProvider {
   ) {}
 
   async generate(request: LlmCompletionRequest): Promise<string> {
-    const { endpoint, model, apiKey, streaming = false, timeoutMs = 60_000 } = this.configuration;
+    const { endpoint, model, apiKey, streaming = false, timeoutMs = 180_000 } = this.configuration;
     if (!endpoint.trim() || !model.trim()) {
       throw new LlmProviderError('Set the LLM endpoint and model in Settings (or config.json) before using AI refinement.');
     }
@@ -140,7 +140,6 @@ export class ProxyLlmProvider implements LlmProvider {
           ...(streaming ? { accept: 'text/event-stream' } : {}),
           ...(apiKey.trim() ? { authorization: `Bearer ${apiKey}` } : {}),
         },
-        credentials: 'omit',
         signal: controller.signal,
         body: JSON.stringify({
           model,

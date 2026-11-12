@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applySectionUpdates,
   conformToTemplate,
-  convertPlaceholderTemplate,
   diffDocuments,
-  legacyFieldsToDocument,
   parseChecklistSections,
   updateChecklistLine,
 } from "./document";
@@ -45,16 +43,6 @@ describe("document helpers", () => {
 
   it("diffs documents by line", () => {
     expect(diffDocuments("a\nb", "a\nc")).toEqual({ added: ["c"], removed: ["b"] });
-  });
-
-  it("converts legacy data and placeholder templates", () => {
-    expect(legacyFieldsToDocument({
-      description: "Hi", contextValues: [{ key: "Scope", value: "S" }],
-      assumptions: [{ text: "A", confirmed: true }], openQuestions: [{ text: "Q", status: "open" }],
-    })).toBe("Hi\n\n## Scope\nS\n\n## Assumptions\n- [x] A\n\n## Open questions\n- [ ] Q");
-    const converted = convertPlaceholderTemplate("# {{title}}\n\n## Scope\n{{field:Scope}}\n\n## Assumptions\n{{assumptions}}");
-    expect(converted).not.toContain("{{");
-    expect(converted).toContain("## Scope");
   });
 
   it("conforms a document to the template headings", () => {

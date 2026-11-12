@@ -23,6 +23,7 @@ export type ChatPanelProps = {
   onSelectItem: (id: string) => void;
   onNewSession: () => void;
   onSwitchSession: (id: string) => void;
+  onDeleteSession: () => void;
   onMessageChange: (value: string) => void;
   onSubmit: () => void;
   onContinue: () => void;
@@ -40,7 +41,7 @@ export type ChatPanelProps = {
 
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, parentItem, session, sessions, busy, canRetry, message, reviewChanges, pending, proposal, selectedProposals,
-    onSelectItem, onNewSession, onSwitchSession, onMessageChange, onSubmit, onContinue, onCancel, onRetry, onToggleReview, onApplyPending,
+    onSelectItem, onNewSession, onSwitchSession, onDeleteSession, onMessageChange, onSubmit, onContinue, onCancel, onRetry, onToggleReview, onApplyPending,
     onDiscardPending, onProposalChange, onSelectedProposalsChange, onAcceptProposals, onDismissProposal, onCreateItem } = props;
   const conversationRef = useRef<HTMLDivElement | null>(null);
   const messages = session?.conversation ?? [];
@@ -59,12 +60,15 @@ export function ChatPanel(props: ChatPanelProps) {
             <span className="eyebrow">REFINEMENT WORKSPACE</span>
           </div>
           <div className="heading-actions">
-            {
-              sessions.length > 1 && <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} onChange={(event) => onSwitchSession(event.target.value)}>
+            <label className="session-picker">
+              <span>Session</span>
+              <select className="session-select" aria-label="Choose refinement session" value={session?.id ?? ''} disabled={busy || !session} onChange={(event) => onSwitchSession(event.target.value)}>
+                {!session && <option value="">Loading…</option>}
                 {sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}
               </select>
-            }
-            <button className="new-session-button" onClick={onNewSession} aria-label="Start a new refinement session" title="New refinement session">＋</button>
+            </label>
+            <button className="new-session-button" disabled={busy || !session} onClick={onNewSession} aria-label="Start a new refinement session" title="New refinement session">＋</button>
+            <button className="new-session-button" disabled={busy || !session} onClick={onDeleteSession} aria-label="Delete refinement session" title="Delete refinement session">×</button>
           </div>
         </div>
         <div ref={conversationRef} className="conversation-scroll" aria-live="polite">

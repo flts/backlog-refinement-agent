@@ -1,4 +1,4 @@
-import React, { useState, type FormEvent } from 'react';
+import React, { useRef, useState, type FormEvent } from 'react';
 import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
 import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
@@ -6,13 +6,14 @@ import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
 import { isValidLlmEndpoint } from '../infrastructure/llm/apiUrl';
 import { itemTypeLabel, itemTypes } from './labels';
 
-type Tab = 'general' | BacklogItemType;
+type Tab = 'general' | 'backup' | BacklogItemType;
 const tabs: { id: Tab; label: string }[] = [
   { id: 'general', label: 'General' },
   ...itemTypes.map((type) => ({ id: type, label: itemTypeLabel[type] })),
+  { id: 'backup', label: 'Backup' },
 ];
 
-export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClearLlm, onSave, onRestore, onClose }: {
+export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClearLlm, onSave, onRestore, onClose, onExport, onImport }: {
   settings: UserSettings;
   llmReady: boolean;
   llm: LlmOverrides;
@@ -21,11 +22,15 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   onSave: (values: UserSettings, llm?: LlmOverrides) => void;
   onRestore: () => void;
   onClose: () => void;
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
 }) {
   const [tab, setTab] = useState<Tab>('general');
   const [llmFormKey, setLlmFormKey] = useState(0);
   const [models, setModels] = useState<string[]>([]);
   const [modelStatus, setModelStatus] = useState('');
+  const [importing, setImporting] = useState(false);
+  const importInput = useRef<HTMLInputElement>(null);
 
   async function loadModels() {
     const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
@@ -76,18 +81,18 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
-      <form className="modal settings-modal" onSubmit={submit} onKeyDown={(event) => { if (event.key === 'Escape') onClose(); }}>
-        <button type="button" className="close-button modal-close" onClick={onClose} aria-label="Close">×</button>
+    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (!importing && event.target === event.currentTarget) onClose(); }}>
+      <form className="modal settings-modal" aria-busy={importing} onSubmit={submit} onKeyDown={(event) => { if (!importing && event.key === 'Escape') onClose(); }}>
+        <button type="button" className="close-button modal-close" onClick={onClose} disabled={importing} aria-label="Close">×</button>
         <span className="eyebrow">PERSONALIZE YOUR AGENT</span><h2>Instructions & templates</h2>
-        <div className="settings-tabs" role="tablist" aria-label="Settings sections">
+        <div className="settings-tabs" role="tablist" aria-label="Settings sections" inert={importing}>
           {tabs.map((entry, index) => (
             <button key={entry.id} type="button" role="tab" id={`settings-tab-${entry.id}`} aria-selected={tab === entry.id} aria-controls={`settings-panel-${entry.id}`}
               tabIndex={tab === entry.id ? 0 : -1} className={`settings-tab ${tab === entry.id ? 'active' : ''}`}
               onClick={() => setTab(entry.id)} onKeyDown={(event) => moveTab(event, index)}>{entry.label}</button>
           ))}
         </div>
-        <div className="settings-body">
+        <div className="settings-body" inert={importing}>
           <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={tab !== 'general'}>
             <fieldset className="llm-connection" key={llmFormKey}>
               <legend>LLM connection</legend>
@@ -121,8 +126,24 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
               <textarea className="markdown-template-input" id={`template-${type}`} name={`template-${type}`} rows={14} defaultValue={settings.templates[type]} />
             </div>
           ))}
+          <div role="tabpanel" id="settings-panel-backup" aria-labelledby="settings-tab-backup" hidden={tab !== 'backup'}>
+            <h3>Configuration backup</h3>
+            <p className="settings-help">Export your saved instructions and templates as JSON. Save any changes before exporting. Connection settings and project data are not included.</p>
+            <button type="button" className="button button-secondary" onClick={onExport}>Export configuration</button>
+            <p className="settings-help backup-import-help">Importing replaces saved instructions and templates and discards unsaved edits in this window. Project data and connection settings are not changed.</p>
+            <button type="button" className="button button-secondary" onClick={() => importInput.current?.click()}>Import configuration</button>
+            <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={async (event) => {
+              const file = event.target.files?.[0];
+              event.target.value = '';
+              if (!file || !window.confirm('Importing replaces your saved configuration and discards unsaved edits in Settings. Continue?')) return;
+              setImporting(true);
+              try { await onImport(file); }
+              finally { setImporting(false); }
+            }} />
+          </div>
         </div>
-        <div className="modal-actions"><button type="button" className="button button-secondary" onClick={restore}>Restore source defaults</button><button className="button button-primary" type="submit">Save customization</button></div>
+        {importing && <p className="settings-help" role="status">Importing configuration…</p>}
+        <div className="modal-actions"><button type="button" className="button button-secondary" disabled={importing} onClick={restore}>Restore source defaults</button><button className="button button-primary" type="submit" disabled={importing}>Save customization</button></div>
       </form>
     </div>
   );

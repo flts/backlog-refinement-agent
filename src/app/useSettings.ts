@@ -51,8 +51,10 @@ export function useSettings({ setError, setNotice }: Notifications) {
 
   async function importConfig(file?: File) {
     if (!file) return;
+    setError(''); setNotice('');
     try {
       setSettings(await settingsRepository.save(parseConfig(await file.text())));
+      setOpen(false);
       setNotice('Configuration imported.');
     } catch (cause) { setError(`Could not import configuration: ${errorText(cause)}`); }
   }

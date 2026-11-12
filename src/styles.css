@@ -419,36 +419,6 @@ select:focus-visible {
     line-height: 1.65
 }
 
-.sidebar-bottom {
-    border-top: 1px solid #eef0f3;
-    padding-top: 9px;
-    display: grid;
-    gap: 2px
-}
-
-.sidebar-link {
-    height: 30px;
-    text-align: left;
-    padding: 0 8px;
-    border: 0;
-    background: transparent;
-    border-radius: 6px;
-    color: #757c87;
-    font-size: 10px
-}
-
-.sidebar-link span {
-    display: inline-block;
-    width: 20px;
-    color: #9298a2;
-    font-size: 12px
-}
-
-.sidebar-link:hover {
-    background: #f5f6f8;
-    color: #3e464f
-}
-
 .refinement-column {
     display: flex;
     flex-direction: column;
@@ -1337,10 +1307,12 @@ select:focus-visible {
     display: flex;
     gap: 2px;
     border-bottom: 1px solid #eceef1;
-    margin-bottom: 4px
+    margin-bottom: 4px;
+    overflow-x: auto
 }
 
 .settings-tab {
+    flex-shrink: 0;
     border: 0;
     background: transparent;
     padding: 8px 12px;
@@ -1376,6 +1348,10 @@ select:focus-visible {
     color: #818894 !important;
     margin: 0 0 6px !important;
     line-height: 1.5
+}
+
+.backup-import-help {
+    margin-top: 18px !important
 }
 
 .privacy-note {
@@ -1665,10 +1641,6 @@ select:focus-visible {
         font-size: 12px
     }
 
-    .sidebar-link {
-        height: 38px;
-        font-size: 11px
-    }
 }
 
 @media (max-width:420px) {
@@ -1778,7 +1750,18 @@ select:focus-visible {
 .heading-actions {
     display: flex;
     align-items: center;
-    gap: 5px
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: flex-end
+}
+
+.session-picker {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: #858b98;
+    font-size: 9px;
+    font-weight: 600
 }
 
 .session-select {
@@ -2074,4 +2057,57 @@ select:focus-visible {
     border-radius: 7px;
     padding: 9px 10px;
     font-size: 12px
+}
+.project-panel {
+    padding: 12px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    max-height: 40vh;
+    overflow: auto;
+    flex-shrink: 0;
+    color: #59616c;
+    font-size: 11px
+}
+.project-toolbar, .project-toolbar form {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px
+}
+.project-toolbar label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.project-toolbar .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.project-panel input:not([type="checkbox"]):not([type="file"]),
+.project-panel select,
+.project-panel textarea {
+    min-width: 0;
+    max-width: 100%;
+    border: 1px solid #e3e6e9;
+    border-radius: 7px;
+    background: #fff;
+    color: var(--ink);
+    padding: 7px 9px;
+    font-size: 10px
+}
+.project-panel input::placeholder, .project-panel textarea::placeholder { color: #9299a3; }
+.project-panel input:disabled, .project-panel select:disabled, .project-panel textarea:disabled { background: #f5f6f8; opacity: .7; }
+.project-panel .composer-hint { margin: 9px 0 0; overflow-wrap: anywhere; }
+.project-panel details { margin-top: 9px; }
+.project-panel summary { cursor: pointer; font-weight: 600; color: var(--green); }
+.project-panel details > p { color: #858b98; line-height: 1.5; overflow-wrap: anywhere; }
+.project-file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #858b98; }
+.project-reference-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 12px 0; }
+.project-reference-form input { flex: 1 1 150px; }
+.project-reference-form textarea { flex: 2 1 240px; min-height: 32px; resize: vertical; }
+.project-sources { list-style: none; padding: 0; margin: 0; }
+.project-sources li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
+.project-sources li > label { display: flex; align-items: center; gap: 5px; font-weight: 600; }
+.project-sources li > span { color: #858b98; }
+.project-sources a { overflow-wrap: anywhere; }
+.project-sources li > div { flex-basis: 100%; }
+.project-sources textarea { display: block; width: min(500px, 100%); min-height: 100px; margin-bottom: 8px; }
+.project-sources li > div button + button { margin-left: 8px; }
+@media (max-width: 600px) {
+    .project-panel { padding: 12px; }
+    .project-toolbar form { flex: 1 1 100%; }
+    .project-toolbar form input { flex: 1 1 120px; }
 }

@@ -4,10 +4,10 @@ import type { BacklogRelationship } from '../domain/relationship';
 import type { RefinementSession } from '../domain/refinement-session';
 import { updateChecklistLine } from '../domain/document';
 import { itemTypeLabel } from './labels';
-import { workspace } from './services';
+import type { WorkspaceApplicationService } from '../application/workspace-service';
 import { errorText, type Notifications } from './useNotifications';
 
-export function useBacklog({ setError, setNotice }: Notifications) {
+export function useBacklog({ setError, setNotice }: Notifications, workspace: WorkspaceApplicationService) {
   const [items, setItems] = useState<BacklogItem[]>([]);
   const [relationships, setRelationships] = useState<BacklogRelationship[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
@@ -50,6 +50,7 @@ export function useBacklog({ setError, setNotice }: Notifications) {
   }, [selectedId]);
 
   function selectItem(id: string) {
+    if (id === selectedId) return;
     setError(''); setSession(undefined); setSessions([]); setSelectedId(id);
     const selected = items.find((item) => item.id === id);
     if (selected) setNotice(`${itemTypeLabel[selected.type]} selected`);
@@ -82,6 +83,25 @@ export function useBacklog({ setError, setNotice }: Notifications) {
       setSession(next);
       return true;
     } catch (cause) { setError(`Could not resume session: ${errorText(cause)}`); return false; }
+  }
+
+  async function deleteCurrentSession(): Promise<boolean> {
+    if (!selectedItem || !session) return false;
+    if (!window.confirm('Delete this refinement session and its conversation? The backlog item and accepted changes will remain.')) return false;
+    try {
+      await workspace.deleteSessionForItem(selectedItem.id, session.id);
+      setSession(undefined);
+      const remaining = await workspace.listSessionsForItem(selectedItem.id);
+      setSessions(remaining);
+      const next = remaining[0] ?? await workspace.createSession(selectedItem.id);
+      setSessions(remaining.length ? remaining : [next]);
+      setSession(next);
+      setNotice('Refinement session deleted.');
+      return true;
+    } catch (cause) {
+      setError(`Could not delete refinement session: ${errorText(cause)}`);
+      return false;
+    }
   }
 
   async function updateSelected(changes: Partial<BacklogItem>): Promise<boolean> {
@@ -131,7 +151,7 @@ export function useBacklog({ setError, setNotice }: Notifications) {
 
   return {
     items, relationships, selectedId, selectedItem, parentItem, session, sessions, loading,
-    setItems, setSession, refresh, selectItem, createItem, startNewSession, switchSession, updateSelected, resolveChecklist, duplicateSelected, deleteSelected,
+    workspace, setItems, setSession, refresh, selectItem, createItem, startNewSession, switchSession, deleteCurrentSession, updateSelected, resolveChecklist, duplicateSelected, deleteSelected,
   };
 }
 

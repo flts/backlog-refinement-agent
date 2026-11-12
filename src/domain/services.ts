@@ -11,13 +11,17 @@ const allowedTransitions: Record<BacklogItemStatus, readonly BacklogItemStatus[]
   complete: ["refining"],
 };
 
+export function canTransitionItemStatus(from: BacklogItemStatus, to: BacklogItemStatus): boolean {
+  return allowedTransitions[from].includes(to);
+}
+
 export function transitionItemStatus(
   item: BacklogItem,
   nextStatus: BacklogItemStatus,
   updatedAt: string,
 ): BacklogItem {
   if (item.status === nextStatus) return item;
-  if (!allowedTransitions[item.status].includes(nextStatus)) {
+  if (!canTransitionItemStatus(item.status, nextStatus)) {
     throw new DomainError(
       `Cannot transition backlog item from ${item.status} to ${nextStatus}.`,
       "INVALID_STATUS_TRANSITION",

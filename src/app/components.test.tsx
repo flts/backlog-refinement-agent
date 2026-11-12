@@ -54,10 +54,29 @@ describe('SettingsModal', () => {
     typeInstructions: { capability: 'ci', feature: 'fi', 'user-story': 'si', enabler: 'ei' },
   };
 
+  it('exports saved configuration and confirms imports from the Backup tab', async () => {
+    const user = userEvent.setup();
+    const onExport = vi.fn();
+    const onImport = vi.fn();
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={onImport} onExport={onExport} />);
+    await user.click(screen.getByRole('tab', { name: 'Backup' }));
+    await user.click(screen.getByRole('button', { name: 'Export configuration' }));
+    expect(onExport).toHaveBeenCalledOnce();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const file = new File(['{}'], 'backup.json', { type: 'application/json' });
+    await user.upload(input, file);
+    expect(onImport).not.toHaveBeenCalled();
+    await user.upload(input, file);
+    expect(onImport).toHaveBeenCalledWith(file);
+    expect(confirm).toHaveBeenCalledTimes(2);
+    confirm.mockRestore();
+  });
+
   it('shows one tab at a time and saves the values of all tabs', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     expect(screen.getByLabelText('Base refinement principles')).toBeVisible();
     expect(screen.getByLabelText('Feature template')).not.toBeVisible();
     await user.click(screen.getByRole('tab', { name: 'Feature' }));
@@ -74,7 +93,7 @@ describe('SettingsModal', () => {
   it('saves LLM connection values, masks the key and shows environment hints', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: 'https://env/v1', model: 'env-model', apiKey: 'k' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: 'https://env/v1', model: 'env-model', apiKey: 'k' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     expect(screen.getByLabelText(/API key/)).toHaveAttribute('type', 'password');
     expect(screen.getByLabelText(/Base URL/)).toHaveAttribute('placeholder', 'https://env/v1');
     await user.type(screen.getByLabelText(/Model/), 'mine');
@@ -85,7 +104,7 @@ describe('SettingsModal', () => {
   it('accepts a root-relative same-origin LLM endpoint', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     await user.type(screen.getByLabelText(/Base URL/), '/api');
     await user.click(screen.getByRole('button', { name: 'Save customization' }));
     expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '/api', model: '', apiKey: '' });
@@ -94,7 +113,7 @@ describe('SettingsModal', () => {
   it('rejects a non-root-relative endpoint path', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} />);
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     await user.type(screen.getByLabelText(/Base URL/), 'api');
     await user.click(screen.getByRole('button', { name: 'Save customization' }));
     expect(onSave).not.toHaveBeenCalled();
@@ -106,7 +125,7 @@ describe('SettingsModal', () => {
     const empty = { endpoint: '', model: '', apiKey: '' };
     function Harness() {
       const [llm, setLlm] = React.useState({ endpoint: 'https://x', model: 'm', apiKey: 'k' });
-      return <SettingsModal settings={settings} llmReady llm={llm} llmEnvironment={empty} onClearLlm={() => { onClear(); setLlm(empty); }} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} />;
+      return <SettingsModal settings={settings} llmReady llm={llm} llmEnvironment={empty} onClearLlm={() => { onClear(); setLlm(empty); }} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />;
     }
     render(<Harness />);
     expect(screen.getByLabelText(/Model/)).toHaveValue('m');
@@ -120,7 +139,7 @@ describe('SettingsModal', () => {
   it('closes on Escape', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={onClose} />);
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={onClose} onImport={vi.fn()} onExport={vi.fn()} />);
     await user.click(screen.getByRole('tab', { name: 'General' }));
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalled();

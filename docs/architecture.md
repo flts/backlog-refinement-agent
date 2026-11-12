@@ -15,12 +15,13 @@ Single-page app: React 19, TypeScript, Vite, Vitest, Dexie (IndexedDB), Zod. Pac
 ```text
 Browser (SPA)
  ├─ app/             React UI + hooks (useBacklog, useSettings, useRefinementFlow), composition in services.ts
- ├─ application/     use cases + ports (RefinementProvider, RefinementStore), refinement-service, workspace-service
- ├─ domain/          pure model: backlog-item, relationship, refinement-session, proposal, document (Markdown sections)
+ ├─ application/     use cases + ports, refinement-service, workspace-service, project backup validation
+ ├─ domain/          models for projects, sources, backlog items, relationships, sessions and Markdown documents
  ├─ infrastructure/
  │   ├─ llm/         ProxyLlmProvider (HTTP), ProxyRefinementProvider (prompting), normalizeProposal,
  │   │                llmConfig (runtime config + overrides), apiUrl, availableModels
- │   └─ storage/     IndexedDbRefinementStore, SettingsRepository (Dexie)
+ │   ├─ storage/     project-scoped IndexedDB stores, settings, project backups and reset bootstrap
+ │   └─ source-extraction   browser PDF/text extraction and explicit URL fetching
  └─ defaults/        Markdown defaults: templates/*.md, instructions/*.md (principles + per type)
 ```
 
@@ -29,10 +30,12 @@ Dependency direction: `app → application → domain`; `infrastructure` impleme
 ### Key behaviours
 
 - **Documents:** each item is one Markdown document based on a placeholder-free template (headings + `<!-- hints -->`). The agent returns only per-section updates; the app merges them so untouched sections stay byte-identical. Confirmed `- [x]` items are never dropped. Last 10 versions are kept (undo). "Assumptions"/"Open questions" sections are task lists with confirm/reject/resolve buttons.
-- **Agent prompt:** base principles + per-type instructions + user extra instructions + the type's template. Only the selected item, its directly linked items/relationships and its conversation are sent. Output is structured JSON, validated (Zod) with one automatic retry carrying `validationFeedback`.
+- **Agent prompt:** base principles + per-type instructions + user extra instructions + the type's template. Only the selected item, its directly linked items/relationships, its conversation and selected project sources are sent. Sources start unselected and are treated as untrusted reference data. Selected source text is capped at 100,000 characters. Output is structured JSON, validated (Zod) with one automatic retry carrying `validationFeedback`.
 - **Assessment review:** assessment changes are applied automatically by default; enabling "Review changes before applying" lets the user accept or discard them first. An explicit quality assessment updates the item's quality data without a separate acceptance step.
 - **Decomposition:** proposals are only persisted after explicit acceptance; children are rebuilt on the child type's template headings.
-- **Persistence:** items, relationships, sessions and settings in IndexedDB. Settings (instructions, principles, templates) are exportable/importable as JSON (export format v4; v1–3 import).
+- **Projects and persistence:** projects own their backlog items and sources; relationships and sessions are scoped through their items. IndexedDB stores projects, sources, items, relationships, sessions and settings. The selected project ID is a localStorage preference, validated against existing projects on startup and excluded from exports. Selectable-text PDFs and UTF-8 files are parsed locally; explicit URL fetches require CORS and allow pasted text as fallback. No OCR is provided. Complete project backups include originals and session history but exclude application settings and connection overrides; import validates the data and offers a copy or confirmed replacement.
+- **Upgrade and configuration:** legacy backlog data is discarded only after explicit confirmation; current-format settings remain. Settings (instructions, principles, templates) have separate JSON import/export in Settings > Backup, supporting format v4 only. Import replaces saved settings after confirmation and closes the modal to avoid saving stale edits. Browser data is local to the origin and device and may be evicted.
+- **Refinement controls:** users can change status and delete sessions; checklist actions do not independently change status. AI requests have a three-minute default timeout.
 
 ### LLM configuration
 
@@ -47,7 +50,7 @@ Dependency direction: `app → application → domain`; `infrastructure` impleme
 
 ### Security notes
 
-The browser sends an API key when the user has entered one, or when a development-only key is configured; production authentication without a user-entered key belongs at the proxy boundary. CORS must allow `/v1/chat/completions` and `/v1/models`. Backlog context is sent when the user requests refinement, decomposition or a quality assessment.
+The browser sends an API key when the user has entered one, or when a development-only key is configured; production authentication without a user-entered key belongs at the proxy boundary. Fetch uses browser defaults, so same-origin credentials may accompany LLM and reference requests. CORS must allow `/v1/chat/completions` and `/v1/models`. Backlog context is sent when the user requests refinement, decomposition or a quality assessment.
 
 ### Build, run, test
 

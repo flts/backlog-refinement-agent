@@ -20,7 +20,9 @@ function timestamp(): string {
 }
 
 export class WorkspaceApplicationService {
-  constructor(private readonly store: RefinementStore) {}
+  constructor(private readonly projectId: string, private readonly store: RefinementStore) {
+    if (!projectId.trim()) throw new Error('A project ID is required.');
+  }
 
   listItems(): Promise<BacklogItem[]> {
     return this.store.listItems();
@@ -40,6 +42,17 @@ export class WorkspaceApplicationService {
 
   listSessionsForItem(itemId: string): Promise<RefinementSession[]> {
     return this.store.listSessionsForItem(itemId);
+  }
+
+  async deleteSessionForItem(itemId: string, sessionId: string): Promise<void> {
+    await this.store.transaction(async (store) => {
+      const item = await store.getItem(itemId);
+      const session = await store.getSession(sessionId);
+      if (!item || !session || session.backlogItemId !== itemId) {
+        throw new Error('Session does not belong to this backlog item.');
+      }
+      await store.deleteSession(sessionId);
+    });
   }
 
   async getOrCreateSession(itemId: string): Promise<RefinementSession> {
@@ -81,6 +94,7 @@ export class WorkspaceApplicationService {
     const now = timestamp();
     const item = BacklogItemSchema.parse({
       id: createId(),
+      projectId: this.projectId,
       type,
       title,
       description: '',

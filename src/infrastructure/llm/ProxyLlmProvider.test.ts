@@ -22,7 +22,6 @@ describe('ProxyLlmProvider', () => {
       new URL('https://proxy.example/v1/chat/completions'),
       expect.objectContaining({
         method: 'POST',
-        credentials: 'omit',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${'test-proxy-key'}`,
@@ -37,6 +36,7 @@ describe('ProxyLlmProvider', () => {
         }),
       }),
     );
+    expect(fetcher.mock.calls[0][1]).not.toHaveProperty('credentials');
   });
 
   it('requires only endpoint and model, allowing production endpoints without browser credentials', async () => {
@@ -117,5 +117,39 @@ describe('ProxyLlmProvider', () => {
       expect.objectContaining({ endpoint: 'https://proxy.example' }),
     );
     spy.mockRestore();
+  });
+
+  it.each([
+    ['default', undefined, 180_000],
+    ['override', 2_000, 2_000],
+  ])('times out at the %s deadline', async (_label, timeoutMs, deadline) => {
+    vi.useFakeTimers();
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+      }));
+      const provider = new ProxyLlmProvider({ endpoint: 'https://proxy.example', model: 'model', apiKey: '', timeoutMs }, fetcher);
+      const result = provider.generate({ system: '', prompt: '' });
+      const assertion = expect(result).rejects.toThrow('timed out');
+      await vi.advanceTimersByTimeAsync(deadline - 1);
+      expect(fetcher.mock.calls[0][1]?.signal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await assertion;
+    } finally {
+      spy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('preserves caller cancellation', async () => {
+    const controller = new AbortController();
+    const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    const provider = new ProxyLlmProvider({ endpoint: 'https://proxy.example', model: 'model', apiKey: '' }, fetcher);
+    const result = provider.generate({ system: '', prompt: '', signal: controller.signal });
+    controller.abort();
+    await expect(result).rejects.toThrow('cancelled');
   });
 });

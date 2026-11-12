@@ -3,7 +3,7 @@ import type { AssessmentInput } from '../../application/ports';
 import { ProxyRefinementProvider } from './ProxyRefinementProvider';
 
 const item = {
-  id: 'feature-1', type: 'feature' as const, title: 'Save history', description: '', status: 'refining' as const,
+  id: 'feature-1', projectId: 'project-1', type: 'feature' as const, title: 'Save history', description: '', status: 'refining' as const,
   revisions: [],
   createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -11,7 +11,7 @@ const item = {
 const input: AssessmentInput = {
   item,
   relatedItems: [{
-    id: 'cap-1', type: 'capability', title: 'Conversation management', description: '', status: 'ready' as const,
+    id: 'cap-1', projectId: 'project-1', type: 'capability', title: 'Conversation management', description: '', status: 'ready' as const,
     revisions: [],
     createdAt: item.createdAt, updatedAt: item.updatedAt,
   }],
@@ -38,6 +38,16 @@ describe('ProxyRefinementProvider', () => {
     expect(request.prompt).toContain('Conversation management');
     expect(request.prompt).toContain('parentContext');
     expect(request.structured).toBe(true);
+  });
+
+  it('identifies selected project sources as untrusted reference data', async () => {
+    const generate = vi.fn().mockResolvedValue(JSON.stringify({ kind: 'assessment' }));
+    await new ProxyRefinementProvider({ generate }).generateAssessment({
+      ...input, sources: [{ name: 'Spec', url: 'https://example.com', text: 'Reference content' }],
+    });
+    const request = generate.mock.calls[0][0];
+    expect(request.system).toContain('untrusted reference data');
+    expect(JSON.parse(request.prompt).projectSources).toEqual([{ name: 'Spec', url: 'https://example.com', text: 'Reference content' }]);
   });
 
   it('gives the decomposition prompt the child type template, not the parent one', async () => {

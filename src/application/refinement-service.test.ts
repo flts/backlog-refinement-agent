@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { BacklogItem } from "../domain/backlog-item";
 import type { BacklogRelationship } from "../domain/relationship";
 import type { RefinementSession } from "../domain/refinement-session";
@@ -9,6 +9,7 @@ import { RefinementApplicationService } from "./refinement-service";
 const timestamp = "2026-01-01T00:00:00.000Z";
 const parent: BacklogItem = {
   id: "parent",
+  projectId: "project-1",
   type: "capability",
   title: "Account management",
   description: "",
@@ -49,6 +50,7 @@ class MemoryStore implements RefinementStore {
   async listSessionsForItem(itemId: string) {
     return [...this.sessions.values()].filter((value) => value.backlogItemId === itemId);
   }
+  async deleteSession(id: string) { this.sessions.delete(id); }
   async deleteItemAndReferences(id: string) {
     this.items.delete(id);
     this.relationships = this.relationships.filter(
@@ -94,6 +96,28 @@ const decomposition: Extract<RefinementProposal, { kind: "decomposition" }> = {
 };
 
 describe("RefinementApplicationService", () => {
+  it("sends only selected sources and rejects cross-project or oversized context", async () => {
+    const generateAssessment = vi.fn().mockResolvedValue(assessment);
+    const source = {
+      id: "source", projectId: parent.projectId, name: "Spec", kind: "url" as const, mediaType: "text/plain",
+      text: "Selected", selected: true, url: "https://example.com", createdAt: timestamp, updatedAt: timestamp,
+    };
+    let sources = [source, { ...source, id: "hidden", text: "Not selected", selected: false }];
+    const service = new RefinementApplicationService({
+      store: new MemoryStore(),
+      provider: { generateAssessment, generateDecomposition: async () => decomposition },
+      ids: new SequenceIds(),
+      loadProjectSources: async () => sources,
+    });
+    await service.proposeAssessment(session.id);
+    expect(generateAssessment.mock.calls[0][0].sources).toEqual([{ name: "Spec", url: "https://example.com", text: "Selected" }]);
+    sources = [{ ...source, projectId: "other" }];
+    await expect(service.proposeAssessment(session.id)).rejects.toThrow(/belong to this project/);
+    sources = [{ ...source, text: "x".repeat(100_001) }];
+    await expect(service.proposeAssessment(session.id)).rejects.toThrow(/100,000/);
+    expect(generateAssessment).toHaveBeenCalledTimes(1);
+  });
+
   it("records human input and leaves generated proposals temporary until acceptance", async () => {
     const store = new MemoryStore();
     const provider: RefinementProvider = {

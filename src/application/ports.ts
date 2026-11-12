@@ -11,6 +11,7 @@ export interface AssessmentInput {
   relatedItems: readonly BacklogItem[];
   relationships: readonly BacklogRelationship[];
   conversation: readonly ConversationMessage[];
+  sources?: readonly { name: string; url?: string; text: string }[];
   /** Set on the single automatic retry: why the previous answer was rejected. */
   validationFeedback?: string;
 }
@@ -38,6 +39,7 @@ export interface RefinementStore {
   getSession(id: string): Promise<RefinementSession | undefined>;
   saveSession(session: RefinementSession): Promise<void>;
   listSessionsForItem(itemId: string): Promise<RefinementSession[]>;
+  deleteSession(id: string): Promise<void>;
   deleteItemAndReferences(itemId: string): Promise<void>;
   /** Implementations should commit or roll back the callback as one unit. */
   transaction<T>(work: (store: RefinementStore) => Promise<T>): Promise<T>;

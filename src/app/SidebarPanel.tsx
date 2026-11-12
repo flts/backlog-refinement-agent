@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import type { BacklogItem, BacklogItemType } from '../domain/backlog-item';
 import type { BacklogRelationship } from '../domain/relationship';
 import { statusText, typeShort } from './labels';
@@ -10,13 +10,9 @@ type Props = {
   selectedId?: string;
   onSelect: (id: string) => void;
   onCreate: (parent?: { id: string; childType: BacklogItemType }) => void;
-  onOpenSettings: () => void;
-  onExport: () => void;
-  onImport: (file?: File) => void;
 };
 
-export function SidebarPanel({ className, items, relationships, selectedId, onSelect, onCreate, onOpenSettings, onExport, onImport }: Props) {
-  const fileInput = useRef<HTMLInputElement>(null);
+export function SidebarPanel({ className, items, relationships, selectedId, onSelect, onCreate }: Props) {
   const ordered = [...items].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const roots = ordered.filter((item) => !relationships.some((relationship) => relationship.type === 'parent-child' && relationship.targetId === item.id));
   const addChild = (parentId: string) => {
@@ -30,7 +26,6 @@ export function SidebarPanel({ className, items, relationships, selectedId, onSe
       <div className="tree-list">
         {roots.length ? roots.map((root) => <TreeItem key={root.id} item={root} allItems={ordered} relationships={relationships} selectedId={selectedId} onSelect={onSelect} onAddChild={addChild} />) : <div className="tree-empty"><span className="empty-icon">⌘</span><strong>Your backlog starts here</strong><p>Add a capability, feature, story, or enabler to begin shaping the work.</p><button className="button button-secondary button-small" onClick={() => onCreate()}>Create first item</button></div>}
       </div>
-      <div className="sidebar-bottom"><button className="sidebar-link" onClick={onOpenSettings}><span>⚙</span> Agent & settings</button><button className="sidebar-link" onClick={onExport}><span>⇧</span> Export configuration</button><button className="sidebar-link" onClick={() => fileInput.current?.click()}><span>⇩</span> Import configuration</button><input ref={fileInput} type="file" accept="application/json" hidden onChange={(event) => onImport(event.target.files?.[0])} /></div>
     </aside>
   );
 }
