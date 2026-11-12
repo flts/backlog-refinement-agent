@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { BacklogItemType } from '../domain/backlog-item';
 import { ChatPanel } from './ChatPanel';
@@ -66,25 +66,31 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
     if (selectedItem) downloadFile(markdownFilename(selectedItem), markdownFor(selectedItem), 'text/markdown');
   }
 
-  if (backlog.loading || !config.loaded) return <main className="loading-screen"><span className="brand-mark">b.</span><p>Opening your local backlog…</p></main>;
+  useEffect(() => {
+    document.title = selectedItem ? `${selectedItem.title || 'Untitled item'} – ${project.name} – Backlog Studio` : `${project.name} – Backlog Studio`;
+  }, [selectedItem, project.name]);
+
+  if (backlog.loading || !config.loaded) return <main className="loading-screen" aria-busy="true"><span className="brand-mark" aria-hidden="true">b.</span><p role="status">Opening your local backlog…</p></main>;
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main">Skip to main content</a>
+      <h1 className="sr-only">Backlog Studio – {project.name}</h1>
       <header className="topbar">
-        <a className="brand" href="#" aria-label="Backlog Studio home" onClick={(event) => event.preventDefault()}><span className="brand-mark">b.</span><span>backlog<span className="brand-light">studio</span></span></a>
-        <div className="topbar-center"><span className="workspace-dot" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><span className="local-badge"><span /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}>⚙</button><button className="avatar" aria-label="Local workspace profile">;-)</button></div>
+        <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
+        <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
+        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" aria-hidden="true">;-)</span></div>
       </header>
 
       {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm, config.llmEnvironment).endpoint)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
-        <button className={mobilePanel === 'tree' ? 'active' : ''} onClick={() => setMobilePanel('tree')}>Backlog</button>
-        <button className={mobilePanel === 'refine' ? 'active' : ''} onClick={() => setMobilePanel('refine')}>Refine</button>
-        <button className={mobilePanel === 'preview' ? 'active' : ''} onClick={() => setMobilePanel('preview')}>Item preview</button>
+        <button className={mobilePanel === 'tree' ? 'active' : ''} aria-pressed={mobilePanel === 'tree'} onClick={() => setMobilePanel('tree')}>Backlog</button>
+        <button className={mobilePanel === 'refine' ? 'active' : ''} aria-pressed={mobilePanel === 'refine'} onClick={() => setMobilePanel('refine')}>Refine</button>
+        <button className={mobilePanel === 'preview' ? 'active' : ''} aria-pressed={mobilePanel === 'preview'} onClick={() => setMobilePanel('preview')}>Item preview</button>
       </nav>
 
-      <main className="workspace-grid" inert={projectBusy}>
+      <main id="main" tabIndex={-1} className="workspace-grid" inert={projectBusy}>
         <SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
           items={backlog.items} relationships={backlog.relationships} selectedId={backlog.selectedId}
@@ -123,7 +129,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
         />
       </main>
 
-      {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><span>{error ? '!' : '✓'}</span><p>{error || notice}</p><button onClick={clear} aria-label="Dismiss notification">×</button></div>}
+      {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><span aria-hidden="true">{error ? '!' : '✓'}</span><p>{error || notice}</p><button onClick={clear} aria-label="Dismiss notification"><span aria-hidden="true">×</span></button></div>}
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 

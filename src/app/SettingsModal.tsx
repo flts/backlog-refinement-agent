@@ -1,4 +1,5 @@
 import React, { useRef, useState, type FormEvent } from 'react';
+import { useModalDialog } from './useModalDialog';
 import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
 import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
@@ -31,6 +32,8 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   const [modelStatus, setModelStatus] = useState('');
   const [importing, setImporting] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
+  const [endpointError, setEndpointError] = useState('');
+  const dialog = useModalDialog(onClose, () => !importing);
 
   async function loadModels() {
     const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
@@ -49,10 +52,9 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
     const endpoint = String(form.get('llm-endpoint') ?? '').trim();
     const endpointInput = event.currentTarget.elements.namedItem('llm-endpoint');
     if (endpointInput instanceof HTMLInputElement) {
-      endpointInput.setCustomValidity(endpoint && !isValidLlmEndpoint(endpoint)
-        ? 'Enter an HTTP(S) URL or a same-origin path such as /api.'
-        : '');
-      if (!endpointInput.reportValidity()) return;
+      const error = endpoint && !isValidLlmEndpoint(endpoint) ? 'Enter an HTTP(S) URL or a same-origin path such as /api.' : '';
+      setEndpointError(error);
+      if (error) { setTab('general'); endpointInput.focus(); return; }
     }
     const byType = (prefix: string) => Object.fromEntries(itemTypes.map((type) => [type, String(form.get(`${prefix}-${type}`) ?? '')]));
     onSave({
@@ -72,7 +74,11 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   }
 
   function moveTab(event: React.KeyboardEvent, index: number) {
-    const next = event.key === 'ArrowRight' ? index + 1 : event.key === 'ArrowLeft' ? index - 1 : undefined;
+    const next = event.key === 'ArrowRight' ? index + 1
+      : event.key === 'ArrowLeft' ? index - 1
+        : event.key === 'Home' ? 0
+          : event.key === 'End' ? tabs.length - 1
+            : undefined;
     if (next === undefined) return;
     event.preventDefault();
     const target = tabs[(next + tabs.length) % tabs.length];
@@ -81,10 +87,10 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   }
 
   return (
-    <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (!importing && event.target === event.currentTarget) onClose(); }}>
-      <form className="modal settings-modal" aria-busy={importing} onSubmit={submit} onKeyDown={(event) => { if (!importing && event.key === 'Escape') onClose(); }}>
-        <button type="button" className="close-button modal-close" onClick={onClose} disabled={importing} aria-label="Close">×</button>
-        <span className="eyebrow">PERSONALIZE YOUR AGENT</span><h2>Instructions & templates</h2>
+    <dialog className="modal-dialog" aria-labelledby="settings-title" {...dialog}>
+      <form className="modal settings-modal" aria-busy={importing} onSubmit={submit} noValidate>
+        <button type="button" className="close-button modal-close" onClick={onClose} disabled={importing} aria-label="Close settings"><span aria-hidden="true">×</span></button>
+        <span className="eyebrow">Personalize your agent</span><h2 id="settings-title">Instructions & templates</h2>
         <div className="settings-tabs" role="tablist" aria-label="Settings sections" inert={importing}>
           {tabs.map((entry, index) => (
             <button key={entry.id} type="button" role="tab" id={`settings-tab-${entry.id}`} aria-selected={tab === entry.id} aria-controls={`settings-panel-${entry.id}`}
@@ -99,8 +105,10 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
               <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
               <p className="settings-help">Values entered here are stored in this browser (localStorage) and override config.json. Leave a field empty to use the configured value. They are not part of the configuration export.</p>
               <label htmlFor="llm-endpoint">Base URL {llmEnvironment.endpoint && !llm.endpoint && <span>From config.json</span>}{llm.endpoint && <span>Saved override</span>}</label>
-              <input id="llm-endpoint" name="llm-endpoint" type="text" inputMode="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'} />
-              <small className="settings-help">Use an absolute HTTP(S) URL or a same-origin path such as /api.</small>
+              <input id="llm-endpoint" name="llm-endpoint" type="text" inputMode="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'}
+                aria-invalid={endpointError ? true : undefined} aria-describedby={endpointError ? 'llm-endpoint-error llm-endpoint-help' : 'llm-endpoint-help'} onChange={() => setEndpointError('')} />
+              {endpointError && <p className="field-error" id="llm-endpoint-error">{endpointError}</p>}
+              <small className="settings-help" id="llm-endpoint-help">Use an absolute HTTP(S) URL or a same-origin path such as /api.</small>
               <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From config.json</span>}{llm.model && <span>Saved override</span>}</label>
               <input id="llm-model" name="llm-model" type="text" list="llm-model-options" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'Type a model name or load the list'} />
               <datalist id="llm-model-options">{models.map((id) => <option key={id} value={id} />)}</datalist>
@@ -145,6 +153,6 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
         {importing && <p className="settings-help" role="status">Importing configuration…</p>}
         <div className="modal-actions"><button type="button" className="button button-secondary" disabled={importing} onClick={restore}>Restore source defaults</button><button className="button button-primary" type="submit" disabled={importing}>Save customization</button></div>
       </form>
-    </div>
+    </dialog>
   );
 }

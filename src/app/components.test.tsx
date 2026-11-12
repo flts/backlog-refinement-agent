@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { expectNoAxeViolations } from '../test/axe';
 import { Composer } from './Composer';
 import { ItemMenu } from './ItemMenu';
 import { SettingsModal } from './SettingsModal';
@@ -134,6 +135,35 @@ describe('SettingsModal', () => {
     expect(screen.getByLabelText(/Base URL/)).toHaveValue('');
     expect(screen.getByLabelText(/Model/)).toHaveValue('');
     expect(screen.getByLabelText(/API key/)).toHaveValue('');
+  });
+
+  it('has no axe violations', async () => {
+    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    expect(screen.getByRole('dialog', { name: 'Instructions & templates' })).toBeInTheDocument();
+    await expectNoAxeViolations(container);
+  });
+
+  it('moves between tabs with Home and End', async () => {
+    const user = userEvent.setup();
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    screen.getByRole('tab', { name: 'General' }).focus();
+    await user.keyboard('{End}');
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[tabs.length - 1]).toHaveFocus();
+    expect(tabs[tabs.length - 1]).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Home}');
+    expect(tabs[0]).toHaveFocus();
+  });
+
+  it('announces an invalid endpoint on the field', async () => {
+    const user = userEvent.setup();
+    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    await user.type(screen.getByLabelText(/Base URL/), 'api');
+    await user.click(screen.getByRole('button', { name: 'Save customization' }));
+    const field = screen.getByLabelText(/Base URL/);
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(field.getAttribute('aria-describedby')).toContain('llm-endpoint-error');
+    expect(document.getElementById('llm-endpoint-error')).toHaveTextContent(/.+/);
   });
 
   it('closes on Escape', async () => {

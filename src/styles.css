@@ -6,11 +6,11 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     --ink: #20242c;
-    --muted: #858b98;
+    --muted: #4a505b;
     --line: #e9ebef;
-    --green: #287d59;
+    --green: #1a5c3f;
     --green-soft: #eaf4ed;
-    --violet: #7160c8;
+    --violet: #554896;
     --panel: #fff;
     --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
 }
@@ -45,14 +45,64 @@ button:disabled {
 button:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-select:focus-visible {
-    outline: 3px solid #a7d6bd;
+select:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible,
+[role="tab"]:focus-visible {
+    outline: 3px solid #1a5c3f;
     outline-offset: 2px
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0
+}
+
+.skip-link {
+    position: absolute;
+    left: 12px;
+    top: -100px;
+    z-index: 20;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: #1a5c3f;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: underline
+}
+
+.skip-link:focus {
+    top: 12px
+}
+
+main:focus {
+    outline: none
+}
+
+.field-error {
+    display: block;
+    margin-top: 6px;
+    color: #9b1c1c;
+    font-size: 0.8125rem;
+    font-weight: 600
+}
+
+[aria-invalid="true"] {
+    border-color: #9b1c1c !important;
+    box-shadow: 0 0 0 1px #9b1c1c
 }
 
 .app-shell {
     height: 100vh;
-    min-height: 680px;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     background: #f7f8fa
@@ -76,7 +126,7 @@ select:focus-visible {
     gap: 10px;
     color: #292e35;
     text-decoration: none;
-    font: 800 16px var(--font-display);
+    font: 800 1rem var(--font-display);
     letter-spacing: -.7px
 }
 
@@ -84,25 +134,25 @@ select:focus-visible {
     width: 29px;
     height: 29px;
     border-radius: 9px;
-    background: #1f7753;
+    background: #1a5c3f;
     color: #fff;
     display: grid;
     place-items: center;
-    font: 800 20px var(--font-display);
+    font: 800 1.25rem var(--font-display);
     letter-spacing: -2px
 }
 
 .brand-light {
     font-weight: 500;
-    color: #848b96
+    color: #4f535a
 }
 
 .topbar-center {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 12px;
-    color: #6b7280;
+    font-size: 0.75rem;
+    color: #4e535d;
     display: flex;
     align-items: center;
     gap: 9px
@@ -116,7 +166,7 @@ select:focus-visible {
 }
 
 .topbar-divider {
-    color: #c6c9d0
+    color: #515255
 }
 
 .topbar-actions {
@@ -127,8 +177,8 @@ select:focus-visible {
 }
 
 .local-badge {
-    font-size: 10px;
-    color: #666f7b;
+    font-size: 0.75rem;
+    color: #4e545d;
     border: 1px solid #e8eaf0;
     background: #fafbfc;
     border-radius: 20px;
@@ -150,14 +200,14 @@ select:focus-visible {
 .close-button {
     border: 0;
     background: transparent;
-    color: #777e8b
+    color: #4f535c
 }
 
 .icon-button {
     height: 32px;
     width: 32px;
     border-radius: 9px;
-    font-size: 17px
+    font-size: 1.0625rem
 }
 
 .icon-button:hover,
@@ -174,8 +224,8 @@ select:focus-visible {
     display: grid;
     place-items: center;
     background: #f4e3d6;
-    color: #82543c;
-    font-size: 12px;
+    color: #724a35;
+    font-size: 0.75rem;
     font-weight: 700
 }
 
@@ -210,15 +260,18 @@ select:focus-visible {
 }
 
 .eyebrow {
-    font-size: 9px;
+    margin: 0;
+    font-family: inherit;
+    font-size: 0.75rem;
+    line-height: 1.4;
     letter-spacing: 1.13px;
-    color: #959ba5;
+    color: #4a505b;
     font-weight: 700
 }
 
 .sidebar-head h2,
 .preview-head h2 {
-    font: 700 19px var(--font-display);
+    font: 700 1.1875rem var(--font-display);
     letter-spacing: -.5px;
     margin: 6px 0 0
 }
@@ -229,8 +282,8 @@ select:focus-visible {
     border: 1px solid #e7e9ed;
     border-radius: 8px;
     background: #fff;
-    font-size: 19px;
-    color: #525c68;
+    font-size: 1.1875rem;
+    color: #4b5560;
     line-height: 1
 }
 
@@ -244,12 +297,12 @@ select:focus-visible {
     gap: 6px;
     align-items: center;
     padding: 9px 4px 13px;
-    color: #858b96;
-    font-size: 10px
+    color: #50535a;
+    font-size: 0.75rem
 }
 
 .summary-dot {
-    color: #b4b8c0
+    color: #515356
 }
 
 .tree-list {
@@ -293,8 +346,8 @@ select:focus-visible {
 .tree-chevron {
     width: 10px;
     display: inline-block;
-    color: #969ca6;
-    font-size: 15px;
+    color: #51545a;
+    font-size: 0.9375rem;
     transform: rotate(0);
     transition: transform .15s
 }
@@ -305,7 +358,7 @@ select:focus-visible {
 
 .tree-type,
 .type-icon {
-    font-size: 7px;
+    font-size: 0.75rem;
     font-weight: 800;
     letter-spacing: .3px;
     width: 25px;
@@ -314,29 +367,29 @@ select:focus-visible {
     place-items: center;
     border-radius: 5px;
     background: #edf0fb;
-    color: #6774ae;
+    color: #48517a;
     flex-shrink: 0
 }
 
 .tree-type-feature,
 .type-pill {
     background: #f0ecfb;
-    color: #7969b5
+    color: #574c82
 }
 
 .tree-type-user-story {
     background: #e8f4f4;
-    color: #438e8d
+    color: #2b5b5a
 }
 
 .tree-type-enabler {
     background: #f8f0e5;
-    color: #a47738
+    color: #6c4f25
 }
 
 .tree-title {
-    font-size: 10px;
-    color: #565e69;
+    font-size: 0.75rem;
+    color: #4d555e;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -345,7 +398,7 @@ select:focus-visible {
 
 .selected .tree-title {
     font-weight: 700;
-    color: #2d684b
+    color: #285e44
 }
 
 .tree-status {
@@ -371,16 +424,17 @@ select:focus-visible {
 
 .tree-add {
     opacity: 0;
-    width: 21px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     border: 0;
     background: transparent;
-    color: #7a827f;
+    color: #4f5453;
     border-radius: 5px;
-    font-size: 15px
+    font-size: 0.9375rem
 }
 
 .tree-row:hover .tree-add,
+.tree-row:focus-within .tree-add,
 .tree-row.selected .tree-add {
     opacity: 1
 }
@@ -403,19 +457,19 @@ select:focus-visible {
     border-radius: 11px;
     background: #eef5f0;
     color: var(--green);
-    font-size: 19px;
+    font-size: 1.1875rem;
     margin: 0 auto 13px
 }
 
 .tree-empty strong {
-    font: 700 12px var(--font-display)
+    font: 700 0.75rem var(--font-display)
 }
 
 .tree-empty p,
 .no-selection p,
 .preview-empty p {
-    font-size: 11px;
-    color: #818894;
+    font-size: 0.75rem;
+    color: #50545c;
     line-height: 1.65
 }
 
@@ -434,7 +488,7 @@ select:focus-visible {
 }
 
 .refine-heading h1 {
-    font: 700 20px var(--font-display);
+    font: 700 1.25rem var(--font-display);
     letter-spacing: -.7px;
     margin: 5px 0 4px;
     max-width: 510px;
@@ -445,15 +499,15 @@ select:focus-visible {
 
 .refine-heading p {
     margin: 0;
-    font-size: 10px;
-    color: #8a909b
+    font-size: 0.75rem;
+    color: #50545a
 }
 
 .text-link {
     padding: 0;
     border: 0;
     background: transparent;
-    color: #5a7967;
+    color: #42584b;
     font-size: inherit
 }
 
@@ -462,12 +516,12 @@ select:focus-visible {
 }
 
 .crumb-sep {
-    color: #c7cad0;
+    color: #525355;
     padding: 0 5px
 }
 
 .more-button {
-    font-size: 20px;
+    font-size: 1.25rem;
     letter-spacing: 1px;
     height: 28px;
     width: 29px;
@@ -482,24 +536,24 @@ select:focus-visible {
     display: flex;
     gap: 7px;
     align-items: center;
-    color: #718077;
-    font-size: 10px
+    color: #4c5650;
+    font-size: 0.75rem
 }
 
 .context-banner strong {
-    color: #506a58
+    color: #43594a
 }
 
 .context-icon {
-    color: #74927e
+    color: #46584c
 }
 
 .context-banner button {
     margin-left: auto;
     border: 0;
     background: transparent;
-    color: #5b8069;
-    font-size: 9px
+    color: #405a49;
+    font-size: 0.75rem
 }
 
 .conversation-scroll {
@@ -528,30 +582,30 @@ select:focus-visible {
     place-items: center;
     border-radius: 8px;
     background: #e8f3eb;
-    color: #36815d;
-    font-size: 15px
+    color: #275d43;
+    font-size: 0.9375rem
 }
 
 .welcome-card strong {
-    font: 700 12px var(--font-display)
+    font: 700 0.75rem var(--font-display)
 }
 
 .welcome-card p {
-    font-size: 10px;
+    font-size: 0.75rem;
     line-height: 1.65;
-    color: #727a84;
+    color: #4f545b;
     margin: 5px 0 11px
 }
 
 .welcome-prompt {
     border-top: 1px solid #edf0ec;
     padding-top: 9px;
-    font-size: 10px;
-    color: #727b74
+    font-size: 0.75rem;
+    color: #4f5550
 }
 
 .welcome-prompt span {
-    color: #5d8a6e;
+    color: #3c5a47;
     margin-right: 5px
 }
 
@@ -576,7 +630,7 @@ select:focus-visible {
     width: 25px;
     height: 25px;
     flex-shrink: 0;
-    font-size: 10px
+    font-size: 0.75rem
 }
 
 .message-content {
@@ -590,15 +644,15 @@ select:focus-visible {
 }
 
 .message-author {
-    font-size: 9px;
-    color: #616873;
+    font-size: 0.75rem;
+    color: #4f545d;
     font-weight: 700;
     display: block
 }
 
 .message-author time {
     font-weight: 400;
-    color: #a5a9b0;
+    color: #515356;
     margin-left: 6px
 }
 
@@ -606,9 +660,9 @@ select:focus-visible {
     margin: 6px 0 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
-    font-size: 11px;
+    font-size: 0.75rem;
     line-height: 1.65;
-    color: #555d67
+    color: #4d555e
 }
 
 .message-user .message-content p {
@@ -623,7 +677,7 @@ select:focus-visible {
     display: flex;
     align-items: center;
     gap: 4px;
-    color: #858b95 !important
+    color: #505359 !important
 }
 
 .typing i {
@@ -644,7 +698,7 @@ select:focus-visible {
 
 .typing span {
     margin-left: 4px;
-    font-size: 9px
+    font-size: 0.75rem
 }
 
 @keyframes pulse {
@@ -662,21 +716,21 @@ select:focus-visible {
     display: flex;
     justify-content: space-between;
     margin: 0 2px 6px;
-    font-size: 9px;
-    color: #747b85
+    font-size: 0.75rem;
+    color: #4f545a
 }
 
 .green-spark {
-    color: #39885f;
+    color: #275e42;
     margin-right: 5px
 }
 
 .composer-hint {
-    color: #a1a6af
+    color: #505357
 }
 
 .composer {
-    border: 1px solid #dfe3e6;
+    border: 1px solid #8a909b;
     border-radius: 9px;
     background: #fff;
     box-shadow: 0 2px 8px #20242c08;
@@ -692,13 +746,13 @@ select:focus-visible {
     outline: 0 !important;
     padding: 0 2px;
     color: #404750;
-    font-size: 11px;
+    font-size: 0.75rem;
     line-height: 1.6;
     background: transparent
 }
 
 .composer textarea::placeholder {
-    color: #a0a5ae
+    color: #525459
 }
 
 .composer-bottom {
@@ -708,12 +762,12 @@ select:focus-visible {
 }
 
 .composer-tip {
-    font-size: 9px;
-    color: #9aa0a8
+    font-size: 0.75rem;
+    color: #505357
 }
 
 .composer-tip span {
-    color: #66a27d;
+    color: #395b46;
     margin-right: 4px
 }
 
@@ -722,14 +776,14 @@ select:focus-visible {
     height: 26px;
     border: 0;
     border-radius: 7px;
-    background: #277b54;
+    background: #1a5c3f;
     color: #fff;
-    font-size: 16px;
+    font-size: 1rem;
     line-height: 1
 }
 
 .send-button:hover {
-    background: #1d6946
+    background: #134a32
 }
 
 .continue-button {
@@ -741,22 +795,22 @@ select:focus-visible {
     gap: 6px;
     border: 0;
     background: transparent;
-    color: #7b818b;
-    font-size: 9px;
+    color: #50545a;
+    font-size: 0.75rem;
     text-align: left
 }
 
 .continue-button>span:first-child {
-    color: #8f82c2
+    color: #564e74
 }
 
 .continue-button:hover {
-    color: #515963
+    color: #4d555e
 }
 
 .continue-note {
-    color: #a3a8b0;
-    font-size: 9px;
+    color: #515458;
+    font-size: 0.75rem;
     margin-left: 2px
 }
 
@@ -775,7 +829,7 @@ select:focus-visible {
 }
 
 .preview-head h2 {
-    font-size: 16px;
+    font-size: 1rem;
     margin-top: 4px
 }
 
@@ -784,8 +838,8 @@ select:focus-visible {
     border-radius: 6px;
     background: #fff;
     padding: 6px 8px;
-    color: #606873;
-    font-size: 9px
+    color: #4e545d;
+    font-size: 0.75rem
 }
 
 .copy-button:hover {
@@ -794,7 +848,7 @@ select:focus-visible {
 
 .copy-button span {
     margin-right: 4px;
-    color: #79818b
+    color: #4f545a
 }
 
 .preview-scroll {
@@ -808,8 +862,8 @@ select:focus-visible {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #747b86;
-    font-size: 9px;
+    color: #4f545b;
+    font-size: 0.75rem;
     margin-bottom: 16px
 }
 
@@ -823,31 +877,31 @@ select:focus-visible {
     margin-left: auto;
     border-radius: 20px;
     background: #f0f1f4;
-    color: #777e89;
-    font-size: 8px;
+    color: #50545c;
+    font-size: 0.75rem;
     padding: 4px 7px
 }
 
 .status-ready,
 .status-ready-with-open-questions {
     background: #eaf4ec;
-    color: #4b815d
+    color: #355c42
 }
 
 .status-refining {
     background: #f0edfc;
-    color: #7568ad
+    color: #574d80
 }
 
 .status-complete {
     background: #edf4ef;
-    color: #62826c
+    color: #435849
 }
 
 .field-label {
     display: block;
     color: #4b525d;
-    font-size: 8px;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: .9px;
     margin: 0 0 5px
@@ -859,7 +913,7 @@ select:focus-visible {
     padding: 3px 0;
     background: transparent;
     color: #292e35;
-    font: 700 15px var(--font-display);
+    font: 700 0.9375rem var(--font-display);
     letter-spacing: -.35px
 }
 
@@ -870,14 +924,14 @@ select:focus-visible {
     min-height: 65px;
     padding: 3px 0;
     background: transparent;
-    color: #606873;
-    font-size: 10px;
+    color: #4e545d;
+    font-size: 0.75rem;
     line-height: 1.6
 }
 
 .preview-title-input::placeholder,
 .preview-description::placeholder {
-    color: #b1b5bc
+    color: #515356
 }
 
 .preview-section {
@@ -895,46 +949,46 @@ select:focus-visible {
 
 .preview-section-head h3 {
     margin: 0;
-    font: 700 10px var(--font-display);
+    font: 700 0.75rem var(--font-display);
     color: #4b525d
 }
 
 .knowledge-tag {
     margin-left: auto;
-    font-size: 8px;
+    font-size: 0.75rem;
     border-radius: 20px;
     background: #f1f2f4;
     padding: 3px 6px;
-    color: #818792
+    color: #50545b
 }
 
 .knowledge-known {
     background: #e9f4ed;
-    color: #508061
+    color: #395b45
 }
 
 .knowledge-assumed {
     background: #fbf2df;
-    color: #a47b32
+    color: #694f20
 }
 
 .knowledge-unclear {
     background: #f8eddf;
-    color: #a3753c
+    color: #6c4d28
 }
 
 .preview-section>p {
     margin: 0;
-    color: #666d77;
-    font-size: 10px;
+    color: #4f545c;
+    font-size: 0.75rem;
     line-height: 1.6
 }
 
 .provenance {
     display: block;
     margin-top: 4px;
-    color: #a3a7af;
-    font-size: 8px
+    color: #515357;
+    font-size: 0.75rem
 }
 
 .count-badge {
@@ -944,17 +998,17 @@ select:focus-visible {
     display: grid;
     place-items: center;
     border-radius: 50%;
-    font-size: 8px
+    font-size: 0.75rem
 }
 
 .count-badge.amber {
     background: #fbf2df;
-    color: #ad8135
+    color: #6a4f20
 }
 
 .count-badge.blue {
     background: #edf2f8;
-    color: #6682a4
+    color: #42546b
 }
 
 .uncertainty-card {
@@ -966,14 +1020,14 @@ select:focus-visible {
 }
 
 .uncertainty-card>span {
-    font-size: 11px;
+    font-size: 0.75rem;
     font-weight: 700
 }
 
 .uncertainty-card p {
     margin: 0;
-    color: #626974;
-    font-size: 9px;
+    color: #4e545d;
+    font-size: 0.75rem;
     line-height: 1.5
 }
 
@@ -982,7 +1036,7 @@ select:focus-visible {
 }
 
 .assumption-card>span {
-    color: #ac843a
+    color: #674f23
 }
 
 .question-card {
@@ -990,7 +1044,7 @@ select:focus-visible {
 }
 
 .question-card>span {
-    color: #6683a4
+    color: #42556b
 }
 
 .related-item {
@@ -1003,8 +1057,8 @@ select:focus-visible {
     border-radius: 5px;
     background: transparent;
     text-align: left;
-    font-size: 9px;
-    color: #616974
+    font-size: 0.75rem;
+    color: #4e545d
 }
 
 .related-item:hover {
@@ -1013,30 +1067,30 @@ select:focus-visible {
 
 .related-item>span:last-child {
     margin-left: auto;
-    color: #a4a9b1
+    color: #505357
 }
 
 .type-icon.tiny {
     width: 22px;
     height: 17px;
-    font-size: 6px
+    font-size: 0.75rem
 }
 
 .muted-copy {
-    color: #a1a6af !important;
-    font-size: 9px !important
+    color: #505357 !important;
+    font-size: 0.75rem !important
 }
 
 .subtle-label {
     margin-left: auto;
-    color: #a0a5ad;
-    font-size: 8px
+    color: #525458;
+    font-size: 0.75rem
 }
 
 .status-indicator {
     /* margin-left: auto; */
-    font-size: 8px;
-    color: #677d6e;
+    font-size: 0.75rem;
+    color: #48574d;
     display: flex;
     align-items: center;
     gap: 5px
@@ -1050,8 +1104,8 @@ select:focus-visible {
 }
 
 .quality-section>p {
-    color: #858b95;
-    font-size: 9px;
+    color: #505359;
+    font-size: 0.75rem;
     margin: 0 0 9px
 }
 
@@ -1059,7 +1113,7 @@ select:focus-visible {
     border: 1px solid transparent;
     border-radius: 7px;
     padding: 8px 11px;
-    font-size: 10px;
+    font-size: 0.75rem;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
@@ -1068,18 +1122,18 @@ select:focus-visible {
 }
 
 .button-primary {
-    background: #287b55;
+    background: #1a5c3f;
     color: #fff
 }
 
 .button-primary:hover {
-    background: #206b49
+    background: #134a32
 }
 
 .button-secondary {
     background: #fff;
-    border-color: #e4e6ea;
-    color: #59616c
+    border-color: #8a909b;
+    color: #4d545e
 }
 
 .button-secondary:hover {
@@ -1088,7 +1142,7 @@ select:focus-visible {
 
 .button-small {
     padding: 6px 8px;
-    font-size: 9px
+    font-size: 0.75rem
 }
 
 .decompose-area {
@@ -1104,7 +1158,7 @@ select:focus-visible {
 }
 
 .decompose-title>span {
-    color: #39845e
+    color: #285e43
 }
 
 .decompose-title strong,
@@ -1113,12 +1167,12 @@ select:focus-visible {
 }
 
 .decompose-title strong {
-    font-size: 10px
+    font-size: 0.75rem
 }
 
 .decompose-title small {
-    font-size: 8px;
-    color: #999fa8;
+    font-size: 0.75rem;
+    color: #515459;
     margin-top: 2px
 }
 
@@ -1142,11 +1196,11 @@ select:focus-visible {
     margin: 0 auto 10px;
     width: 34px;
     height: 30px;
-    font-size: 11px
+    font-size: 0.75rem
 }
 
 .preview-empty h3 {
-    font: 700 13px var(--font-display)
+    font: 700 0.8125rem var(--font-display)
 }
 
 .no-selection {
@@ -1156,7 +1210,7 @@ select:focus-visible {
 }
 
 .no-selection h2 {
-    font: 700 19px var(--font-display)
+    font: 700 1.1875rem var(--font-display)
 }
 
 .no-selection .empty-icon {
@@ -1175,7 +1229,7 @@ select:focus-visible {
     padding: 10px 11px;
     border: 1px solid #deebe2;
     background: #f6fbf7;
-    color: #437553;
+    color: #234030;
     border-radius: 8px;
     box-shadow: 0 8px 24px #17291d16
 }
@@ -1187,27 +1241,29 @@ select:focus-visible {
     display: grid;
     place-items: center;
     background: #e4f2e8;
-    font-size: 10px
+    font-size: 0.75rem
 }
 
 .toast p {
-    font-size: 10px;
+    font-size: 0.75rem;
     line-height: 1.5;
     margin: 0
 }
 
 .toast button {
     margin-left: auto;
+    min-width: 24px;
+    min-height: 24px;
     border: 0;
     background: transparent;
-    color: #818a84;
-    font-size: 16px
+    color: #4f5451;
+    font-size: 1rem
 }
 
 .toast-error {
     background: #fff8f6;
     border-color: #f0d8d1;
-    color: #9a5142
+    color: #6a2f24
 }
 
 .modal-backdrop {
@@ -1217,6 +1273,27 @@ select:focus-visible {
     display: grid;
     place-items: center;
     padding: 18px;
+    background: #20242c70;
+    backdrop-filter: blur(2px)
+}
+
+dialog.modal-dialog {
+    margin: auto;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    width: min(440px, calc(100% - 36px));
+    max-width: calc(100% - 36px);
+    max-height: calc(100dvh - 36px);
+    color: inherit;
+    overflow: auto
+}
+
+dialog.modal-dialog:has(.settings-modal) {
+    width: min(720px, calc(100% - 36px))
+}
+
+dialog.modal-dialog::backdrop {
     background: #20242c70;
     backdrop-filter: blur(2px)
 }
@@ -1231,14 +1308,14 @@ select:focus-visible {
 }
 
 .modal h2 {
-    font: 700 21px var(--font-display);
+    font: 700 1.3125rem var(--font-display);
     letter-spacing: -.7px;
     margin: 6px 0
 }
 
 .modal>p {
-    font-size: 11px;
-    color: #7d848e;
+    font-size: 0.75rem;
+    color: #4f5359;
     line-height: 1.6;
     margin: 0 0 18px
 }
@@ -1246,14 +1323,14 @@ select:focus-visible {
 .modal label {
     display: block;
     margin: 13px 0 6px;
-    font-size: 10px;
+    font-size: 0.75rem;
     font-weight: 700;
-    color: #555d67
+    color: #4d555e
 }
 
 .modal label span {
     font-weight: 400;
-    color: #a1a6af;
+    color: #505357;
     margin-left: 4px
 }
 
@@ -1261,10 +1338,10 @@ select:focus-visible {
 .modal textarea,
 .modal select {
     width: 100%;
-    border: 1px solid #e3e6e9;
+    border: 1px solid #8a909b;
     border-radius: 7px;
     padding: 9px 10px;
-    font-size: 10px;
+    font-size: 0.75rem;
     color: #404750;
     background: #fff
 }
@@ -1275,14 +1352,14 @@ select:focus-visible {
 }
 
 .modal input::placeholder {
-    color: #a8adb5
+    color: #515357
 }
 
 .modal-close {
     position: absolute;
     top: 15px;
     right: 16px;
-    font-size: 22px
+    font-size: 1.375rem
 }
 
 .modal-actions {
@@ -1295,6 +1372,7 @@ select:focus-visible {
 .settings-modal {
     width: min(720px, 100%);
     max-height: calc(100vh - 36px);
+    max-height: calc(100dvh - 36px);
     display: flex;
     flex-direction: column
 }
@@ -1316,9 +1394,9 @@ select:focus-visible {
     border: 0;
     background: transparent;
     padding: 8px 12px;
-    font-size: 10px;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #7b828d;
+    color: #4f535a;
     border-bottom: 2px solid transparent;
     margin-bottom: -1px
 }
@@ -1328,7 +1406,7 @@ select:focus-visible {
 }
 
 .settings-tab.active {
-    color: #277b54;
+    color: #1e5f41;
     border-bottom-color: #277b54
 }
 
@@ -1344,8 +1422,8 @@ select:focus-visible {
 }
 
 .settings-help {
-    font-size: 9px !important;
-    color: #818894 !important;
+    font-size: 0.75rem !important;
+    color: #50545c !important;
     margin: 0 0 6px !important;
     line-height: 1.5
 }
@@ -1362,17 +1440,17 @@ select:focus-visible {
     background: #f4f7f5;
     border-radius: 7px;
     padding: 9px;
-    color: #64806e
+    color: #45584c
 }
 
 .privacy-note>span {
-    font-size: 14px
+    font-size: 0.875rem
 }
 
 .privacy-note p {
-    font-size: 9px;
+    font-size: 0.75rem;
     line-height: 1.55;
-    color: #737e76;
+    color: #4e5650;
     margin: 0
 }
 
@@ -1392,17 +1470,17 @@ select:focus-visible {
 }
 
 .proposal-heading h3 {
-    font: 700 13px var(--font-display);
+    font: 700 0.8125rem var(--font-display);
     margin: 4px 0 0
 }
 
 .close-button {
-    font-size: 19px
+    font-size: 1.1875rem
 }
 
 .proposal-rationale {
-    font-size: 10px;
-    color: #727983;
+    font-size: 0.75rem;
+    color: #4f535a;
     line-height: 1.55;
     margin: 9px 0
 }
@@ -1434,7 +1512,7 @@ select:focus-visible {
     padding: 2px;
     border: 0;
     background: transparent;
-    font-size: 10px;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #484f59
 }
@@ -1442,8 +1520,8 @@ select:focus-visible {
 .proposal-copy small {
     display: block;
     padding: 2px;
-    color: #9399a1;
-    font-size: 8px;
+    color: #515459;
+    font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis
@@ -1452,7 +1530,7 @@ select:focus-visible {
 .type-pill {
     padding: 4px 6px;
     border-radius: 5px;
-    font-size: 7px;
+    font-size: 0.75rem;
     font-weight: 700
 }
 
@@ -1461,8 +1539,8 @@ select:focus-visible {
     justify-content: space-between;
     align-items: center;
     padding-top: 11px;
-    font-size: 9px;
-    color: #818791
+    font-size: 0.75rem;
+    color: #50545a
 }
 
 .mobile-tabs {
@@ -1470,13 +1548,13 @@ select:focus-visible {
 }
 
 .loading-screen {
-    height: 100vh;
+    min-height: 100vh;
     display: grid;
     place-content: center;
     justify-items: center;
     gap: 12px;
-    color: #7e858e;
-    font-size: 11px
+    color: #4f5459;
+    font-size: 0.75rem
 }
 
 .loading-screen .brand-mark {
@@ -1591,13 +1669,13 @@ select:focus-visible {
         border: 0;
         border-bottom: 2px solid transparent;
         background: transparent;
-        color: #888e98;
-        font-size: 10px
+        color: #50545a;
+        font-size: 0.75rem
     }
 
     .mobile-tabs button.active {
         border-bottom-color: #287b55;
-        color: #2b6547;
+        color: #285e42;
         font-weight: 700
     }
 
@@ -1610,7 +1688,7 @@ select:focus-visible {
     }
 
     .refine-heading h1 {
-        font-size: 17px
+        font-size: 1.0625rem
     }
 
     .conversation-scroll {
@@ -1638,14 +1716,14 @@ select:focus-visible {
     }
 
     .tree-title {
-        font-size: 12px
+        font-size: 0.75rem
     }
 
 }
 
 @media (max-width:420px) {
     .brand {
-        font-size: 14px
+        font-size: 0.875rem
     }
 
     .brand-mark {
@@ -1675,7 +1753,7 @@ select:focus-visible {
     }
 
     .copy-button {
-        font-size: 8px
+        font-size: 0.75rem
     }
 
     .modal {
@@ -1697,25 +1775,25 @@ select:focus-visible {
 }
 
 .template-editor h3 {
-    font: 700 11px var(--font-display);
+    font: 700 0.75rem var(--font-display);
     margin: 0 0 4px
 }
 
 .template-editor>p {
-    font-size: 9px;
-    color: #818894;
+    font-size: 0.75rem;
+    color: #50545c;
     margin: 0 0 8px
 }
 
 .uncertainty-action {
     flex-shrink: 0;
-    border: 1px solid #e2e8e2;
+    border: 1px solid #8a909b;
     border-radius: 5px;
-    width: 21px;
-    height: 21px;
+    width: 24px;
+    height: 24px;
     background: #fff;
-    color: #5a8967;
-    font-size: 10px;
+    color: #3b5a44;
+    font-size: 0.75rem;
     padding: 0
 }
 
@@ -1724,7 +1802,7 @@ select:focus-visible {
 }
 
 .uncertainty-action.reject {
-    color: #a16a62
+    color: #714a45
 }
 
 .uncertainty-action.reject:hover {
@@ -1738,8 +1816,8 @@ select:focus-visible {
 .retry-button {
     border: 0;
     background: transparent;
-    color: #9a6152;
-    font-size: 9px;
+    color: #73493d;
+    font-size: 0.75rem;
     padding: 2px 0 6px
 }
 
@@ -1759,8 +1837,8 @@ select:focus-visible {
     display: flex;
     align-items: center;
     gap: 5px;
-    color: #858b98;
-    font-size: 9px;
+    color: #50535b;
+    font-size: 0.75rem;
     font-weight: 600
 }
 
@@ -1769,8 +1847,8 @@ select:focus-visible {
     border: 1px solid #e6e9eb;
     border-radius: 6px;
     background: #fff;
-    color: #6b727d;
-    font-size: 8px;
+    color: #4f545c;
+    font-size: 0.75rem;
     padding: 5px
 }
 
@@ -1780,8 +1858,8 @@ select:focus-visible {
     border: 1px solid #e6e9eb;
     border-radius: 6px;
     background: #fff;
-    color: #657b6a;
-    font-size: 14px
+    color: #48574b;
+    font-size: 0.875rem
 }
 
 .new-session-button:hover {
@@ -1789,13 +1867,13 @@ select:focus-visible {
 }
 
 .tree-expand {
-    width: 15px;
+    width: 24px;
     height: 26px;
     flex-shrink: 0;
     border: 0;
     background: transparent;
     padding: 0;
-    color: #969ca6
+    color: #51545a
 }
 
 .tree-expand:disabled {
@@ -1812,8 +1890,8 @@ select:focus-visible {
 
 .importance-label {
     display: block;
-    color: #a1a7b0;
-    font-size: 7px;
+    color: #505358;
+    font-size: 0.75rem;
     text-transform: capitalize;
     margin-top: 3px
 }
@@ -1826,13 +1904,13 @@ select:focus-visible {
     border: 0;
     background: transparent;
     padding: 3px 2px;
-    color: #818792;
-    font-size: 8px;
+    color: #50545b;
+    font-size: 0.75rem;
     line-height: 1.45
 }
 
 .proposal-copy textarea::placeholder {
-    color: #afb4bb
+    color: #505356
 }
 
 .env-config-note {
@@ -1846,29 +1924,29 @@ select:focus-visible {
 }
 
 .env-config-note strong {
-    font-size: 10px;
-    color: #4f6858
+    font-size: 0.75rem;
+    color: #43584b
 }
 
 .env-config-note>span {
-    font-size: 9px;
-    color: #6b776e
+    font-size: 0.75rem;
+    color: #4d564f
 }
 
 .env-config-note code {
-    font-size: 8px;
-    color: #858d86
+    font-size: 0.75rem;
+    color: #505550
 }
 
 .env-config-note small {
-    font-size: 8px;
+    font-size: 0.75rem;
     line-height: 1.5;
-    color: #9a7062
+    color: #6a4d44
 }
 
 .markdown-template-input {
     font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
-    font-size: 9px !important;
+    font-size: 0.75rem !important;
     line-height: 1.5 !important;
     min-height: 110px
 }
@@ -1885,7 +1963,7 @@ select:focus-visible {
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 2px 8px;
-    font-size: 13px;
+    font-size: 0.8125rem;
     text-transform: capitalize;
 }
 
@@ -1901,7 +1979,7 @@ select:focus-visible {
 }
 
 .quality-level {
-    font-size: 12px;
+    font-size: 0.75rem;
     padding: 1px 8px;
     border-radius: 999px;
     background: #eef2f6;
@@ -1909,12 +1987,12 @@ select:focus-visible {
 
 .quality-clear .quality-level {
     background: #dcf5e4;
-    color: #1a6b3a;
+    color: #176034;
 }
 
 .quality-unclear .quality-level {
     background: #fff1d6;
-    color: #8a5a00;
+    color: #744c00;
 }
 
 .quality-missing .quality-level {
@@ -1946,7 +2024,7 @@ select:focus-visible {
     background: transparent;
     border-radius: 5px;
     padding: 7px 9px;
-    font-size: 10px
+    font-size: 0.75rem
 }
 
 .menu-item:hover {
@@ -1954,7 +2032,7 @@ select:focus-visible {
 }
 
 .menu-danger {
-    color: #a24433
+    color: #8b3a2c
 }
 
 .workspace-grid>.preview-column {
@@ -1980,8 +2058,8 @@ select:focus-visible {
     gap: 6px;
     border: 0;
     background: transparent; */
-    color: #7b818b;
-    font-size: 9px;
+    color: #50545a;
+    font-size: 0.75rem;
     /* text-align: left */
 }
 
@@ -2001,8 +2079,8 @@ select:focus-visible {
 
 .preview-crumb {
     margin: 0;
-    font-size: 10px;
-    color: #8a909b
+    font-size: 0.75rem;
+    color: #50545a
 }
 
 .composer-actions {
@@ -2047,16 +2125,16 @@ select:focus-visible {
 }
 
 .llm-connection legend {
-    font: 700 11px var(--font-display);
+    font: 700 0.75rem var(--font-display);
     padding: 0 6px
 }
 
 .llm-connection input {
     width: 100%;
-    border: 1px solid #e3e6e9;
+    border: 1px solid #8a909b;
     border-radius: 7px;
     padding: 9px 10px;
-    font-size: 12px
+    font-size: 0.75rem
 }
 .project-panel {
     padding: 12px 20px;
@@ -2065,8 +2143,8 @@ select:focus-visible {
     max-height: 40vh;
     overflow: auto;
     flex-shrink: 0;
-    color: #59616c;
-    font-size: 11px
+    color: #4d545e;
+    font-size: 0.75rem
 }
 .project-toolbar, .project-toolbar form {
     display: flex;
@@ -2081,27 +2159,27 @@ select:focus-visible {
 .project-panel textarea {
     min-width: 0;
     max-width: 100%;
-    border: 1px solid #e3e6e9;
+    border: 1px solid #8a909b;
     border-radius: 7px;
     background: #fff;
     color: var(--ink);
     padding: 7px 9px;
-    font-size: 10px
+    font-size: 0.75rem
 }
-.project-panel input::placeholder, .project-panel textarea::placeholder { color: #9299a3; }
+.project-panel input::placeholder, .project-panel textarea::placeholder { color: #50545a; }
 .project-panel input:disabled, .project-panel select:disabled, .project-panel textarea:disabled { background: #f5f6f8; opacity: .7; }
 .project-panel .composer-hint { margin: 9px 0 0; overflow-wrap: anywhere; }
 .project-panel details { margin-top: 9px; }
 .project-panel summary { cursor: pointer; font-weight: 600; color: var(--green); }
-.project-panel details > p { color: #858b98; line-height: 1.5; overflow-wrap: anywhere; }
-.project-file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #858b98; }
+.project-panel details > p { color: #50535b; line-height: 1.5; overflow-wrap: anywhere; }
+.project-file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #50535b; }
 .project-reference-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 12px 0; }
 .project-reference-form input { flex: 1 1 150px; }
 .project-reference-form textarea { flex: 2 1 240px; min-height: 32px; resize: vertical; }
 .project-sources { list-style: none; padding: 0; margin: 0; }
 .project-sources li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
 .project-sources li > label { display: flex; align-items: center; gap: 5px; font-weight: 600; }
-.project-sources li > span { color: #858b98; }
+.project-sources li > span { color: #50535b; }
 .project-sources a { overflow-wrap: anywhere; }
 .project-sources li > div { flex-basis: 100%; }
 .project-sources textarea { display: block; width: min(500px, 100%); min-height: 100px; margin-bottom: 8px; }
@@ -2110,4 +2188,53 @@ select:focus-visible {
     .project-panel { padding: 12px; }
     .project-toolbar form { flex: 1 1 100%; }
     .project-toolbar form input { flex: 1 1 120px; }
+}
+
+/* Accessibility: user preferences (WCAG 2.3.3, 1.4.11, forced colors) */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important
+    }
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --line: #6b7280;
+        --muted: #2f343c
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+        border-color: #4a505b
+    }
+}
+
+@media (forced-colors: active) {
+    button:focus-visible,
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    a:focus-visible,
+    summary:focus-visible,
+    [tabindex]:focus-visible,
+    [role="tab"]:focus-visible {
+        outline: 3px solid Highlight
+    }
+
+    [aria-current="page"],
+    [aria-selected="true"],
+    [aria-pressed="true"] {
+        outline: 2px solid Highlight
+    }
+
+    .skip-link {
+        border: 2px solid ButtonText
+    }
 }

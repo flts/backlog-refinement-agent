@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { BacklogItem } from '../domain/backlog-item';
 import type { AssessmentProposal, DecompositionProposal } from '../domain/proposal';
 import type { RefinementSession } from '../domain/refinement-session';
@@ -51,13 +51,20 @@ export function ChatPanel(props: ChatPanelProps) {
     const frame = requestAnimationFrame(() => { conversation.scrollTop = conversation.scrollHeight; });
     return () => cancelAnimationFrame(frame);
   }, [busy, messages.length, item?.id]);
+  const [announcement, setAnnouncement] = useState('');
+  const wasBusy = useRef(busy);
+  useEffect(() => {
+    if (busy && !wasBusy.current) setAnnouncement('Refinement agent is responding…');
+    else if (!busy && wasBusy.current) setAnnouncement('Refinement agent finished responding.');
+    wasBusy.current = busy;
+  }, [busy]);
 
   return (
     <section className={className} aria-label="Refinement workspace">
       {item ? <>
         <div className="refine-heading">
           <div>
-            <span className="eyebrow">REFINEMENT WORKSPACE</span>
+            <h2 className="eyebrow">Refinement workspace</h2>
           </div>
           <div className="heading-actions">
             <label className="session-picker">
@@ -67,32 +74,33 @@ export function ChatPanel(props: ChatPanelProps) {
                 {sessions.map((savedSession, index) => <option key={savedSession.id} value={savedSession.id}>Session {sessions.length - index} · {new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(savedSession.updatedAt))}</option>)}
               </select>
             </label>
-            <button className="new-session-button" disabled={busy || !session} onClick={onNewSession} aria-label="Start a new refinement session" title="New refinement session">＋</button>
-            <button className="new-session-button" disabled={busy || !session} onClick={onDeleteSession} aria-label="Delete refinement session" title="Delete refinement session">×</button>
+            <button className="new-session-button" disabled={busy || !session} onClick={onNewSession} aria-label="Start a new refinement session" title="New refinement session"><span aria-hidden="true">＋</span></button>
+            <button className="new-session-button" disabled={busy || !session} onClick={onDeleteSession} aria-label="Delete refinement session" title="Delete refinement session"><span aria-hidden="true">×</span></button>
           </div>
         </div>
-        <div ref={conversationRef} className="conversation-scroll" aria-live="polite">
-          {messages.length === 0 && <div className="welcome-card"><div className="agent-icon">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span>↳</span> What outcome should this work make possible?</div></div></div>}
-          {messages.map((entry) => <div key={entry.id} className={`message-row ${entry.role === 'user' ? 'message-user' : ''}`}><div className={entry.role === 'user' ? 'user-avatar' : 'agent-icon'}>{entry.role === 'user' ? 'F' : '✳'}</div><div className="message-content"><span className="message-author">{entry.role === 'user' ? 'You' : 'Refinement agent'} <time>{formatTime(entry.createdAt)}</time></span><p>{entry.content}</p></div></div>)}
-          {busy && <div className="message-row"><div className="agent-icon">✳</div><div className="message-content"><span className="message-author">Refinement agent</span><p className="typing"><i /><i /><i /><span>Thinking through the details</span></p></div></div>}
+        <p className="sr-only" role="status">{announcement}</p>
+        <div ref={conversationRef} className="conversation-scroll" role="log" aria-label="Conversation" tabIndex={0}>
+          {messages.length === 0 && <div className="welcome-card"><div className="agent-icon" aria-hidden="true">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span aria-hidden="true">↳</span> What outcome should this work make possible?</div></div></div>}
+          {messages.map((entry) => <div key={entry.id} className={`message-row ${entry.role === 'user' ? 'message-user' : ''}`}><div className={entry.role === 'user' ? 'user-avatar' : 'agent-icon'} aria-hidden="true">{entry.role === 'user' ? 'F' : '✳'}</div><div className="message-content"><span className="message-author">{entry.role === 'user' ? 'You' : 'Refinement agent'} <time>{formatTime(entry.createdAt)}</time></span><p>{entry.content}</p></div></div>)}
+          {busy && <div className="message-row"><div className="agent-icon" aria-hidden="true">✳</div><div className="message-content"><span className="message-author">Refinement agent</span><p className="typing"><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" /><span>Thinking through the details</span></p></div></div>}
           {pending && pending.sessionId === session?.id && <ReviewPanel currentDescription={item.description} proposal={pending.proposal} busy={busy} onApply={onApplyPending} onDiscard={onDiscardPending} />}
           {proposal && <ProposalPanel proposal={proposal} selected={selectedProposals} busy={busy} onChange={onProposalChange} onSelectedChange={onSelectedProposalsChange} onAccept={onAcceptProposals} onDismiss={onDismissProposal} />}
         </div>
         <div className="composer-wrap">
           <div className="composer-tools">
-            <span><span className="green-spark">✳</span> Refine with AI</span>
+            <span><span className="green-spark" aria-hidden="true">✳</span> Refine with AI</span>
             <span className="composer-hint">Enter to send · Shift+Enter for new line</span>
           </div>
           <Composer value={message} busy={busy} onChange={onMessageChange} onSubmit={onSubmit} />
           <div className="composer-actions">
-            {busy && <button className="retry-button" onClick={onCancel}>■ Cancel request</button>}
-            {canRetry && <button className="retry-button" onClick={onRetry} disabled={busy}>↻ Retry last request</button>}
-            <button className="continue-button" title="Stop asking and capture what’s still unknown" onClick={onContinue} disabled={busy || !session}><span>◷</span> Continue with current information </button>
+            {busy && <button className="retry-button" onClick={onCancel}><span aria-hidden="true">■</span> Cancel request</button>}
+            {canRetry && <button className="retry-button" onClick={onRetry} disabled={busy}><span aria-hidden="true">↻</span> Retry last request</button>}
+            <button className="continue-button" title="Stop asking and capture what’s still unknown" onClick={onContinue} disabled={busy || !session}><span aria-hidden="true">◷</span> Continue with current information</button>
             <label className="composer-hint review-toggle"><input type="checkbox" checked={reviewChanges} onChange={(event) => onToggleReview(event.target.checked)} /> Review changes before applying</label>
           </div>
         </div>
       </> : <div className="no-selection">
-        <div className="empty-icon">✳</div>
+        <div className="empty-icon" aria-hidden="true">✳</div>
           <h2>Choose what to refine</h2>
           <p>Select an item from your backlog or create something new.</p>
           <button className="button button-primary" onClick={onCreateItem}>Create backlog item</button>

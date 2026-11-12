@@ -52,6 +52,10 @@ Dependency direction: `app → application → domain`; `infrastructure` impleme
 
 The browser sends an API key when the user has entered one, or when a development-only key is configured; production authentication without a user-entered key belongs at the proxy boundary. Fetch uses browser defaults, so same-origin credentials may accompany LLM and reference requests. CORS must allow `/v1/chat/completions` and `/v1/models`. Backlog context is sent when the user requests refinement, decomposition or a quality assessment.
 
+### Accessibility
+
+Target is WCAG 2.2 AA plus 1.4.6 (7:1 text contrast). Colour tokens in `src/styles.css` are checked by `src/styles.contrast.test.ts`; modals use native `<dialog>` through `src/app/useModalDialog.ts`; chat streaming is announced via a single `role="status"`; OS/browser preferences (zoom, reduced motion, increased contrast, forced colours) are respected without in-app settings. Component tests run axe-core via `src/test/axe.ts`. Details, SC matrix and manual test protocol: `docs/accessibility.md`.
+
 ### Build, run, test
 
 `pnpm dev`, `pnpm test`, `pnpm typecheck`, `pnpm build`. Container: `Dockerfile` (build with pnpm, serve with Caddy).

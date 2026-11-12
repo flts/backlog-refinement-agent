@@ -25,7 +25,7 @@ export function ProposalPanel({ proposal, selected, busy, onChange, onSelectedCh
     onChange({ ...proposal, children: proposal.children.map((child) => child.proposalId === id ? { ...child, ...changes } : child) });
   return (
     <div className="proposal-panel">
-      <div className="proposal-heading"><div><span className="eyebrow">DECOMPOSITION PROPOSAL</span><h3>Possible next pieces</h3></div><button className="close-button" onClick={onDismiss} aria-label="Dismiss proposal">×</button></div>
+      <div className="proposal-heading"><div><span className="eyebrow">Decomposition proposal</span><h3>Possible next pieces</h3></div><button className="close-button" onClick={onDismiss} aria-label="Dismiss proposal"><span aria-hidden="true">×</span></button></div>
       <p className="proposal-rationale">{proposal.rationale}</p>
       <div className="proposal-list">{proposal.children.map((child) => {
         const entries = parseChecklistSections(child.description);
@@ -41,7 +41,7 @@ export function ProposalPanel({ proposal, selected, busy, onChange, onSelectedCh
           </label>
         );
       })}</div>
-      <div className="proposal-actions"><span>{selected.length} selected</span><button className="button button-primary button-small" disabled={!selected.length || busy} onClick={onAccept}>Add selected items <span>→</span></button></div>
+      <div className="proposal-actions"><span>{selected.length} selected</span><button className="button button-primary button-small" disabled={!selected.length || busy} onClick={onAccept}>Add selected items <span aria-hidden="true">→</span></button></div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function ReviewPanel({ currentDescription, proposal, busy, onApply, onDis
   const empty = !diff.added.length && !diff.removed.length;
   return (
     <div className="proposal-panel" role="region" aria-label="Review AI changes">
-      <div className="proposal-heading"><div><span className="eyebrow">REVIEW AI CHANGES</span><h3>Proposed document changes</h3></div></div>
+      <div className="proposal-heading"><div><span className="eyebrow">Review AI changes</span><h3>Proposed document changes</h3></div></div>
       <p className="proposal-rationale">{proposal.summary}</p>
       {empty ? <p className="muted-copy">The agent proposes no document changes.</p> : (
         <ul className="quality-list">
@@ -26,7 +26,7 @@ export function ReviewPanel({ currentDescription, proposal, busy, onApply, onDis
       )}
       <div className="proposal-actions">
         <button className="button button-secondary button-small" disabled={busy} onClick={onDiscard}>Discard</button>
-        <button className="button button-primary button-small" disabled={busy} onClick={onApply}>Apply changes <span>→</span></button>
+        <button className="button button-primary button-small" disabled={busy} onClick={onApply}>Apply changes <span aria-hidden="true">→</span></button>
       </div>
     </div>
   );

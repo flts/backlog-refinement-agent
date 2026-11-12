@@ -13,7 +13,7 @@ export function Composer({ value, busy, onChange, onSubmit }: {
           }
         }}
         placeholder="Share context, answer a question, or describe what you know…" rows={3} aria-label="Message the refinement agent" disabled={busy} />
-      <div className="composer-bottom"><div className="composer-tip"><span>↗</span> Your structured item updates as you refine</div><button className="send-button" type="submit" disabled={busy || !value.trim()} aria-label="Send message">{busy ? '…' : '↑'}</button></div>
+      <div className="composer-bottom"><div className="composer-tip"><span aria-hidden="true">↗</span> Your structured item updates as you refine</div><button className="send-button" type="submit" disabled={busy || !value.trim()} aria-label="Send message"><span aria-hidden="true">{busy ? '…' : '↑'}</span></button></div>
     </form>
   );
 }

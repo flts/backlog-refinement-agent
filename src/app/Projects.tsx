@@ -173,6 +173,6 @@ export function Projects() {
     {project
       ? <App key={`${project.id}:${workspaceRevision}`} project={project} projectBusy={busy} renderProjectPanel={panel} />
       : <main>{panel(false, '')}<p>Create or import a project to start a backlog.</p></main>}
-    {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><p>{error || notice}</p><button aria-label="Dismiss notification" onClick={() => { setError(''); setNotice(''); }}>×</button></div>}
+    {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><p>{error || notice}</p><button aria-label="Dismiss notification" onClick={() => { setError(''); setNotice(''); }}><span aria-hidden="true">×</span></button></div>}
   </>;
 }
