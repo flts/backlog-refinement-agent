@@ -38,7 +38,7 @@ describe('URL source extraction', () => {
     await expect(extractUrlText('https://example.test/article')).resolves.toBe('Hello\n\nFirst bold sentence.\n\nSecond\nline');
     expect(fetcher).toHaveBeenCalledOnce();
     expect(fetcher).toHaveBeenCalledWith(new URL('https://example.test/article'), {
-      method: 'GET', mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer',
+      method: 'GET', mode: 'cors', referrerPolicy: 'no-referrer',
     });
     expect((window as unknown as { injected?: boolean }).injected).toBeUndefined();
   });

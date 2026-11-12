@@ -140,7 +140,6 @@ export class ProxyLlmProvider implements LlmProvider {
           ...(streaming ? { accept: 'text/event-stream' } : {}),
           ...(apiKey.trim() ? { authorization: `Bearer ${apiKey}` } : {}),
         },
-        credentials: 'omit',
         signal: controller.signal,
         body: JSON.stringify({
           model,

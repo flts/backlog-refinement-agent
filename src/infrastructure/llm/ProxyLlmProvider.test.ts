@@ -22,7 +22,6 @@ describe('ProxyLlmProvider', () => {
       new URL('https://proxy.example/v1/chat/completions'),
       expect.objectContaining({
         method: 'POST',
-        credentials: 'omit',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${'test-proxy-key'}`,
@@ -37,6 +36,7 @@ describe('ProxyLlmProvider', () => {
         }),
       }),
     );
+    expect(fetcher.mock.calls[0][1]).not.toHaveProperty('credentials');
   });
 
   it('requires only endpoint and model, allowing production endpoints without browser credentials', async () => {

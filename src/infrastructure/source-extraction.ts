@@ -198,7 +198,7 @@ export async function extractUrlText(input: string): Promise<string> {
   }
   let response: Response;
   try {
-    response = await fetch(url, { method: 'GET', mode: 'cors', credentials: 'omit', referrerPolicy: 'no-referrer' });
+    response = await fetch(url, { method: 'GET', mode: 'cors', referrerPolicy: 'no-referrer' });
   } catch {
     throw new SourceExtractionError('fetch-failed', 'Could not fetch the URL. The server may not allow CORS or may be unreachable.');
   }

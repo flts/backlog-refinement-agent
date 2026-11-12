@@ -50,7 +50,7 @@ Dependency direction: `app → application → domain`; `infrastructure` impleme
 
 ### Security notes
 
-The browser sends an API key when the user has entered one, or when a development-only key is configured; production authentication without a user-entered key belongs at the proxy boundary. CORS must allow `/v1/chat/completions` and `/v1/models`. Backlog context is sent when the user requests refinement, decomposition or a quality assessment.
+The browser sends an API key when the user has entered one, or when a development-only key is configured; production authentication without a user-entered key belongs at the proxy boundary. Fetch uses browser defaults, so same-origin credentials may accompany LLM and reference requests. CORS must allow `/v1/chat/completions` and `/v1/models`. Backlog context is sent when the user requests refinement, decomposition or a quality assessment.
 
 ### Build, run, test
 
