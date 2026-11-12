@@ -1,0 +1,20 @@
+{
+	admin off
+}
+
+:{$PORT:8080} {
+	root * /srv
+	encode gzip
+
+	# Generated per request from the container's runtime environment; never baked into the image.
+	handle /config.json {
+		header Content-Type application/json
+		header Cache-Control no-store
+		respond `{"endpoint":"{$LLM_ENDPOINT:}","model":"{$LLM_MODEL:}","streaming":{$LLM_STREAMING:false}}` 200
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

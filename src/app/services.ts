@@ -6,13 +6,13 @@ import type { UserSettings } from '../infrastructure/storage/SettingsRepository'
 import { ProxyLlmProvider } from '../infrastructure/llm/ProxyLlmProvider';
 import { ProxyRefinementProvider } from '../infrastructure/llm/ProxyRefinementProvider';
 import { defaultBacklogTemplates } from '../defaults/templates';
-import { getLlmConfiguration, type LlmOverrides } from '../infrastructure/llm/llmConfig';
+import { getLlmConfiguration, type LlmOverrides, type RuntimeLlmConfig } from '../infrastructure/llm/llmConfig';
 
 const refinementStore = new IndexedDbRefinementStore();
 export const workspace = new WorkspaceApplicationService(refinementStore);
 export const settingsRepository = new SettingsRepository();
 
-export function makeRefinementService(settings: UserSettings, llm: LlmOverrides): RefinementApplicationService {
+export function makeRefinementService(settings: UserSettings, llm: LlmOverrides, runtime: RuntimeLlmConfig): RefinementApplicationService {
   const templates = Object.fromEntries(
     (Object.keys(defaultBacklogTemplates) as (keyof typeof defaultBacklogTemplates)[])
       .map((type) => [type, settings.templates[type]?.trim() ? settings.templates[type] : defaultBacklogTemplates[type]]),
@@ -20,7 +20,7 @@ export function makeRefinementService(settings: UserSettings, llm: LlmOverrides)
   return new RefinementApplicationService({
     store: refinementStore,
     provider: new ProxyRefinementProvider(
-      new ProxyLlmProvider(getLlmConfiguration(llm)),
+      new ProxyLlmProvider(getLlmConfiguration(llm, runtime)),
       settings.instructions,
       templates,
       { principles: settings.principles, typeInstructions: settings.typeInstructions },

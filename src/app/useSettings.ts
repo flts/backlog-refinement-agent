@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { defaultUserSettings } from '../infrastructure/storage/SettingsRepository';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
-import { clearLlmOverrides, getLlmEnvironment, loadLlmOverrides, resolveLlmConnection, saveLlmOverrides, type LlmOverrides } from '../infrastructure/llm/llmConfig';
+import { clearLlmOverrides, emptyRuntimeLlmConfig, loadLlmOverrides, loadRuntimeLlmConfig, resolveLlmConnection, saveLlmOverrides, type LlmOverrides, type RuntimeLlmConfig } from '../infrastructure/llm/llmConfig';
 import { parseConfig, serializeConfig, downloadFile } from './config-io';
 import { settingsRepository } from './services';
 import { errorText, type Notifications } from './useNotifications';
@@ -11,9 +11,15 @@ export function useSettings({ setError, setNotice }: Notifications) {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [llm, setLlm] = useState<LlmOverrides>(() => loadLlmOverrides());
-  const llmEnvironment = getLlmEnvironment();
+  const [llmEnvironment, setLlmEnvironment] = useState<RuntimeLlmConfig>(emptyRuntimeLlmConfig);
   const connection = resolveLlmConnection(llm, llmEnvironment);
   const llmReady = Boolean(connection.endpoint && connection.model);
+
+  useEffect(() => {
+    let active = true;
+    void loadRuntimeLlmConfig().then((runtime) => { if (active) setLlmEnvironment(runtime); });
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +32,7 @@ export function useSettings({ setError, setNotice }: Notifications) {
 
   function saveLlm(values: LlmOverrides) { setLlm(saveLlmOverrides(values)); }
 
-  function clearLlm() { setLlm(clearLlmOverrides()); setNotice('Saved LLM connection removed; environment values are used again.'); }
+  function clearLlm() { setLlm(clearLlmOverrides()); setNotice('Saved LLM connection removed; runtime configuration values are used again.'); }
 
   async function save(values: UserSettings, llmValues?: LlmOverrides) {
     try {

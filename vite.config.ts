@@ -1,17 +1,33 @@
-import { loadEnv } from 'vite';
+import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-import { localDevelopmentKey } from './src/infrastructure/llm/localDevelopmentKey';
 
-export default defineConfig(({ command, mode }) => {
+// Serves /config.json from .env.local during development only. Nothing from the
+// environment is compiled into the bundle; production provides runtime configuration.
+function devRuntimeConfig(env: Record<string, string>): Plugin {
+  return {
+    name: 'dev-runtime-config',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/config.json', (_request, response) => {
+        response.setHeader('Content-Type', 'application/json');
+        response.setHeader('Cache-Control', 'no-store');
+        response.end(JSON.stringify({
+          endpoint: env.LLM_ENDPOINT ?? '',
+          model: env.LLM_MODEL ?? '',
+          streaming: env.LLM_STREAMING === 'true',
+          apiKey: env.LOCAL_LLM_API_KEY ?? '',
+        }));
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react()],
-    define: {
-      'import.meta.env.LOCAL_LLM_API_KEY': JSON.stringify(
-        localDevelopmentKey(command, mode, env),
-      ),
-    },
+    plugins: [react(), devRuntimeConfig(env)],
+    base: './',
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',

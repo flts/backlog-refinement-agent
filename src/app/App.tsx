@@ -23,7 +23,7 @@ export default function App() {
   const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const refinement = useMemo(() => makeRefinementService(settings, config.llm), [settings, config.llm]);
+  const refinement = useMemo(() => makeRefinementService(settings, config.llm, config.llmEnvironment), [settings, config.llm, config.llmEnvironment]);
   const flow = useRefinementFlow(backlog, refinement, notifications);
 
   function selectItem(id: string) {
