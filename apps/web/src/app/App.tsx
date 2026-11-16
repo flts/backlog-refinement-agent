@@ -6,6 +6,7 @@ import { ChatPanel } from './ChatPanel';
 import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { SettingsModal } from './SettingsModal';
+import { ProjectSettingsDialog } from '../settings/ProjectSettingsDialog';
 import { SidebarPanel } from './SidebarPanel';
 import { Toast } from './Toast';
 import { downloadFile, markdownFilename, markdownFor } from './files';
@@ -18,13 +19,14 @@ function initials(name: string): string {
   return letters || '?';
 }
 
-export default function App({ project, projectBusy, renderProjectPanel }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode }) {
+export default function App({ project, projectBusy, renderProjectPanel, onOpenShare }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode; onOpenShare?: () => void }) {
   const auth = useAuth();
   const notifications = useNotifications();
   const { setError, setNotice } = notifications;
   const backlog = useBacklog(notifications, project.id);
   const { selectedItem } = backlog;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
   const [newItem, setNewItem] = useState<{ type: ItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
@@ -134,7 +136,8 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && <SettingsModal projectName={project.name} onClose={() => setSettingsOpen(false)} onOpenProjectSettings={() => { setSettingsOpen(false); setProjectSettingsOpen(true); }} />}
+      {projectSettingsOpen && <ProjectSettingsDialog project={project} onClose={() => setProjectSettingsOpen(false)} onOpenShare={onOpenShare && (() => { setProjectSettingsOpen(false); onOpenShare(); })} />}
     </div>
   );
 }

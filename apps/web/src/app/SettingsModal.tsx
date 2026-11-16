@@ -9,8 +9,11 @@ const themeOptions: { value: ThemePreference; label: string }[] = [
   { value: 'dark', label: 'Dark' },
 ];
 
-/** User settings: Account and Appearance. Project guidance (instructions, templates) is edited per project by its owners. */
-export function SettingsModal({ onClose }: { onClose: () => void }) {
+/**
+ * User settings (Account, Appearance) plus a gateway to the project settings (`onOpenProjectSettings`, omitted when there is no current project).
+ * Project guidance (instructions, templates) is edited per project by its owners in the project settings.
+ */
+export function SettingsModal({ onClose, projectName, onOpenProjectSettings }: { onClose: () => void; projectName?: string; onOpenProjectSettings?: () => void }) {
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
   const dialog = useModalDialog(onClose);
   const auth = useAuth();
@@ -50,6 +53,11 @@ export function SettingsModal({ onClose }: { onClose: () => void }) {
             </div>
           </fieldset>
         </div>
+        {onOpenProjectSettings && <section className="settings-project-link" aria-labelledby="project-settings-link-title">
+          <h3 id="project-settings-link-title">Project settings</h3>
+          <p className="settings-help">Name, members, agent principles, templates and instructions for {projectName ? `“${projectName}”` : 'the current project'}. Shared with everyone in the project.</p>
+          <button type="button" className="button button-secondary button-small" onClick={onOpenProjectSettings}>Open project settings…</button>
+        </section>}
         <div className="modal-actions"><button type="button" className="button button-primary" onClick={onClose}>Done</button></div>
       </div>
     </dialog>
