@@ -7,15 +7,21 @@ import { SettingsModal } from './SettingsModal';
 import { SidebarPanel } from './SidebarPanel';
 import { NewItemModal } from './NewItemModal';
 import { downloadFile, markdownFilename, markdownFor } from './config-io';
-import { makeRefinementService, makeWorkspace } from './services';
+import { makeWorkspace } from './services';
 import type { Project } from '../domain/project';
-import { getLlmConfiguration } from '../infrastructure/llm/llmConfig';
+import { useAuth } from '../auth';
 import { useSettings } from './useSettings';
 import { errorText, useNotifications } from './useNotifications';
 import { useBacklog } from './useBacklog';
 import { useRefinementFlow } from './useRefinementFlow';
 
-export default function App({ project, projectBusy, renderProjectPanel }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean, endpoint: string) => ReactNode }) {
+function initials(name: string): string {
+  const letters = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
+  return letters || '?';
+}
+
+export default function App({ project, projectBusy, renderProjectPanel }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode }) {
+  const auth = useAuth();
   const notifications = useNotifications();
   const { error, notice, setError, setNotice, clear } = notifications;
   const workspace = useMemo(() => makeWorkspace(project.id), [project.id]);
@@ -26,8 +32,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
   const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const refinement = useMemo(() => makeRefinementService(settings, config.llm, config.llmEnvironment, project.id), [settings, config.llm, config.llmEnvironment, project.id]);
-  const flow = useRefinementFlow(backlog, refinement, notifications);
+  const flow = useRefinementFlow(backlog, notifications);
 
   function selectItem(id: string) {
     if (flow.busy) return;
@@ -79,10 +84,10 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
       <header className="topbar">
         <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
         <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" aria-hidden="true">;-)</span></div>
+        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
       </header>
 
-      {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm, config.llmEnvironment).endpoint)}
+      {renderProjectPanel(flow.busy)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} aria-pressed={mobilePanel === 'tree'} onClick={() => setMobilePanel('tree')}>Backlog</button>
@@ -133,7 +138,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
-      {config.open && <SettingsModal settings={settings} llmReady={config.llmReady} llm={config.llm} llmEnvironment={config.llmEnvironment} onClearLlm={config.clearLlm} onClose={() => config.setOpen(false)} onSave={(values, llmValues) => void config.save(values, llmValues)} onRestore={() => void config.restore()} onExport={config.exportConfig} onImport={config.importConfig} />}
+      {config.open && <SettingsModal settings={settings} onClose={() => config.setOpen(false)} onSave={(values) => void config.save(values)} onRestore={() => void config.restore()} onExport={config.exportConfig} onImport={config.importConfig} />}
     </div>
   );
 }

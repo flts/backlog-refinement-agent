@@ -20,7 +20,7 @@ describe('ProjectPanel', () => {
     const user = userEvent.setup();
     const onAddFile = vi.fn();
     const project = { id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
-    const { container } = render(<ProjectPanel projects={[project]} project={project} sources={[]} busy={false} endpoint=""
+    const { container } = render(<ProjectPanel projects={[project]} project={project} sources={[]} busy={false}
       onSelect={vi.fn()} onCreate={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onAddFile={onAddFile} onAddUrl={vi.fn()}
       onEditText={vi.fn()} onFetch={vi.fn()} onToggle={vi.fn()} onRemove={vi.fn()} onExport={vi.fn()} onImport={vi.fn()} />);
     await user.click(screen.getByText('Project sources (0)'));

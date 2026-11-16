@@ -2,9 +2,7 @@ import React, { useRef, useState, type FormEvent } from 'react';
 import { useModalDialog } from './useModalDialog';
 import type { BacklogItemType } from '../domain/backlog-item';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
-import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
-import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
-import { isValidLlmEndpoint } from '../infrastructure/llm/apiUrl';
+import { useAuth } from '../auth';
 import { itemTypeLabel, itemTypes } from './labels';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
@@ -20,59 +18,31 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'backup', label: 'Backup' },
 ];
 
-export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClearLlm, onSave, onRestore, onClose, onExport, onImport }: {
+export function SettingsModal({ settings, onSave, onRestore, onClose, onExport, onImport }: {
   settings: UserSettings;
-  llmReady: boolean;
-  llm: LlmOverrides;
-  llmEnvironment: LlmOverrides;
-  onClearLlm: () => void;
-  onSave: (values: UserSettings, llm?: LlmOverrides) => void;
+  onSave: (values: UserSettings) => void;
   onRestore: () => void;
   onClose: () => void;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
 }) {
   const [tab, setTab] = useState<Tab>('general');
-  const [llmFormKey, setLlmFormKey] = useState(0);
-  const [models, setModels] = useState<string[]>([]);
-  const [modelStatus, setModelStatus] = useState('');
   const [importing, setImporting] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
-  const [endpointError, setEndpointError] = useState('');
   const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
   const dialog = useModalDialog(onClose, () => !importing);
-
-  async function loadModels() {
-    const value = (id: string) => (document.getElementById(id) as HTMLInputElement | null)?.value.trim() ?? '';
-    const endpoint = value('llm-endpoint') || llmEnvironment.endpoint;
-    if (!endpoint) { setModelStatus('Enter an endpoint first.'); return; }
-    if (!isValidLlmEndpoint(endpoint)) { setModelStatus('Enter an HTTP(S) URL or a same-origin path such as /api.'); return; }
-    setModelStatus('Loading models…');
-    const found = await fetchAvailableModels(endpoint, value('llm-api-key') || llmEnvironment.apiKey);
-    setModels(found);
-    setModelStatus(found.length ? `${found.length} models found.` : 'No models returned by /v1/models; type the model name manually.');
-  }
+  const auth = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const endpoint = String(form.get('llm-endpoint') ?? '').trim();
-    const endpointInput = event.currentTarget.elements.namedItem('llm-endpoint');
-    if (endpointInput instanceof HTMLInputElement) {
-      const error = endpoint && !isValidLlmEndpoint(endpoint) ? 'Enter an HTTP(S) URL or a same-origin path such as /api.' : '';
-      setEndpointError(error);
-      if (error) { setTab('general'); endpointInput.focus(); return; }
-    }
     const byType = (prefix: string) => Object.fromEntries(itemTypes.map((type) => [type, String(form.get(`${prefix}-${type}`) ?? '')]));
     onSave({
       instructions: String(form.get('instructions') ?? ''),
       principles: String(form.get('principles') ?? ''),
       templates: byType('template') as UserSettings['templates'],
       typeInstructions: byType('type-instructions') as UserSettings['typeInstructions'],
-    }, {
-      endpoint: String(form.get('llm-endpoint') ?? ''),
-      model: String(form.get('llm-model') ?? ''),
-      apiKey: String(form.get('llm-api-key') ?? ''),
     });
   }
 
@@ -107,6 +77,20 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
         </div>
         <div className="settings-body" inert={importing}>
           <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={tab !== 'general'}>
+            <fieldset className="account-section" aria-describedby="account-help">
+              <legend>Account</legend>
+              <dl className="account-details">
+                <div><dt>Name</dt><dd>{auth.user.name}</dd></div>
+                <div><dt>Email</dt><dd>{auth.user.email}</dd></div>
+              </dl>
+              {auth.canSignOut
+                ? <>
+                  <p className="settings-help" id="account-help">Signing out ends your session with the identity provider.</p>
+                  <button type="button" className="button button-secondary button-small" disabled={signingOut}
+                    onClick={() => { setSigningOut(true); auth.signOut().catch(() => setSigningOut(false)); }}>Sign out</button>
+                </>
+                : <p className="settings-help" id="account-help">Your session is managed by your organisation&apos;s sign-in; close the browser window or use your organisation&apos;s sign-out to end it.</p>}
+            </fieldset>
             <fieldset className="theme-choice" aria-describedby="theme-help">
               <legend>Appearance</legend>
               <p className="settings-help" id="theme-help">Applies immediately and is stored in this browser only. System follows your operating system&apos;s light or dark setting.</p>
@@ -119,24 +103,6 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
                   </label>
                 ))}
               </div>
-            </fieldset>
-            <fieldset className="llm-connection" key={llmFormKey}>
-              <legend>LLM connection</legend>
-              <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
-              <p className="settings-help">Values entered here are stored in this browser (localStorage) and override config.json. Leave a field empty to use the configured value. They are not part of the configuration export.</p>
-              <label htmlFor="llm-endpoint">Base URL {llmEnvironment.endpoint && !llm.endpoint && <span>From config.json</span>}{llm.endpoint && <span>Saved override</span>}</label>
-              <input id="llm-endpoint" name="llm-endpoint" type="text" inputMode="url" autoComplete="off" defaultValue={llm.endpoint} placeholder={llmEnvironment.endpoint || 'https://your-proxy.example'}
-                aria-invalid={endpointError ? true : undefined} aria-describedby={endpointError ? 'llm-endpoint-error llm-endpoint-help' : 'llm-endpoint-help'} onChange={() => setEndpointError('')} />
-              {endpointError && <p className="field-error" id="llm-endpoint-error">{endpointError}</p>}
-              <small className="settings-help" id="llm-endpoint-help">Use an absolute HTTP(S) URL or a same-origin path such as /api.</small>
-              <label htmlFor="llm-model">Model {llmEnvironment.model && !llm.model && <span>From config.json</span>}{llm.model && <span>Saved override</span>}</label>
-              <input id="llm-model" name="llm-model" type="text" list="llm-model-options" autoComplete="off" defaultValue={llm.model} placeholder={llmEnvironment.model || 'Type a model name or load the list'} />
-              <datalist id="llm-model-options">{models.map((id) => <option key={id} value={id} />)}</datalist>
-              <div><button type="button" className="button button-secondary button-small" onClick={() => void loadModels()}>Load models from /v1/models</button> <small className="settings-help" role="status">{modelStatus}</small></div>
-              <label htmlFor="llm-api-key">API key {llmEnvironment.apiKey && !llm.apiKey && <span>From development config</span>}{llm.apiKey && <span>Saved override</span>}</label>
-              <input id="llm-api-key" name="llm-api-key" type="password" autoComplete="new-password" defaultValue={llm.apiKey} placeholder={llmEnvironment.apiKey ? '•••••••• (from development config, type to override)' : 'Optional'} />
-              <small className="settings-help">The key is sent from your browser with each request, so only use it with a trusted endpoint.</small>
-              <div><button type="button" className="button button-secondary button-small" disabled={!llm.endpoint && !llm.model && !llm.apiKey} onClick={() => { onClearLlm(); setLlmFormKey((key) => key + 1); }}>Remove saved connection</button></div>
             </fieldset>
             <label htmlFor="principles">Base refinement principles</label>
             <p className="settings-help">Stable rules applied to every backlog item. Restoring defaults reloads them from <code>src/defaults/instructions/principles.md</code>.</p>
@@ -156,9 +122,9 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
           ))}
           <div role="tabpanel" id="settings-panel-backup" aria-labelledby="settings-tab-backup" hidden={tab !== 'backup'}>
             <h3>Configuration backup</h3>
-            <p className="settings-help">Export your saved instructions and templates as JSON. Save any changes before exporting. Connection settings and project data are not included.</p>
+            <p className="settings-help">Export your saved instructions and templates as JSON. Save any changes before exporting. Project data is not included.</p>
             <button type="button" className="button button-secondary" onClick={onExport}>Export configuration</button>
-            <p className="settings-help backup-import-help">Importing replaces saved instructions and templates and discards unsaved edits in this window. Project data and connection settings are not changed.</p>
+            <p className="settings-help backup-import-help">Importing replaces saved instructions and templates and discards unsaved edits in this window. Project data is not changed.</p>
             <button type="button" className="button button-secondary" onClick={() => importInput.current?.click()}>Import configuration</button>
             <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={async (event) => {
               const file = event.target.files?.[0];

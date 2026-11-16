@@ -6,6 +6,7 @@ import { expectNoAxeViolations } from '../test/axe';
 import { Composer } from './Composer';
 import { ItemMenu } from './ItemMenu';
 import { SettingsModal } from './SettingsModal';
+import { TestAuth, testAuth } from '../test/auth';
 import type { UserSettings } from '../infrastructure/storage/SettingsRepository';
 
 function ComposerHarness({ onSubmit }: { onSubmit: (text: string) => void }) {
@@ -48,6 +49,10 @@ describe('ItemMenu', () => {
   });
 });
 
+function renderSettings(ui: React.ReactElement, auth = testAuth()) {
+  return render(<TestAuth value={auth}>{ui}</TestAuth>);
+}
+
 describe('SettingsModal', () => {
   const settings: UserSettings = {
     instructions: '', principles: 'P',
@@ -60,7 +65,7 @@ describe('SettingsModal', () => {
     const onExport = vi.fn();
     const onImport = vi.fn();
     const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
-    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={onImport} onExport={onExport} />);
+    const { container } = renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={onImport} onExport={onExport} />);
     await user.click(screen.getByRole('tab', { name: 'Backup' }));
     await user.click(screen.getByRole('button', { name: 'Export configuration' }));
     expect(onExport).toHaveBeenCalledOnce();
@@ -77,7 +82,7 @@ describe('SettingsModal', () => {
   it('switches the appearance immediately without touching saved settings', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    const { container } = renderSettings(<SettingsModal settings={settings} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
     await user.click(screen.getByRole('radio', { name: 'Dark' }));
     expect(document.documentElement.dataset.theme).toBe('dark');
@@ -92,7 +97,7 @@ describe('SettingsModal', () => {
   it('shows one tab at a time and saves the values of all tabs', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    renderSettings(<SettingsModal settings={settings} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     expect(screen.getByLabelText('Base refinement principles')).toBeVisible();
     expect(screen.getByLabelText('Feature template')).not.toBeVisible();
     await user.click(screen.getByRole('tab', { name: 'Feature' }));
@@ -103,64 +108,18 @@ describe('SettingsModal', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       principles: 'P',
       templates: expect.objectContaining({ feature: '# Changed', capability: '# C' }),
-    }), { endpoint: '', model: '', apiKey: '' });
-  });
-
-  it('saves LLM connection values, masks the key and shows environment hints', async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: 'https://env/v1', model: 'env-model', apiKey: 'k' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
-    expect(screen.getByLabelText(/API key/)).toHaveAttribute('type', 'password');
-    expect(screen.getByLabelText(/Base URL/)).toHaveAttribute('placeholder', 'https://env/v1');
-    await user.type(screen.getByLabelText(/Model/), 'mine');
-    await user.click(screen.getByRole('button', { name: 'Save customization' }));
-    expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '', model: 'mine', apiKey: '' });
-  });
-
-  it('accepts a root-relative same-origin LLM endpoint', async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
-    await user.type(screen.getByLabelText(/Base URL/), '/api');
-    await user.click(screen.getByRole('button', { name: 'Save customization' }));
-    expect(onSave).toHaveBeenCalledWith(expect.anything(), { endpoint: '/api', model: '', apiKey: '' });
-  });
-
-  it('rejects a non-root-relative endpoint path', async () => {
-    const user = userEvent.setup();
-    const onSave = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
-    await user.type(screen.getByLabelText(/Base URL/), 'api');
-    await user.click(screen.getByRole('button', { name: 'Save customization' }));
-    expect(onSave).not.toHaveBeenCalled();
-  });
-
-  it('clears the LLM fields when removing the saved connection', async () => {
-    const user = userEvent.setup();
-    const onClear = vi.fn();
-    const empty = { endpoint: '', model: '', apiKey: '' };
-    function Harness() {
-      const [llm, setLlm] = React.useState({ endpoint: 'https://x', model: 'm', apiKey: 'k' });
-      return <SettingsModal settings={settings} llmReady llm={llm} llmEnvironment={empty} onClearLlm={() => { onClear(); setLlm(empty); }} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />;
-    }
-    render(<Harness />);
-    expect(screen.getByLabelText(/Model/)).toHaveValue('m');
-    await user.click(screen.getByRole('button', { name: 'Remove saved connection' }));
-    expect(onClear).toHaveBeenCalled();
-    expect(screen.getByLabelText(/Base URL/)).toHaveValue('');
-    expect(screen.getByLabelText(/Model/)).toHaveValue('');
-    expect(screen.getByLabelText(/API key/)).toHaveValue('');
+    }));
   });
 
   it('has no axe violations', async () => {
-    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    const { container } = renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     expect(screen.getByRole('dialog', { name: 'Instructions & templates' })).toBeInTheDocument();
     await expectNoAxeViolations(container);
   });
 
   it('moves between tabs with Home and End', async () => {
     const user = userEvent.setup();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
     screen.getByRole('tab', { name: 'General' }).focus();
     await user.keyboard('{End}');
     const tabs = screen.getAllByRole('tab');
@@ -170,23 +129,30 @@ describe('SettingsModal', () => {
     expect(tabs[0]).toHaveFocus();
   });
 
-  it('announces an invalid endpoint on the field', async () => {
-    const user = userEvent.setup();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
-    await user.type(screen.getByLabelText(/Base URL/), 'api');
-    await user.click(screen.getByRole('button', { name: 'Save customization' }));
-    const field = screen.getByLabelText(/Base URL/);
-    expect(field).toHaveAttribute('aria-invalid', 'true');
-    expect(field.getAttribute('aria-describedby')).toContain('llm-endpoint-error');
-    expect(document.getElementById('llm-endpoint-error')).toHaveTextContent(/.+/);
-  });
-
   it('closes on Escape', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
-    render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={vi.fn()} onRestore={vi.fn()} onClose={onClose} onImport={vi.fn()} onExport={vi.fn()} />);
+    renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={onClose} onImport={vi.fn()} onExport={vi.fn()} />);
     await user.click(screen.getByRole('tab', { name: 'General' }));
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows the account and signs out through the auth provider', async () => {
+    const user = userEvent.setup();
+    const auth = testAuth();
+    const { container } = renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />, auth);
+    const account = screen.getByRole('group', { name: 'Account' });
+    expect(account).toHaveTextContent('Alice Owner');
+    expect(account).toHaveTextContent('alice@example.test');
+    await expectNoAxeViolations(container);
+    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    expect(auth.signOut).toHaveBeenCalledOnce();
+  });
+
+  it('explains that the platform manages the session instead of offering sign out', () => {
+    renderSettings(<SettingsModal settings={settings} onSave={vi.fn()} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />, testAuth({ mode: 'platform', canSignOut: false }));
+    expect(screen.getByRole('group', { name: 'Account' })).toHaveTextContent('alice@example.test');
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
   });
 });

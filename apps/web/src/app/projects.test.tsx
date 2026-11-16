@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Projects } from './Projects';
+import { TestAuth } from '../test/auth';
 import { backlogDatabase } from '../infrastructure/storage/database';
 import { serializeProjectBackup } from '../application/project-backup';
 import { defaultUserSettings } from '../infrastructure/storage/SettingsRepository';
@@ -24,7 +25,7 @@ describe('project workspace', () => {
     await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: time, updatedAt: time });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
-    const { container } = render(<Projects />);
+    const { container } = render(<TestAuth><Projects /></TestAuth>);
     await user.click(await screen.findByRole('button', { name: 'Open settings' }));
     expect(screen.queryByText('Agent & settings')).not.toBeInTheDocument();
     await user.clear(screen.getByLabelText('Base refinement principles'));
@@ -58,16 +59,16 @@ describe('project workspace', () => {
       { id: 'beta', name: 'Beta', createdAt: time, updatedAt: time },
     ]);
     const user = userEvent.setup();
-    const { unmount } = render(<Projects />);
+    const { unmount } = render(<TestAuth><Projects /></TestAuth>);
     const selector = await screen.findByLabelText('Choose project');
     await user.selectOptions(selector, 'beta');
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('beta'));
     unmount();
-    const reopened = render(<Projects />);
+    const reopened = render(<TestAuth><Projects /></TestAuth>);
     expect(await screen.findByLabelText('Choose project')).toHaveValue('beta');
     reopened.unmount();
     await backlogDatabase.projects.delete('beta');
-    render(<Projects />);
+    render(<TestAuth><Projects /></TestAuth>);
     expect(await screen.findByLabelText('Choose project')).toHaveValue('alpha');
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
   });
@@ -76,18 +77,9 @@ describe('project workspace', () => {
     const time = '2026-01-01T00:00:00.000Z';
     await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: time, updatedAt: time });
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage unavailable'); });
-    render(<Projects />);
+    render(<TestAuth><Projects /></TestAuth>);
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not remember the selected project: Storage unavailable');
     expect(await screen.findByLabelText('Choose project')).toHaveValue('p');
-  });
-
-  it('discloses the resolved runtime AI endpoint for selected project sources', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-      ok: true, json: async () => ({ endpoint: 'https://proxy.example', model: 'model', streaming: false }),
-    }));
-    await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' });
-    render(<Projects />);
-    expect(await screen.findByText(/0 selected sources sent to https:\/\/proxy\.example/)).toBeInTheDocument();
   });
 
   it('imports a project and imports an existing project as a separate copy', async () => {
@@ -98,7 +90,7 @@ describe('project workspace', () => {
     });
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.spyOn(window, 'prompt').mockReturnValue('copy');
-    const { container } = render(<Projects />);
+    const { container } = render(<TestAuth><Projects /></TestAuth>);
     await screen.findByRole('button', { name: 'Import project' });
     const upload = () => {
       const input = container.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')!;
@@ -117,7 +109,7 @@ describe('project workspace', () => {
   it('creates isolated projects and switches and deletes refinement sessions', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<Projects />);
+    render(<TestAuth><Projects /></TestAuth>);
     const name = await screen.findByLabelText('New project name');
     await user.type(name, 'Alpha');
     await user.click(screen.getByRole('button', { name: 'Create project' }));

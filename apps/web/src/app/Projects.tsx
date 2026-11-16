@@ -8,6 +8,7 @@ import { ProjectPanel } from './ProjectPanel';
 import { projectRepository } from './services';
 import { errorText } from './useNotifications';
 import App from './App';
+import { LegacyDataNotice } from './LegacyDataNotice';
 
 const backups = new ProjectBackupRepository();
 const now = () => new Date().toISOString();
@@ -65,9 +66,9 @@ export function Projects() {
     finally { setBusy(false); }
   }
 
-  function panel(requestBusy: boolean, endpoint: string) {
+  function panel(requestBusy: boolean) {
     const disabled = busy || requestBusy;
-    return <ProjectPanel projects={projects} project={project} sources={sources.filter((source) => source.projectId === project?.id)} busy={disabled} endpoint={endpoint}
+    return <ProjectPanel projects={projects} project={project} sources={sources.filter((source) => source.projectId === project?.id)} busy={disabled}
       onSelect={(next) => { if (!disabled) setProjectId(next); }}
       onCreate={(name) => run(async () => {
         const time = now();
@@ -170,9 +171,10 @@ export function Projects() {
 
   if (loading) return <main className="loading-screen">Opening projects…</main>;
   return <>
+    <LegacyDataNotice />
     {project
       ? <App key={`${project.id}:${workspaceRevision}`} project={project} projectBusy={busy} renderProjectPanel={panel} />
-      : <main>{panel(false, '')}<p>Create or import a project to start a backlog.</p></main>}
+      : <main>{panel(false)}<p>Create or import a project to start a backlog.</p></main>}
     {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><p>{error || notice}</p><button aria-label="Dismiss notification" onClick={() => { setError(''); setNotice(''); }}><span aria-hidden="true">×</span></button></div>}
   </>;
 }

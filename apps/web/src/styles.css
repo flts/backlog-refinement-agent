@@ -2378,3 +2378,79 @@ dialog.modal-dialog::backdrop {
         border: 2px solid ButtonText
     }
 }
+
+.error-screen {
+    text-align: center;
+    padding: 24px
+}
+
+.error-screen h1 {
+    font: 700 1.25rem var(--font-display);
+    color: var(--ink)
+}
+
+.error-screen p {
+    max-width: 60ch;
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--ink)
+}
+
+.account-section {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px 12px 12px;
+    margin: 0 0 12px
+}
+
+.account-section legend {
+    font: 700 0.75rem var(--font-display);
+    padding: 0 6px
+}
+
+.account-details {
+    margin: 0 0 8px;
+    display: grid;
+    gap: 4px
+}
+
+.account-details div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px
+}
+
+.account-details dt {
+    color: var(--muted);
+    min-width: 4rem
+}
+
+.account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere
+}
+
+.legacy-notice {
+    margin: 10px 14px 0;
+    padding: 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--warning-soft);
+    color: var(--warning-text)
+}
+
+.legacy-notice h2 {
+    margin: 0 0 4px;
+    font: 700 0.875rem var(--font-display)
+}
+
+.legacy-notice p {
+    margin: 0 0 8px;
+    font-size: 0.8125rem
+}
+
+.legacy-notice-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px
+}

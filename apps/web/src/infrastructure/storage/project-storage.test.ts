@@ -6,7 +6,6 @@ import { inspectLegacyData, openDatabaseAfterLegacyReset } from './bootstrap';
 import { IndexedDbRefinementStore } from './IndexedDbRefinementStore';
 import { ProjectRepository } from './ProjectRepository';
 import { WorkspaceApplicationService } from '../../application/workspace-service';
-import { RefinementApplicationService } from '../../application/refinement-service';
 import { ProjectBackupRepository } from './ProjectBackupRepository';
 import type { BacklogItem } from '../../domain/backlog-item';
 
@@ -104,18 +103,6 @@ describe('project persistence', () => {
     expect(child.projectId).toBe('a');
     expect(await a.listRelationships()).toContainEqual(expect.objectContaining({ sourceId: 'a1', targetId: child.id, type: 'parent-child' }));
     expect(await a.listSessionsForItem(child.id)).toHaveLength(1);
-    const refinement = new RefinementApplicationService({
-      store: a,
-      provider: { generateAssessment: async () => ({}), generateDecomposition: async () => ({}) },
-      ids: { nextId: () => 'generated-child' },
-    });
-    const [generated] = await refinement.acceptProposal({
-      id: 'proposal', kind: 'decomposition', parentItemId: 'a1', generatedAt: now, rationale: 'Split work',
-      children: [{ proposalId: 'child', type: 'user-story', title: 'generated', description: '' }], relationships: [],
-    });
-    expect(generated.projectId).toBe('a');
-    expect(await a.getItem('generated-child')).toBeDefined();
-    expect(await a.listRelationships()).toContainEqual(expect.objectContaining({ sourceId: 'a1', targetId: 'generated-child', type: 'parent-child' }));
     await expect(workspace.deleteSessionForItem('a1', 's-a2')).rejects.toThrow();
     await expect(workspace.deleteSessionForItem('a1', 's-b')).rejects.toThrow();
     await workspace.deleteSessionForItem('a1', 's-a');

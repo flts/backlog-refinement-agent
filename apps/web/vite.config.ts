@@ -1,10 +1,11 @@
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { devProxy, devRuntimeConfig } from './vite.dev-runtime.ts';
 
 // Serves /config.json from .env.local during development only. Nothing from the
 // environment is compiled into the bundle; production provides runtime configuration.
-function devRuntimeConfig(env: Record<string, string>): Plugin {
+function devRuntimeConfigPlugin(env: Record<string, string>): Plugin {
   return {
     name: 'dev-runtime-config',
     apply: 'serve',
@@ -12,22 +13,20 @@ function devRuntimeConfig(env: Record<string, string>): Plugin {
       server.middlewares.use('/config.json', (_request, response) => {
         response.setHeader('Content-Type', 'application/json');
         response.setHeader('Cache-Control', 'no-store');
-        response.end(JSON.stringify({
-          endpoint: env.LLM_ENDPOINT ?? '',
-          model: env.LLM_MODEL ?? '',
-          streaming: env.LLM_STREAMING === 'true',
-          apiKey: env.LOCAL_LLM_API_KEY ?? '',
-        }));
+        response.end(JSON.stringify(devRuntimeConfig(env)));
       });
     },
   };
 }
 
 export default defineConfig(({ mode }) => {
+  // Empty prefix: also reads process.env, which is where Aspire injects service URLs.
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [react(), devRuntimeConfig(env)],
+    plugins: [react(), devRuntimeConfigPlugin(env)],
     base: './',
+    server: { ...(env.PORT ? { port: Number(env.PORT) } : {}), proxy: devProxy(env) },
+    preview: { proxy: devProxy(env) },
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',

@@ -1,40 +1,41 @@
 import { act, renderHook } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BacklogItem } from '../domain/backlog-item';
-import type { RefinementApplicationService } from '../application/refinement-service';
 import type { Backlog } from './useBacklog';
-import { useRefinementFlow } from './useRefinementFlow';
+import { agentNotConnectedNotice, useRefinementFlow } from './useRefinementFlow';
 
-describe('manual refinement status changes', () => {
+afterEach(() => localStorage.clear());
+
+function setup(item: Partial<BacklogItem> = { id: 'item', status: 'draft' }) {
+  const updateSelected = vi.fn().mockResolvedValue(true);
+  const setError = vi.fn();
+  const setNotice = vi.fn();
+  const backlog = { selectedItem: item, session: { id: 'session' }, updateSelected } as unknown as Backlog;
+  const { result } = renderHook(() => useRefinementFlow(backlog, { error: '', notice: '', clear: vi.fn(), setError, setNotice }));
+  return { result, updateSelected, setError, setNotice };
+}
+
+describe('manual status changes', () => {
   it('moves a draft through refining before marking it ready', async () => {
-    const item = { id: 'item', status: 'draft' } as BacklogItem;
-    const beginRefinement = vi.fn().mockResolvedValue({ ...item, status: 'refining' });
-    const updateSelected = vi.fn().mockResolvedValue(true);
-    const setItems = vi.fn();
-    const setError = vi.fn();
-    const backlog = { selectedItem: item, session: { id: 'session' }, setItems, updateSelected } as unknown as Backlog;
-    const refinement = { beginRefinement } as unknown as RefinementApplicationService;
-    const { result } = renderHook(() => useRefinementFlow(backlog, refinement, { error: '', notice: '', clear: vi.fn(), setError, setNotice: vi.fn() }));
-
+    const { result, updateSelected, setError } = setup();
     await act(() => result.current.changeSelectedStatus('ready'));
-
-    expect(beginRefinement).toHaveBeenCalledWith('session');
-    expect(beginRefinement.mock.invocationCallOrder[0]).toBeLessThan(updateSelected.mock.invocationCallOrder[0]);
-    expect(updateSelected).toHaveBeenCalledWith({ status: 'ready' });
-    expect(setItems).toHaveBeenCalledOnce();
+    expect(updateSelected.mock.calls).toEqual([[{ status: 'refining' }], [{ status: 'ready' }]]);
     expect(setError).not.toHaveBeenCalled();
   });
 
-  it.each(['ready', 'ready-with-open-questions', 'complete'] as const)(
-    'allows %s to return to refining even while the session is loading',
-    async (status) => {
-      const updateSelected = vi.fn().mockResolvedValue(true);
-      const backlog = { selectedItem: { id: 'item', status }, updateSelected } as unknown as Backlog;
-      const { result } = renderHook(() => useRefinementFlow(backlog, {} as RefinementApplicationService, { error: '', notice: '', clear: vi.fn(), setError: vi.fn(), setNotice: vi.fn() }));
+  it.each(['ready', 'ready-with-open-questions', 'complete'] as const)('allows %s to return to refining', async (status) => {
+    const { result, updateSelected } = setup({ id: 'item', status });
+    await act(() => result.current.changeSelectedStatus('refining'));
+    expect(updateSelected).toHaveBeenCalledWith({ status: 'refining' });
+  });
+});
 
-      await act(() => result.current.changeSelectedStatus('refining'));
-
-      expect(updateSelected).toHaveBeenCalledWith({ status: 'refining' });
-    },
-  );
+describe('agent not connected yet', () => {
+  it('shows a non-blocking notice instead of calling an LLM', async () => {
+    const { result, setNotice, setError } = setup();
+    await act(() => result.current.submitMessage());
+    expect(setNotice).toHaveBeenCalledWith(agentNotConnectedNotice);
+    expect(setError).toHaveBeenCalledWith('');
+    expect(result.current.busy).toBe(false);
+  });
 });
