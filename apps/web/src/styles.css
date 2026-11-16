@@ -2464,3 +2464,62 @@ dialog.modal-dialog::backdrop {
     font-size: 0.75rem;
     font-weight: 600
 }
+
+/* --- fe-project-settings --- */
+dialog.modal-dialog:has(.project-settings) { width: min(960px, calc(100% - 36px)) }
+.project-settings { width: min(960px, 100%); min-height: min(640px, calc(100dvh - 36px)) }
+.project-settings-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 20px; flex: 1; min-height: 0 }
+.project-settings .settings-nav { display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--line); padding-right: 10px }
+.project-settings .settings-nav .settings-tab { text-align: left; border-bottom: 0; border-left: 2px solid transparent; margin: 0; border-radius: 0; display: flex; align-items: center; justify-content: space-between; gap: 6px }
+.project-settings .settings-nav .settings-tab.active { border-left-color: var(--accent-border); background: var(--green-soft) }
+.project-settings .settings-body { padding: 0 4px 0 0 }
+.project-settings .settings-body h3 { font: 700 1rem var(--font-display); margin: 4px 0 10px }
+.project-settings .settings-body h4 { font-size: 0.8125rem; margin: 0 0 6px }
+.unsaved-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--violet-text); flex-shrink: 0 }
+.readonly-note { background: var(--warning-soft); color: var(--warning-text) !important; border-radius: 7px; padding: 8px 10px; margin: 0 0 12px !important }
+.settings-block { border: 1px solid var(--line); border-radius: 9px; padding: 12px 14px; margin: 0 0 14px }
+.settings-inline { display: flex; gap: 8px; align-items: center }
+.settings-inline input { flex: 1 }
+.settings-check { display: flex !important; align-items: center; gap: 8px; font-weight: 400 !important }
+.settings-check input { width: auto !important }
+.danger-zone { border-color: var(--danger-border); background: var(--danger-soft) }
+.button-danger { background: var(--panel); border-color: var(--danger); color: var(--danger) }
+.button-danger:hover:not(:disabled) { background: var(--danger-soft) }
+.guidance-editor { margin: 0 0 22px }
+.guidance-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px }
+.guidance-head label { margin: 0 !important }
+.guidance-badges { list-style: none; display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0 }
+.badge { display: inline-block; border: 1px solid var(--border-control); border-radius: 999px; padding: 2px 8px; font-size: 0.6875rem; font-weight: 600; color: var(--muted); background: var(--panel) }
+.badge-override { color: var(--violet-text); background: var(--violet-soft); border-color: var(--violet-text) }
+.badge-differs, .badge-outdated { color: var(--warning-text); background: var(--warning-soft); border-color: var(--warning-text) }
+.badge-unsaved { color: var(--ink); border-style: dashed }
+.guidance-text { font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important; line-height: 1.5 !important }
+.guidance-text[readonly] { background: var(--panel-subtle) }
+.guidance-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px }
+.guidance-meta { font-size: 0.75rem; color: var(--muted); margin: 0 }
+.guidance-issues { border: 1px solid var(--danger-border); background: var(--danger-soft); color: var(--danger); border-radius: 7px; padding: 8px 12px; margin-top: 8px; font-size: 0.75rem }
+.guidance-issues p { margin: 0 0 4px }
+.guidance-issues ul { margin: 0; padding-left: 18px }
+.diff-view, .diff-empty { margin-top: 10px; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; font-size: 0.75rem }
+.diff-empty { padding: 8px 10px; color: var(--muted) }
+.diff-legend { display: flex; gap: 14px; margin: 0; padding: 6px 10px; background: var(--panel-subtle); border-bottom: 1px solid var(--line); color: var(--muted) }
+.diff-lines { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; max-height: 260px; overflow: auto }
+.diff-line { display: flex; gap: 8px; padding: 1px 10px; white-space: pre-wrap; overflow-wrap: anywhere }
+.diff-marker { width: 1ch; flex-shrink: 0; font-weight: 700 }
+.diff-add { background: var(--green-soft); color: var(--accent-text) }
+.diff-remove { background: var(--danger-soft); color: var(--danger) }
+.diff-skip { color: var(--muted); font-style: italic; background: var(--panel-subtle) }
+.document-format { margin-top: 8px }
+.document-format-text { white-space: pre-wrap; font-size: 0.75rem; background: var(--panel-subtle); padding: 10px; border-radius: 7px; max-height: 220px; overflow: auto }
+.member-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px }
+.member-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 0.8125rem }
+.member-name { flex: 1; min-width: 0; overflow-wrap: anywhere }
+.member-email { display: block; color: var(--muted); font-size: 0.75rem }
+.settings-project-link { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 10px }
+.settings-project-link h3 { font-size: 0.9375rem; margin: 0 0 4px }
+@media (max-width: 720px) {
+    .project-settings-layout { grid-template-columns: 1fr }
+    .project-settings .settings-nav { flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); padding: 0 0 6px }
+    .project-settings .settings-nav .settings-tab { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap }
+    .project-settings .settings-nav .settings-tab.active { border-bottom-color: var(--accent-border) }
+}

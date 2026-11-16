@@ -68,7 +68,7 @@ export function createFakeBacklogApi(seed: { projects?: Project[]; items?: Item[
     if (path === '/projects/import' && method === 'POST') {
       const project = makeProject({ id: ids('p'), name: 'Imported' });
       state.projects.push(project);
-      return json(project, 201);
+      return json({ project, counts: { items: 0, revisions: 0, relationships: 0, sources: 0, files: 0, guidanceOverrides: 0 } }, 201);
     }
     if ((m = /^\/projects\/([^/]+)$/.exec(path))) {
       const project = state.projects.find((entry) => entry.id === m![1]);

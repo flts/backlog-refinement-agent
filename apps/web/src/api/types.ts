@@ -23,5 +23,9 @@ export type EffectiveGuidance = Schemas['EffectiveGuidanceOut'];
 export type GuidanceEntry = Schemas['GuidanceEntryOut'];
 export type DefaultGuidance = Schemas['DefaultGuidanceOut'];
 export type GuidanceWrite = Schemas['GuidanceWrite'];
+export type DefaultGuidanceEntry = Schemas['DefaultEntryOut'];
+export type GuidanceExport = Schemas['GuidanceExport'];
+export type BackupDocument = Schemas['BackupDocument'];
+export type ProjectImport = Schemas['ProjectImportOut'];
 /** Kinds with a per-item-type override; `principles` has its own endpoints. */
 export type TypedGuidanceKind = 'type-instructions' | 'template';
