@@ -95,6 +95,9 @@ class Settings(BaseSettings):
     source_pinned_budget_chars: int = Field(
         default=100_000, ge=1, description="Maximum total characters of pinned sources per project."
     )
+    backup_max_bytes: int = Field(
+        default=50 * MiB, ge=1024, description="Maximum size of a project backup (export and import)."
+    )
     url_fetch_allow_http: bool = Field(
         default=False, description="Also allow plain http:// source URLs. Only honoured when BACKLOG_ENV=development."
     )

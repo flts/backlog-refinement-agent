@@ -3745,6 +3745,180 @@
           }
         }
       }
+    },
+    "/api/backlog/projects/{project_id}/backup": {
+      "get": {
+        "tags": [
+          "backup"
+        ],
+        "summary": "Export the project as a backup file, format v2 (owners)",
+        "description": "A JSON document (`format: backlog-project-backup`, `formatVersion: 2`) with the project name, guidance overrides, items with their revisions, relationships and sources with their original files (base64). Members, conversations, the audit log and search indexes are not included. Answers 413 `backup-too-large` when the document would exceed the configured limit (default 50 MiB).",
+        "operationId": "export_project_backup",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The backup document.",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/import": {
+      "post": {
+        "tags": [
+          "backup"
+        ],
+        "summary": "Create a new project from a backup file (you become its owner)",
+        "description": "The request body is the backup JSON (`application/json`, up to the backup limit, default 50 MiB). Accepts format `backlog-project-backup` version 2 and, mapped to it, the single-user app's version 1 export (`backlog-refinement-project`; conversations are dropped and v1 revisions become manual revisions). The whole document is validated first (422 `invalid-backup` lists the problems, 422 `unsupported-format` for other formats); then one new project is created in a single transaction. Members are never imported. Source and item indexing is queued.",
+        "operationId": "import_project_backup",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupDocument"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectImportOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsupported Media Type",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4122,6 +4296,44 @@
           "content"
         ],
         "title": "GuidanceWrite"
+      },
+      "ImportCountsOut": {
+        "properties": {
+          "items": {
+            "type": "integer",
+            "title": "Items"
+          },
+          "revisions": {
+            "type": "integer",
+            "title": "Revisions"
+          },
+          "relationships": {
+            "type": "integer",
+            "title": "Relationships"
+          },
+          "sources": {
+            "type": "integer",
+            "title": "Sources"
+          },
+          "files": {
+            "type": "integer",
+            "title": "Files"
+          },
+          "guidanceOverrides": {
+            "type": "integer",
+            "title": "Guidanceoverrides"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "revisions",
+          "relationships",
+          "sources",
+          "files",
+          "guidanceOverrides"
+        ],
+        "title": "ImportCountsOut"
       },
       "ItemCreate": {
         "properties": {
@@ -4624,6 +4836,23 @@
           "name"
         ],
         "title": "ProjectCreate"
+      },
+      "ProjectImportOut": {
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/ProjectOut"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ImportCountsOut",
+            "description": "What was created in the new project."
+          }
+        },
+        "type": "object",
+        "required": [
+          "project",
+          "counts"
+        ],
+        "title": "ProjectImportOut"
       },
       "ProjectList": {
         "properties": {
