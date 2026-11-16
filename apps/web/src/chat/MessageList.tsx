@@ -2,7 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import type { RunState, TranscriptEntry } from '../run';
 import { ActivityTimeline } from './ActivityTimeline';
 import { isActivityEntry, type ActivityRowEntry } from './activity';
+import type { FeedbackRating } from '../agent';
 import { MarkdownMessage } from './MarkdownMessage';
+import { MessageActions } from './MessageActions';
 import { RunErrorCard } from './RunErrorCard';
 
 export interface MessageListProps {
@@ -15,6 +17,8 @@ export interface MessageListProps {
   children?: ReactNode;
   /** Changes when another conversation opens: scrolls to the end again. */
   resetKey?: string;
+  /** Rates an assistant message (AG-UI message id); without it assistant messages only get a copy button. */
+  onFeedback?: (messageId: string, rating: FeedbackRating, comment?: string) => Promise<unknown>;
 }
 
 type Block =
@@ -42,7 +46,7 @@ export function buildBlocks(messages: TranscriptEntry[]): Block[] {
 
 const NEAR_BOTTOM = 48;
 
-export function MessageList({ run, canRetry = false, busy = false, onRetry, children, resetKey }: MessageListProps) {
+export function MessageList({ run, canRetry = false, busy = false, onRetry, children, resetKey, onFeedback }: MessageListProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const stuck = useRef(true);
   const [away, setAway] = useState(false);
@@ -112,6 +116,7 @@ export function MessageList({ run, canRetry = false, busy = false, onRetry, chil
               <div className="message-content">
                 <span className="message-author">Refinement agent</span>
                 <MarkdownMessage text={entry.text} streaming={entry.streaming} />
+                {!entry.streaming && <MessageActions text={entry.text} onFeedback={onFeedback && ((rating, comment) => onFeedback(entry.id, rating, comment))} />}
               </div>
             </div>
           );

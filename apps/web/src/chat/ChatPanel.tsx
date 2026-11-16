@@ -1,12 +1,14 @@
 import React from 'react';
 import type { Item, ItemSummary } from '../api';
-import type { Thread } from '../agent';
-import type { AskUserResult } from '../contracts';
+import type { FeedbackRating, Thread } from '../agent';
+import type { AskUserResult, NextAction } from '../contracts';
 import type { RunState } from '../run';
 import { useRunAnnouncements } from './announcements';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { AskUserPlaceholder, ReviewPlaceholder } from './placeholders';
+import { SessionTitle } from './SessionTitle';
+import { SuggestionChips } from './SuggestionChips';
 import { ThreadPicker } from './ThreadPicker';
 
 export type ChatPanelProps = {
@@ -35,14 +37,19 @@ export type ChatPanelProps = {
   /** Placeholder for the ReviewCard (fe-review-ui): approves or rejects every pending proposal. */
   onDecideAll: (approved: boolean) => void;
   onCreateItem: () => void;
+  /** A next-step chip was chosen (`message` → send its prompt, other intents → continue with that intent). */
+  onSuggestion?: (action: NextAction) => void;
+  /** Rates an assistant message of the active thread. */
+  onFeedback?: (messageId: string, rating: FeedbackRating, comment?: string) => Promise<unknown>;
 };
 
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, threads, activeThreadId, run, busy, canRetry, message,
-    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem } = props;
+    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback } = props;
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
+  const activeThread = threads.find((thread) => thread.id === activeThreadId);
   const reason = running ? 'The agent is working. Press Esc to stop it.' : hydrating ? 'Loading the conversation…' : undefined;
 
   return (
@@ -51,6 +58,7 @@ export function ChatPanel(props: ChatPanelProps) {
         <div className="refine-heading">
           <div>
             <h2 className="eyebrow">Refinement workspace</h2>
+            <SessionTitle thread={activeThread} disabled={busy} onRename={onRenameThread} />
           </div>
           <div className="heading-actions">
             <ThreadPicker threads={threads} activeThreadId={activeThreadId} disabled={busy} onSelect={onSelectThread} onCreate={onNewThread} onRename={onRenameThread} onDelete={onDeleteThread} />
@@ -61,8 +69,9 @@ export function ChatPanel(props: ChatPanelProps) {
         {run.messages.length === 0 && !hydrating && run.phase !== 'running' && (
           <div className="welcome-card"><div className="agent-icon" aria-hidden="true">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span aria-hidden="true">↳</span> What outcome should this work make possible?</div></div></div>
         )}
-        <MessageList run={run} canRetry={canRetry} busy={busy} onRetry={onRetry} resetKey={`${item.id}:${activeThreadId ?? ''}`}>
+        <MessageList run={run} canRetry={canRetry} busy={busy} onRetry={onRetry} resetKey={`${item.id}:${activeThreadId ?? ''}`} onFeedback={onFeedback}>
           {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserPlaceholder key={run.pendingAskUser.toolCallId} run={run} disabled={busy} onAnswer={onAnswer} />}
+          {run.phase === 'idle' && onSuggestion && <SuggestionChips actions={run.agentState.nextActions} disabled={busy} onSelect={onSuggestion} />}
           {run.phase === 'awaitingReview' && <ReviewPlaceholder run={run} disabled={busy} onDecideAll={onDecideAll} />}
         </MessageList>
         <div className="composer-wrap">
