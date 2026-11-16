@@ -1,0 +1,35 @@
+# MCP server bindings for the agents (agents/*.agent.md reference them with `mcp: [<name>]`).
+#
+# - url: ${VAR} and ${VAR:-default} are replaced from the environment. AGENT_BACKLOG_API_URL is the base URL of
+#   backlog-api (also resolved from the Aspire service discovery variables) without the /api/backlog suffix.
+# - transport: streamable_http (the only supported transport).
+# - auth: user_token (default) sends the caller's own bearer token, so the agent never exceeds the user's rights.
+# - allowed_tools: the only tools of the server the model is offered.
+# - hidden_tools: tools that exist on the server but are never offered to the model. Only our own agent tools call
+#   them (agent_service.mcp_client.current_mcp().call(...)), after the user approved a proposal.
+version: 1
+
+mcp:
+  backlog:
+    url: ${AGENT_BACKLOG_API_URL}/api/backlog/mcp
+    transport: streamable_http
+    auth: user_token
+    allowed_tools:
+      - get_item_context
+      - get_project_guidance
+      - get_pinned_sources
+      - search_sources
+      - find_similar_items
+    hidden_tools:
+      - apply_document_changes
+      - create_child_items
+      - set_item_quality
+
+  # Example for a later integration (not enabled): a Jira MCP server whose read tools the model may use.
+  # jira:
+  #   url: ${AGENT_JIRA_MCP_URL}
+  #   transport: streamable_http
+  #   auth: none
+  #   allowed_tools:
+  #     - search_issues
+  #     - get_issue

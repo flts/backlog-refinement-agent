@@ -15,9 +15,10 @@ from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
 
 from agent_service import __version__
-from agent_service.agents import AgentRegistry, build_placeholder_registry
+from agent_service.agents import AgentRegistry
 from agent_service.agents.endpoint import mount_agent_endpoint
-from agent_service.api import health, threads
+from agent_service.agents.loader import registry_factory as default_registry_factory
+from agent_service.api import agents, health, threads
 from agent_service.auth.dependencies import Authenticator, DevHeaderAuthenticator, JwtAuthenticator
 from agent_service.auth.tokens import JwksKeySource, KeySource, TokenVerifier
 from agent_service.backlog import BacklogClient
@@ -68,8 +69,8 @@ def create_app(
     """Build the app.
 
     ``key_source`` (JWKS), ``registry_factory`` (builds the agents from the settings and the snapshot store; default:
-    the placeholder echo agent) and the HTTP transports of the backlog-api / LLM readiness clients can be injected
-    (tests, the later agent loader).
+    the agent loader, i.e. ``agents/*.agent.md`` + ``tools/tools.yaml``) and the HTTP transports of the backlog-api /
+    LLM readiness clients can be injected (tests).
     """
     settings = settings or Settings()
     if configure_logs:
@@ -127,7 +128,7 @@ def create_app(
     )
     app.state.settings = settings
     app.state.snapshot_store = snapshot_store
-    factory = registry_factory or build_placeholder_registry
+    factory = registry_factory or default_registry_factory
     app.state.agents = factory(settings, snapshot_store) if settings.llm_base_url else AgentRegistry()
 
     install_problem_handlers(app)
@@ -151,6 +152,7 @@ def create_app(
     app.include_router(health.router, include_in_schema=False)
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(threads.router, prefix=API_PREFIX)
+    app.include_router(agents.router, prefix=API_PREFIX)
     mount_agent_endpoint(app, app.state.agents, snapshot_store=snapshot_store, settings=settings)
 
     def openapi() -> dict[str, Any]:

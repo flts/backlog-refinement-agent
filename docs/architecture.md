@@ -336,6 +336,8 @@ output_schema: schemas/refinement-proposal.json
 
 The Markdown body contains the agent's core instructions.
 
+Implemented in `services/agent-service`: `agents/<id>.agent.md` (frontmatter: `id`, `name`, `description`, `model?` alias, `temperature?`, `max_turns?`, `max_tool_calls?`, `skills`, `tools`, `mcp`, `client_tools`, `context_providers`, `predict_state`) and `tools/tools.yaml` (MCP servers: `url` with `${VAR}` interpolation, `transport: streamable_http`, `auth: user_token`, `allowed_tools` offered to the model, `hidden_tools` callable only by our own tools). `GET /api/agent/agents` is the catalogue (`id`, `name`, `description`, `version` = git sha); with `AGENT_ENV=development` definitions, tools.yaml and skills hot reload. Per run the loader opens the backlog MCP connection with the user's token, injects the item context, pinned sources, the request intent and the project's guidance overrides (as skills), and emits `STEP_*` rows for the timeline. See `services/agent-service/README.md`.
+
 The declarative format should remain framework-neutral. A loader translates these definitions into Microsoft Agent Framework agents at runtime.
 
 This prevents the git-based agent definitions from becoming tightly coupled to Microsoft Agent Framework.

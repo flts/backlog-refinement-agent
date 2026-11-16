@@ -35,12 +35,16 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHONUNBUFFERED=1 \
     AGENT_ALEMBIC_INI=/app/alembic.ini \
     AGENT_SKILLS_DIR=/app/skills \
+    AGENT_AGENTS_DIR=/app/agents \
+    AGENT_TOOLS_FILE=/app/tools/tools.yaml \
     BACKLOG_SKILLS_DIR=/app/skills \
     BACKLOG_CONTRACTS_DIR=/app/contracts
 WORKDIR /app
 COPY --from=build --chown=app:app /app/.venv /app/.venv
 COPY --chown=app:app services/agent-service/alembic.ini /app/alembic.ini
 COPY --chown=app:app services/agent-service/migrations /app/migrations
+COPY --chown=app:app services/agent-service/agents /app/agents
+COPY --chown=app:app services/agent-service/tools/tools.yaml /app/tools/tools.yaml
 COPY --chown=app:app skills /app/skills
 COPY --chown=app:app contracts/schemas /app/contracts/schemas
 USER 10001:10001

@@ -24,13 +24,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+from agent_service.agents import build_placeholder_registry
 from agent_service.auth.tokens import StaticKeySource
 from agent_service.db.connection_strings import to_async_database_url
 from agent_service.db.migrate import upgrade_database
 from agent_service.main import create_app
 from agent_service.settings import Settings
 from agent_service_testkit import TEST_AUDIENCE, TEST_ISSUER, TokenFactory
-from fakes.server import running_fake_gateway
+from fakes.server import running_fake_gateway, running_fake_mcp
 
 POSTGRES_IMAGE = "pgvector/pgvector:pg17"
 BACKLOG_URL = "http://backlog-api.test"
@@ -97,6 +98,21 @@ async def gateway(gateway_url: str) -> AsyncIterator[httpx.AsyncClient]:
         await control.post("/_reset")
 
 
+@pytest.fixture(scope="session")
+def mcp_url() -> Iterator[str]:
+    with running_fake_mcp() as url:
+        yield url
+
+
+@pytest.fixture
+async def mcp(mcp_url: str) -> AsyncIterator[httpx.AsyncClient]:
+    """Control client of the fake backlog MCP server (``/_config``, ``/_calls``, ``/_http_log``)."""
+    async with httpx.AsyncClient(base_url=mcp_url, timeout=10) as control:
+        await control.post("/_reset")
+        yield control
+        await control.post("/_reset")
+
+
 @dataclass
 class BacklogMock:
     """Fake backlog-api: every project / item exists unless listed in ``missing``; requests are recorded."""
@@ -154,6 +170,7 @@ async def app(
     application = create_app(
         settings,
         key_source=StaticKeySource(tokens.jwks),
+        registry_factory=build_placeholder_registry,
         backlog_transport=httpx.MockTransport(backlog.handler),
         configure_logs=False,
     )
