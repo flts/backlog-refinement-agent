@@ -4,6 +4,7 @@ import {
   conformToTemplate,
   diffDocuments,
   parseChecklistSections,
+  splitSections,
   updateChecklistLine,
 } from "./document";
 
@@ -65,5 +66,13 @@ describe("document helpers", () => {
     expect(document).toContain("## Open questions\n- [ ] Q1\n- [ ] Q2");
     expect(document).toContain("## Additional notes\n### Notes\nN");
     expect(extraHeadings).toEqual(["Notes"]);
+  });
+  it("parses headings in linear time on long whitespace runs", () => {
+    const hostile = `## a${" ".repeat(50_000)}x\u2028`;
+    const started = performance.now();
+    expect(splitSections(`${hostile}\nbody`).sections).toEqual([{ heading: `a${" ".repeat(50_000)}x`, body: "body" }]);
+    expect(parseChecklistSections(`## Open questions${" ".repeat(50_000)}#\n- [ ] Who?`)).toHaveLength(1);
+    expect(splitSections("##  Title  ## \nbody").sections).toEqual([{ heading: "Title", body: "body" }]);
+    expect(performance.now() - started).toBeLessThan(1000);
   });
 });

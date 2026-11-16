@@ -33,7 +33,33 @@ export interface ChecklistEntry {
   line: number;
 }
 
-const headingPattern = /^##\s+(.+?)\s*#*\s*$/;
+const whitespace = /\s/;
+const lineTerminator = /[\n\r\u2028\u2029]/;
+
+/**
+ * Title of a level-2 heading line (group 1 of `/^##\s+(.+?)\s*#*\s*$/`), or undefined. Scans in linear time:
+ * that regular expression backtracks cubically on long whitespace runs. Mirrors `_heading_title` in backlog-api.
+ */
+function headingTitle(line: string): string | undefined {
+  if (!line.startsWith("##")) return undefined;
+  const length = line.length;
+  let lead = 2;
+  while (lead < length && whitespace.test(line[lead])) lead += 1;
+  if (lead === 2) return undefined;
+  let tail = length;
+  while (tail > 2 && whitespace.test(line[tail - 1])) tail -= 1;
+  while (tail > 2 && line[tail - 1] === "#") tail -= 1;
+  while (tail > 2 && whitespace.test(line[tail - 1])) tail -= 1;
+  if (lead < length) {
+    const title = line.slice(lead, Math.max(tail, lead + 1));
+    return lineTerminator.test(title) ? undefined : title;
+  }
+  for (let index = length - 1; index > 2; index -= 1) {
+    if (!lineTerminator.test(line[index])) return line[index];
+  }
+  return undefined;
+}
+
 const taskPattern = /^(\s*[-*]\s+)\[( |x|X)\]\s?(.*)$/;
 const assumptionHeading = /assumption|aanname/i;
 const questionHeading = /open\s+question|open\s+vra|openstaande\s+vra/i;
@@ -49,8 +75,8 @@ export function splitSections(document: string): SplitDocument {
   let inFence = false;
   for (const line of lines) {
     if (/^\s*```/.test(line)) inFence = !inFence;
-    const match = inFence ? null : headingPattern.exec(line);
-    if (match) sections.push({ heading: match[1].trim(), lines: [] });
+    const heading = inFence ? undefined : headingTitle(line);
+    if (heading !== undefined) sections.push({ heading: heading.trim(), lines: [] });
     else (sections.length ? sections[sections.length - 1].lines : preamble).push(line);
   }
   return {
@@ -135,9 +161,9 @@ export function parseChecklistSections(document: string): ChecklistEntry[] {
   const entries: ChecklistEntry[] = [];
   let kind: ChecklistKind | undefined;
   lines.forEach((line, index) => {
-    const heading = headingPattern.exec(line);
-    if (heading) {
-      kind = questionHeading.test(heading[1]) ? "question" : assumptionHeading.test(heading[1]) ? "assumption" : undefined;
+    const heading = headingTitle(line);
+    if (heading !== undefined) {
+      kind = questionHeading.test(heading) ? "question" : assumptionHeading.test(heading) ? "assumption" : undefined;
       return;
     }
     const task = kind ? taskPattern.exec(line) : null;
