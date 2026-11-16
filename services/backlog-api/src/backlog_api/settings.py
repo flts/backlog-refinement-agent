@@ -8,7 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import AliasChoices, Field, PrivateAttr, model_validator
+from pydantic import AliasChoices, Field, PrivateAttr, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
@@ -102,6 +102,52 @@ class Settings(BaseSettings):
     url_fetch_max_bytes: int = Field(default=2 * MiB, ge=1024, description="Maximum response size of a URL fetch.")
     url_fetch_max_redirects: int = Field(default=3, ge=0, le=10, description="Maximum redirects followed per fetch.")
 
+    # --- indexing ---
+    worker_enabled: bool = Field(
+        default=True, description="Run the indexing worker inside the API process (BACKLOG_WORKER_ENABLED)."
+    )
+    worker_poll_seconds: float = Field(default=2.0, gt=0, description="Idle poll interval of the job worker.")
+    worker_batch_size: int = Field(default=5, ge=1, description="Jobs claimed per worker poll.")
+    job_max_attempts: int = Field(default=5, ge=1, description="Attempts of a job before it is marked failed.")
+    job_retry_backoff_seconds: float = Field(
+        default=5.0, ge=0, description="Base of the exponential retry backoff of failed jobs."
+    )
+    item_index_debounce_seconds: float = Field(
+        default=10.0, ge=0, description="Delay before a changed item is (re-)embedded; edits within it are coalesced."
+    )
+    llm_base_url: str | None = Field(
+        default=None, description="OpenAI-compatible gateway base URL (BACKLOG_LLM_BASE_URL); fallback for embeddings."
+    )
+    llm_api_key: SecretStr | None = Field(default=None, description="Gateway API key (BACKLOG_LLM_API_KEY).")
+    embedding_base_url: str | None = Field(
+        default=None, description="Embedding endpoint base URL; falls back to BACKLOG_LLM_BASE_URL."
+    )
+    embedding_api_key: SecretStr | None = Field(
+        default=None, description="Embedding API key; falls back to BACKLOG_LLM_API_KEY."
+    )
+    embedding_model: str = Field(default="text-embedding", description="Embedding model name sent to the gateway.")
+    embedding_dim: int = Field(
+        default=1536,
+        ge=1,
+        le=2000,
+        description=(
+            "Dimension of the stored vectors. Fixed in the database column when migration 0006 runs; changing it "
+            "needs a new migration and a reindex."
+        ),
+    )
+    embedding_send_dimensions: bool = Field(
+        default=False, description="Send `dimensions` in embedding requests (for models that support truncation)."
+    )
+    embedding_batch_size: int = Field(default=32, ge=1, le=2048, description="Texts per embedding request.")
+    embedding_timeout_seconds: float = Field(default=30.0, gt=0)
+    embedding_max_retries: int = Field(default=2, ge=0, le=10, description="Retries of one embedding request.")
+    embedding_retry_backoff_seconds: float = Field(default=0.5, ge=0)
+    chunk_target_chars: int = Field(
+        default=3200, ge=200, description="Target characters per source chunk (~800 tokens)."
+    )
+    chunk_overlap_ratio: float = Field(default=0.15, ge=0, lt=0.5, description="Overlap between consecutive chunks.")
+    item_embedding_max_chars: int = Field(default=12_000, ge=200, description="Document characters embedded per item.")
+
     _database_url: URL | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")
@@ -129,6 +175,15 @@ class Settings(BaseSettings):
         if self.auto_migrate is not None:
             return self.auto_migrate
         return self.env == "development"
+
+    @property
+    def effective_embedding_base_url(self) -> str | None:
+        return (self.embedding_base_url or self.llm_base_url or "").strip().rstrip("/") or None
+
+    @property
+    def effective_embedding_api_key(self) -> str | None:
+        key = self.embedding_api_key or self.llm_api_key
+        return key.get_secret_value() if key else None
 
     @property
     def issuer(self) -> str | None:

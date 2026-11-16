@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -14,13 +15,16 @@ from fastapi.routing import APIRoute
 
 from backlog_api import __version__
 from backlog_api.api import guidance, health, items, me, projects
+from backlog_api.api import search as search_api
 from backlog_api.api import sources as sources_api
 from backlog_api.auth.dependencies import Authenticator, DevHeaderAuthenticator, JwtAuthenticator
 from backlog_api.auth.directory import UserDirectory
 from backlog_api.auth.tokens import JwksKeySource, KeySource, TokenVerifier
 from backlog_api.db.migrate import upgrade_database
 from backlog_api.db.session import Database
+from backlog_api.embeddings import EmbeddingClient
 from backlog_api.events import EventPublisher, InProcessEventPublisher
+from backlog_api.indexing import configure_item_debounce
 from backlog_api.middleware import (
     MULTIPART_OVERHEAD_BYTES,
     SOURCES_PATH,
@@ -30,6 +34,7 @@ from backlog_api.middleware import (
 from backlog_api.observability import configure_logging
 from backlog_api.problems import PROBLEM_CONTENT_TYPE, Problem, install_problem_handlers
 from backlog_api.settings import API_PREFIX, Settings
+from backlog_api.worker import IndexingWorker
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +77,8 @@ def create_app(
         database_url = settings.require_runtime_config()
         database = Database(database_url, pool_size=settings.db_pool_size, max_overflow=settings.db_max_overflow)
         authenticator: Authenticator | None = None
+        worker_stop: asyncio.Event | None = None
+        worker_task: asyncio.Task[None] | None = None
         skills = load_skills(settings.skills_dir)
         skills.default_guidance()  # fail fast when a required skill, version or template is missing or invalid
         try:
@@ -83,9 +90,25 @@ def create_app(
             app.state.skills = skills
             app.state.authenticator = authenticator
             app.state.user_directory = UserDirectory(database.sessionmaker, settings.user_directory_refresh_seconds)
+            # --- indexing ---
+            app.state.embedder = EmbeddingClient.from_settings(settings)
+            configure_item_debounce(settings.item_index_debounce_seconds)
+            if settings.worker_enabled:
+                worker_stop = asyncio.Event()
+                worker = IndexingWorker(database.sessionmaker, settings, app.state.embedder, app.state.events)
+                worker_task = asyncio.create_task(worker.run_forever(worker_stop), name="indexing-worker")
             logger.info("backlog-api started", extra={"auth_mode": settings.auth_mode, "env": settings.env})
             yield
         finally:
+            if worker_stop is not None and worker_task is not None:
+                worker_stop.set()
+                try:
+                    await asyncio.wait_for(worker_task, timeout=10)
+                except (TimeoutError, asyncio.CancelledError):
+                    worker_task.cancel()
+            embedder: EmbeddingClient | None = getattr(app.state, "embedder", None)
+            if embedder is not None:
+                await embedder.aclose()
             if authenticator is not None:
                 await authenticator.aclose()
             await database.dispose()
@@ -122,6 +145,7 @@ def create_app(
     app.include_router(guidance.router, prefix=API_PREFIX)
     app.include_router(sources_api.router, prefix=API_PREFIX)
     app.include_router(items.router, prefix=API_PREFIX)
+    app.include_router(search_api.router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
