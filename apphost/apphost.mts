@@ -42,6 +42,12 @@ const llmApiKey = await parameter('llm-api-key', 'dev-fake-key', 'API key for th
 const llmChatModel = await parameter('llm-chat-model', 'reasoning-large', 'Chat/reasoning model used by the agent.');
 const embeddingModel = await parameter('embedding-model', 'text-embedding', 'Embedding model used for indexing.');
 const embeddingDim = await parameter('embedding-dim', '1536', 'Embedding vector dimension (must match the model).');
+const agentServiceClientSecret = await parameter(
+  'agent-service-client-secret',
+  'dev-agent-service-secret',
+  'Client secret of the Keycloak `agent-service` service account (DEV default matches the imported realm).',
+  true,
+);
 
 // PostgreSQL with pgvector. Data persists in a named volume across runs.
 const postgres = await builder
@@ -96,6 +102,7 @@ const backlogApi = await builder
   .withEnvironment('BACKLOG_ENV', 'development')
   .withEnvironment('BACKLOG_OIDC_ISSUER', oidcIssuer)
   .withEnvironment('BACKLOG_OIDC_AUDIENCE', 'backlog-api')
+  .withEnvironment('BACKLOG_INTERNAL_CLIENT_IDS', 'agent-service')
   .withEnvironment('BACKLOG_LLM_BASE_URL', llmBaseUrl)
   .withEnvironment('BACKLOG_LLM_API_KEY', llmApiKey)
   .withEnvironment('BACKLOG_EMBEDDING_MODEL', embeddingModel)
@@ -119,6 +126,8 @@ const agentService = await builder
   .withEnvironment('AGENT_ENV', 'development')
   .withEnvironment('AGENT_OIDC_ISSUER', oidcIssuer)
   .withEnvironment('AGENT_OIDC_AUDIENCE', 'agent-service')
+  .withEnvironment('AGENT_SERVICE_CLIENT_ID', 'agent-service')
+  .withEnvironment('AGENT_SERVICE_CLIENT_SECRET', agentServiceClientSecret)
   .withEnvironment('AGENT_BACKLOG_API_URL', backlogApi.getEndpoint('http'))
   .withEnvironment('AGENT_LLM_BASE_URL', llmBaseUrl)
   .withEnvironment('AGENT_LLM_API_KEY', llmApiKey)

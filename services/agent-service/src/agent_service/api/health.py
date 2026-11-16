@@ -45,5 +45,6 @@ async def readyz(request: Request) -> JSONResponse:
     if llm != "ok" and settings.llm_required_for_readiness:
         problem = ProblemError(503, "not-ready", detail="The LLM gateway is not reachable.", llm=llm)
         return problem_response(503, problem.to_problem(request.url.path), {"Retry-After": "5"})
-    body: dict[str, Any] = {"status": "ready", "llm": llm}
+    hooks = getattr(request.app.state, "hooks", None)
+    body: dict[str, Any] = {"status": "ready", "llm": llm, "hooks": hooks.state if hooks is not None else "disabled"}
     return JSONResponse(body)

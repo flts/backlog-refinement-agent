@@ -84,6 +84,7 @@ process listens on (uvicorn and Vite receive it as `--port`), plus the OpenTelem
 | `BACKLOG_ENV` | `development` |
 | `BACKLOG_OIDC_ISSUER` | `http://localhost:8080/realms/backlog` |
 | `BACKLOG_OIDC_AUDIENCE` | `backlog-api` |
+| `BACKLOG_INTERNAL_CLIENT_IDS` | `agent-service` (client allowed on `/api/backlog/internal/*`) |
 | `BACKLOG_LLM_BASE_URL` | parameter `llm-base-url` |
 | `BACKLOG_LLM_API_KEY` | parameter `llm-api-key` |
 | `BACKLOG_EMBEDDING_MODEL` | parameter `embedding-model` |
@@ -99,6 +100,8 @@ process listens on (uvicorn and Vite receive it as `--port`), plus the OpenTelem
 | `AGENT_ENV` | `development` |
 | `AGENT_OIDC_ISSUER` | `http://localhost:8080/realms/backlog` |
 | `AGENT_OIDC_AUDIENCE` | `agent-service` |
+| `AGENT_SERVICE_CLIENT_ID` | `agent-service` (Keycloak service account for the internal event stream) |
+| `AGENT_SERVICE_CLIENT_SECRET` | parameter `agent-service-client-secret` |
 | `AGENT_BACKLOG_API_URL` | `http://localhost:8001` |
 | `AGENT_LLM_BASE_URL` | parameter `llm-base-url` |
 | `AGENT_LLM_API_KEY` | parameter `llm-api-key` |
@@ -129,6 +132,7 @@ process listens on (uvicorn and Vite receive it as `--port`), plus the OpenTelem
 | `llm-chat-model` | `reasoning-large` | Chat/reasoning model for the agent |
 | `embedding-model` | `text-embedding` | Embedding model |
 | `embedding-dim` | `1536` | Embedding dimension; must match the model and the pgvector column |
+| `agent-service-client-secret` (secret) | `dev-agent-service-secret` | Secret of the Keycloak `agent-service` client (matches the dev realm import) |
 
 The base URL is passed through unchanged. The fake gateway answers both with and without a `/v1`
 prefix, so use the form your gateway documents (for example `https://llm.example.com/v1`).
