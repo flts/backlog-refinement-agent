@@ -8,12 +8,14 @@ export interface ComposerProps {
   running?: boolean;
   /** Why the composer is not accepting a message; announced as the box's description. */
   reason?: string;
+  /** An `ask_user` question is pending: typing here dismisses it and replies in your own words. */
+  asking?: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop?: () => void;
 }
 
-export function Composer({ value, busy, running = false, reason, onChange, onSubmit, onStop }: ComposerProps) {
+export function Composer({ value, busy, running = false, reason, asking = false, onChange, onSubmit, onStop }: ComposerProps) {
   const reasonId = 'composer-reason';
   return (
     <form className="composer" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
@@ -27,7 +29,7 @@ export function Composer({ value, busy, running = false, reason, onChange, onSub
             if (value.trim() && !busy) onSubmit();
           }
         }}
-        placeholder="Share context, answer a question, or describe what you know…" rows={3} aria-label="Message the refinement agent"
+        placeholder={asking ? 'Answer above, or type to reply in your own words' : 'Share context, answer a question, or describe what you know…'} rows={3} aria-label="Message the refinement agent"
         aria-describedby={busy && reason ? reasonId : undefined} disabled={busy && !running} readOnly={running} />
       <div className="composer-bottom">
         <div className="composer-tip" id={reasonId}>{busy && reason ? reason : <><span aria-hidden="true">↗</span> Your structured item updates as you refine</>}</div>

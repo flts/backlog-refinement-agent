@@ -6,7 +6,8 @@ import type { RunState } from '../run';
 import { useRunAnnouncements } from './announcements';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
-import { AskUserPlaceholder, ReviewPlaceholder } from './placeholders';
+import { AskUserCard, AskUserInvalidNotice } from '../askuser';
+import { ReviewPlaceholder } from './placeholders';
 import { ThreadPicker } from './ThreadPicker';
 
 export type ChatPanelProps = {
@@ -30,7 +31,7 @@ export type ChatPanelProps = {
   onContinue: () => void;
   onStop: () => void;
   onRetry: () => void;
-  /** Placeholder for the AskUserCard (fe-ask-user). */
+  /** The validated answer of the `ask_user` card (`useAgentRun().answer`). */
   onAnswer: (result: AskUserResult) => void;
   /** Placeholder for the ReviewCard (fe-review-ui): approves or rejects every pending proposal. */
   onDecideAll: (approved: boolean) => void;
@@ -43,6 +44,7 @@ export function ChatPanel(props: ChatPanelProps) {
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
+  const asking = run.phase === 'awaitingInput' && Boolean(run.pendingAskUser?.args);
   const reason = running ? 'The agent is working. Press Esc to stop it.' : hydrating ? 'Loading the conversation…' : undefined;
 
   return (
@@ -62,7 +64,8 @@ export function ChatPanel(props: ChatPanelProps) {
           <div className="welcome-card"><div className="agent-icon" aria-hidden="true">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span aria-hidden="true">↳</span> What outcome should this work make possible?</div></div></div>
         )}
         <MessageList run={run} canRetry={canRetry} busy={busy} onRetry={onRetry} resetKey={`${item.id}:${activeThreadId ?? ''}`}>
-          {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserPlaceholder key={run.pendingAskUser.toolCallId} run={run} disabled={busy} onAnswer={onAnswer} />}
+          {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserCard key={run.pendingAskUser.toolCallId} args={run.pendingAskUser.args} disabled={busy} onAnswer={onAnswer} />}
+          {run.phase === 'awaitingInput' && run.pendingAskUser && !run.pendingAskUser.args && <AskUserInvalidNotice />}
           {run.phase === 'awaitingReview' && <ReviewPlaceholder run={run} disabled={busy} onDecideAll={onDecideAll} />}
         </MessageList>
         <div className="composer-wrap">
@@ -70,7 +73,7 @@ export function ChatPanel(props: ChatPanelProps) {
             <span><span className="green-spark" aria-hidden="true">✳</span> Refine with AI</span>
             <span className="composer-hint">Enter to send · Shift+Enter for new line</span>
           </div>
-          <Composer value={message} busy={busy} running={running} reason={reason} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} />
+          <Composer value={message} busy={busy} running={running} reason={reason} asking={asking} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} />
           <div className="composer-actions">
             {running && <button className="retry-button" onClick={onStop}><span aria-hidden="true">■</span> Stop <span className="composer-hint">(Esc)</span></button>}
             <button className="continue-button" title="Stop asking and capture what’s still unknown" onClick={onContinue} disabled={busy}><span aria-hidden="true">◷</span> Continue with current information</button>

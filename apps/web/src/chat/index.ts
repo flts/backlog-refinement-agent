@@ -5,6 +5,6 @@ export { ChatPanel, type ChatPanelProps } from './ChatPanel';
 export { Composer, type ComposerProps } from './Composer';
 export { MarkdownMessage, safeUrl } from './MarkdownMessage';
 export { buildBlocks, MessageList, type MessageListProps } from './MessageList';
-export { AskUserPlaceholder, ReviewPlaceholder } from './placeholders';
+export { ReviewPlaceholder } from './placeholders';
 export { RunErrorCard, type RunErrorCardProps } from './RunErrorCard';
 export { ThreadPicker, threadTitle, type ThreadPickerProps } from './ThreadPicker';
