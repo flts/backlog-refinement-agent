@@ -12,7 +12,10 @@
     "fixtures:document": "node scripts/generate-document-fixtures.mjs"
   },
   "dependencies": {
+    "@ag-ui/client": "1.0.4",
+    "@ag-ui/core": "1.0.4",
     "dexie": "^4.4.7",
+    "fast-json-patch": "3.1.1",
     "oidc-client-ts": "^3.5.0",
     "pdfjs-dist": "^6.5.438",
     "react": "^19.3.1",

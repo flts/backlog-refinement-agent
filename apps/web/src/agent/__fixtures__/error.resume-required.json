@@ -1,0 +1,12 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-err2"
+ },
+ {
+  "type": "RUN_ERROR",
+  "message": "Pending interrupts require a resume entry for every interruptId.",
+  "code": "APPROVAL_RESUME_REQUIRED"
+ }
+]

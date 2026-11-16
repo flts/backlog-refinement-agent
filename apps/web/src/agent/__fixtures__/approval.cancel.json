@@ -1,0 +1,12 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-cancel"
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-cancel"
+ }
+]

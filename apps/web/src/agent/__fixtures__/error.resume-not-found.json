@@ -1,0 +1,12 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-err1"
+ },
+ {
+  "type": "RUN_ERROR",
+  "message": "No pending approval was found for interruptId 'af-call-x'.",
+  "code": "APPROVAL_RESUME_NOT_FOUND"
+ }
+]

@@ -1,0 +1,219 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-prop"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "PredictState",
+  "value": []
+ },
+ {
+  "type": "TEXT_MESSAGE_START",
+  "messageId": "a1",
+  "role": "assistant"
+ },
+ {
+  "type": "TEXT_MESSAGE_CONTENT",
+  "messageId": "a1",
+  "delta": "Here is my proposal."
+ },
+ {
+  "type": "TOOL_CALL_START",
+  "toolCallId": "call_prop",
+  "toolCallName": "propose_document_changes",
+  "parentMessageId": "a1"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "{\"summary\": \"Tighten summary + ACs\", \""
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "base_version\": 7, \"sections\": [{\"id\": "
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "\"s1\", \"heading\": \"Summary\", \"mode\": \"r"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "eplace\", \"markdown\": \"New summary text"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "\", \"rationale\": \"clarity\"}, {\"id\": \"s2"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "\", \"heading\": \"Acceptance criteria\", \""
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "mode\": \"replace\", \"markdown\": \"- [ ] A"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_prop",
+  "delta": "C1\\n- [ ] AC2\"}]}"
+ },
+ {
+  "type": "STATE_DELTA",
+  "delta": [
+   {
+    "op": "replace",
+    "path": "/preview",
+    "value": [
+     {
+      "id": "s1",
+      "heading": "Summary",
+      "mode": "replace",
+      "markdown": "New summary text",
+      "rationale": "clarity"
+     },
+     {
+      "id": "s2",
+      "heading": "Acceptance criteria",
+      "mode": "replace",
+      "markdown": "- [ ] AC1\n- [ ] AC2"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "type": "CUSTOM",
+  "name": "usage",
+  "value": {}
+ },
+ {
+  "type": "STATE_SNAPSHOT",
+  "snapshot": {
+   "schemaVersion": 1,
+   "projectId": "p1",
+   "itemId": "item-42",
+   "preview": [
+    {
+     "id": "s1",
+     "heading": "Summary",
+     "mode": "replace",
+     "markdown": "New summary text",
+     "rationale": "clarity"
+    },
+    {
+     "id": "s2",
+     "heading": "Acceptance criteria",
+     "mode": "replace",
+     "markdown": "- [ ] AC1\n- [ ] AC2"
+    }
+   ]
+  }
+ },
+ {
+  "type": "TOOL_CALL_END",
+  "toolCallId": "call_prop"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "function_approval_request",
+  "value": {}
+ },
+ {
+  "type": "TEXT_MESSAGE_END",
+  "messageId": "a1"
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "improve"
+   },
+   {
+    "id": "a1",
+    "role": "assistant",
+    "content": "Here is my proposal."
+   },
+   {
+    "id": "a2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_prop",
+      "type": "function",
+      "function": {
+       "name": "propose_document_changes",
+       "arguments": "{\"summary\": \"Tighten summary + ACs\", \"base_version\": 7, \"sections\": [{\"id\": \"s1\", \"heading\": \"Summary\", \"mode\": \"replace\", \"markdown\": \"New summary text\", \"rationale\": \"clarity\"}, {\"id\": \"s2\", \"heading\": \"Acceptance criteria\", \"mode\": \"replace\", \"markdown\": \"- [ ] AC1\\n- [ ] AC2\"}]}"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-prop",
+  "outcome": {
+   "type": "interrupt",
+   "interrupts": [
+    {
+     "id": "af-call-6dd7f028c7434143b100efc14e149ad9",
+     "reason": "tool_call",
+     "message": "Approve running propose_document_changes?",
+     "toolCallId": "call_prop",
+     "responseSchema": {
+      "type": "object",
+      "properties": {
+       "approved": {
+        "type": "boolean"
+       },
+       "editedArgs": {
+        "type": "object",
+        "description": "Full replacement of the tool arguments. Not merged."
+       }
+      },
+      "additionalProperties": false
+     },
+     "metadata": {
+      "agent_framework": {
+       "type": "function_approval_request",
+       "function_call": {
+        "call_id": "call_prop",
+        "name": "propose_document_changes",
+        "arguments": {
+         "summary": "Tighten summary + ACs",
+         "base_version": 7,
+         "sections": [
+          {
+           "id": "s1",
+           "heading": "Summary",
+           "mode": "replace",
+           "markdown": "New summary text",
+           "rationale": "clarity"
+          },
+          {
+           "id": "s2",
+           "heading": "Acceptance criteria",
+           "mode": "replace",
+           "markdown": "- [ ] AC1\n- [ ] AC2"
+          }
+         ]
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+]

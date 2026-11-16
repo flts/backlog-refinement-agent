@@ -6,6 +6,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json apps/web/
 COPY apphost/package.json apphost/
 RUN pnpm install --frozen-lockfile --filter @backlog/web...
+COPY contracts contracts
 COPY apps/web apps/web
 RUN pnpm --filter @backlog/web build
 
