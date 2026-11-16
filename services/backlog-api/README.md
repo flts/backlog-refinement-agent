@@ -35,6 +35,8 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
 | `BACKLOG_MAX_BODY_BYTES` | `1048576` | Request body limit (413 problem when exceeded) |
 | `BACKLOG_REVISIONS_KEEP` | `50` | Item revisions kept per item |
 | `BACKLOG_BACKUP_MAX_BYTES` | `52428800` | Maximum size of a project backup: export answers 413 `backup-too-large`, the import body limit is 413 `payload-too-large` |
+| `BACKLOG_MCP_MAX_OUTPUT_CHARS` | `120000` | Max JSON size of one MCP tool result; longer texts are truncated and marked `truncated` |
+| `BACKLOG_MCP_SIMILAR_MIN_SCORE` | `0.5` | Minimum cosine similarity returned by MCP `find_similar_items` |
 | `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content) |
 | `BACKLOG_EVENTS_HEARTBEAT_SECONDS` | `15` | SSE keepalive comment interval |
 | `BACKLOG_EVENTS_RETENTION_SECONDS` / `BACKLOG_EVENTS_MAX_PER_PROJECT` | `86400` / `5000` | Resume window of the event log (age / events per project) |
@@ -91,6 +93,15 @@ queued. The SPA's v1 export (`backlog-refinement-project`) is accepted and mappe
   `azp`/`client_id` is in `BACKLOG_INTERNAL_CLIENT_IDS`, or in development the `X-Internal-Token` header.
 - Behind proxies disable buffering for these routes (Caddy `flush_interval -1`) and keep idle timeouts above the
   heartbeat.
+
+## MCP server
+
+`/api/backlog/mcp` (Streamable HTTP, stateless, JSON responses; `backlog_api/mcp_server.py`) serves the 8 backlog tools
+of the MCP contract to agent-service. Every request needs the user's bearer token (same verifier and verified-email
+rule as REST; otherwise `401` + `WWW-Authenticate: Bearer` before MCP runs). Tools check project membership
+(non-members: tool error `{status: 404, type: "not-found"}`); errors are `isError` results with structured content
+`{status, type, detail}`. Write tools (`apply_document_changes`, `create_child_items`, `set_item_quality`) are hidden
+from the model by agent-service's `allowed_tools`. The endpoint is not part of the OpenAPI schema.
 
 ## Database migrations
 

@@ -21,6 +21,7 @@ MEMBER_REMOVED = "member.removed"
 GUIDANCE_UPDATED = "guidance.updated"
 GUIDANCE_RESET = "guidance.reset"
 GUIDANCE_IMPORTED = "guidance.imported"
+ITEM_AGENT_APPLIED = "item.agent_applied"
 
 
 def record(

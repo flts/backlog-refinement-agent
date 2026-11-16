@@ -191,6 +191,16 @@ class Settings(BaseSettings):
         description="Static shared secret for /internal endpoints (X-Internal-Token); not allowed in production.",
     )
 
+    # --- mcp ---
+    mcp_max_output_chars: int = Field(
+        default=120_000,
+        ge=1_000,
+        description="Maximum size (JSON characters) of one MCP tool result; longer texts are truncated and marked.",
+    )
+    mcp_similar_min_score: float = Field(
+        default=0.5, ge=-1, le=1, description="Minimum cosine similarity of items returned by find_similar_items."
+    )
+
     _database_url: URL | None = PrivateAttr(default=None)
 
     @field_validator("internal_client_ids", mode="before")
