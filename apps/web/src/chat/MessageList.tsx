@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { AskUserTranscriptEntry, showsAskUserSummary } from '../askuser';
+import { ASK_USER_TOOL_NAME } from '../contracts';
 import type { RunState, TranscriptEntry } from '../run';
 import { ActivityTimeline } from './ActivityTimeline';
 import { isActivityEntry, type ActivityRowEntry } from './activity';
@@ -24,7 +26,8 @@ export interface MessageListProps {
 type Block =
   | { kind: 'message'; entry: Extract<TranscriptEntry, { kind: 'user' | 'assistant' }> }
   | { kind: 'activity'; id: string; entries: ActivityRowEntry[] }
-  | { kind: 'error'; entry: Extract<TranscriptEntry, { kind: 'error' }> };
+  | { kind: 'error'; entry: Extract<TranscriptEntry, { kind: 'error' }> }
+  | { kind: 'askUser'; entry: Extract<TranscriptEntry, { kind: 'tool' }> };
 
 /** Consecutive steps and tool calls form one timeline; tools with their own UI (ask_user, …) are left out. */
 export function buildBlocks(messages: TranscriptEntry[]): Block[] {
@@ -35,6 +38,8 @@ export function buildBlocks(messages: TranscriptEntry[]): Block[] {
       blocks.push({ kind: 'message', entry });
     } else if (entry.kind === 'error') {
       blocks.push({ kind: 'error', entry });
+    } else if (entry.kind === 'tool' && entry.toolName === ASK_USER_TOOL_NAME) {
+      if (showsAskUserSummary(entry)) blocks.push({ kind: 'askUser', entry });
     } else if (isActivityEntry(entry)) {
       const last = blocks[blocks.length - 1];
       if (last?.kind === 'activity') last.entries.push(entry);
@@ -96,6 +101,7 @@ export function MessageList({ run, canRetry = false, busy = false, onRetry, chil
         )}
         {blocks.map((block) => {
           if (block.kind === 'activity') return <ActivityTimeline key={`activity:${block.id}`} entries={block.entries} />;
+          if (block.kind === 'askUser') return <AskUserTranscriptEntry key={`ask:${block.entry.id}`} entry={block.entry} />;
           if (block.kind === 'error') return <RunErrorCard key={block.entry.id} error={block.entry.error} canRetry={canRetry && block.entry === lastError} busy={busy} onRetry={block.entry === lastError ? onRetry : undefined} />;
           const { entry } = block;
           if (entry.kind === 'user') {
