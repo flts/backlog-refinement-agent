@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: backlog
+
+resources:
+  - namespace.yaml
+  - serviceaccounts.yaml
+  - web.yaml
+  - backlog-api.yaml
+  - agent-service.yaml
+
+labels:
+  - pairs: {app.kubernetes.io/part-of: backlog-refinement}
+    includeSelectors: false
+
+# Replace the image names with your registry and tag in the overlays (`images:`).
+images:
+  - {name: backlog-web, newName: ghcr.io/example/backlog-web, newTag: latest}
+  - {name: backlog-api, newName: ghcr.io/example/backlog-api, newTag: latest}
+  - {name: agent-service, newName: ghcr.io/example/agent-service, newTag: latest}
+
+# Non-secret settings. The hostnames are placeholders that the overlays override (`behavior: merge`).
+# Changing a ConfigMap changes its name hash and therefore rolls the pods.
+configMapGenerator:
+  - name: web-config
+    literals:
+      - AUTH_MODE=oidc
+      - OIDC_AUTHORITY=https://keycloak.example.com/realms/backlog
+      - OIDC_CLIENT_ID=backlog-web
+      - OIDC_SCOPE=openid profile email
+      - AGENT_ID=backlog-refiner
+      - BACKLOG_API_URL=http://backlog-api:8001
+      - AGENT_API_URL=http://agent-service:8002
+  - name: backlog-api-config
+    literals:
+      - BACKLOG_ENV=production
+      - BACKLOG_AUTO_MIGRATE=true
+      # Issuer = the `iss` claim (the public Keycloak URL); the JWKS URL may point at an in-cluster address.
+      - BACKLOG_OIDC_ISSUER=https://keycloak.example.com/realms/backlog
+      - BACKLOG_OIDC_JWKS_URL=https://keycloak.example.com/realms/backlog/protocol/openid-connect/certs
+      - BACKLOG_OIDC_AUDIENCE=backlog-api
+      - BACKLOG_INTERNAL_CLIENT_IDS=agent-service
+      - BACKLOG_LLM_BASE_URL=https://llm-gateway.example.com
+      - BACKLOG_EMBEDDING_MODEL=text-embedding
+      - BACKLOG_EMBEDDING_DIM=1536
+      - BACKLOG_SKILLS_DIR=/app/skills
+  - name: agent-service-config
+    literals:
+      - AGENT_ENV=production
+      - AGENT_AUTO_MIGRATE=true
+      - AGENT_OIDC_ISSUER=https://keycloak.example.com/realms/backlog
+      - AGENT_OIDC_JWKS_URL=https://keycloak.example.com/realms/backlog/protocol/openid-connect/certs
+      - AGENT_OIDC_AUDIENCE=agent-service
+      - AGENT_SERVICE_CLIENT_ID=agent-service
+      - AGENT_SERVICE_TOKEN_URL=https://keycloak.example.com/realms/backlog/protocol/openid-connect/token
+      - AGENT_BACKLOG_API_URL=http://backlog-api:8001
+      - AGENT_LLM_BASE_URL=https://llm-gateway.example.com
+      - AGENT_LLM_MODEL=reasoning-large
+      - AGENT_SKILLS_DIR=/app/skills
+
+# The Secrets `backlog-api-secrets` and `agent-service-secrets` are referenced by name but not generated here: see
+# overlays/dev (placeholders) and the README (production: create them out of band).

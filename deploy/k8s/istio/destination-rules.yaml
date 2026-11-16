@@ -1,0 +1,39 @@
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: agent-service
+spec:
+  host: agent-service
+  trafficPolicy:
+    tls: {mode: ISTIO_MUTUAL}
+    connectionPool:
+      http: {idleTimeout: 600s}
+    # Sticky routing for the day agent-service runs with more than one replica (see base/agent-service.yaml): the
+    # MAF approval state is process-local, so a resume must reach the pod that started the run. The Istio-generated
+    # cookie works without client changes (same-origin fetch sends it). To pin by thread instead, replace
+    # `httpCookie` with `httpHeaderName: x-thread-id` and have the client send that header. Harmless with 1 replica.
+    loadBalancer:
+      consistentHash:
+        httpCookie: {name: agent-affinity, path: /api/agent, ttl: 0s}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: backlog-api
+spec:
+  host: backlog-api
+  trafficPolicy:
+    tls: {mode: ISTIO_MUTUAL}
+    # Long-lived SSE connections (project events, the internal event stream used by agent-service) must stay open
+    # between keepalives.
+    connectionPool:
+      http: {idleTimeout: 600s}
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: web
+spec:
+  host: web
+  trafficPolicy:
+    tls: {mode: ISTIO_MUTUAL}

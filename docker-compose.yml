@@ -1,0 +1,173 @@
+# Local full stack: Postgres (pgvector), Keycloak, backlog-api, agent-service, web (Caddy) and an optional fake LLM gateway.
+#
+#   docker compose --profile fake up -d --build     # with the scripted fake gateway (no LLM needed)
+#   docker compose up -d --build                    # with a real gateway configured in .env (LLM_BASE_URL, LLM_API_KEY)
+#
+# Open http://localhost:8088 (sign in as alice@example.test / dev-password). Keycloak admin: http://localhost:8080.
+# The env contract per service mirrors apphost/apphost.mts. All secrets here are DEV-ONLY defaults (see .env.example).
+#
+# Issuer: browsers reach Keycloak at http://localhost:8080, containers at http://keycloak:8080. KC_HOSTNAME pins the
+# frontend URL, so every token carries iss=http://localhost:8080/realms/backlog. KC_HOSTNAME_BACKCHANNEL_DYNAMIC lets
+# the back-channel endpoints use the request host, so containers fetch JWKS/tokens through http://keycloak:8080 while
+# the services still validate `iss` against the localhost issuer.
+
+name: backlog-refinement
+
+x-keycloak-issuer: &oidc-issuer http://localhost:8080/realms/backlog
+x-keycloak-internal: &oidc-internal http://keycloak:8080/realms/backlog
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev-postgres-password}
+      BACKLOG_DB_PASSWORD: ${BACKLOG_DB_PASSWORD:-dev-backlog-db-password}
+      AGENT_DB_PASSWORD: ${AGENT_DB_PASSWORD:-dev-agent-db-password}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./deploy/postgres/init-databases.sh:/docker-entrypoint-initdb.d/10-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d backlogdb && pg_isready -U postgres -d agentdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.6
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-dev-admin-password}
+      KC_HOSTNAME: http://localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./deploy/keycloak/realms:/opt/keycloak/data/import:ro
+    healthcheck:
+      # The image has no curl; probe the management port (9000) with bash's /dev/tcp.
+      test:
+        - CMD-SHELL
+        - >-
+          exec 3<>/dev/tcp/127.0.0.1/9000 &&
+          printf 'GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n' >&3 &&
+          grep -q '"status": "UP"' <&3
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+
+  fake-gateway:
+    profiles: ["fake"]
+    build:
+      context: deploy/fake-gateway
+    restart: unless-stopped
+    environment:
+      FAKE_EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      FAKE_GATEWAY_MODELS: ${LLM_MODEL:-reasoning-large},${EMBEDDING_MODEL:-text-embedding}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8090/healthz', timeout=2).status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backlog-api:
+    build:
+      context: .
+      dockerfile: services/backlog-api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+      fake-gateway: {condition: service_healthy, required: false}
+    environment:
+      BACKLOG_ENV: ${APP_ENV:-production}
+      BACKLOG_DATABASE_URL: postgresql://backlog:${BACKLOG_DB_PASSWORD:-dev-backlog-db-password}@postgres:5432/backlogdb
+      BACKLOG_AUTO_MIGRATE: "true"
+      BACKLOG_OIDC_ISSUER: *oidc-issuer
+      BACKLOG_OIDC_JWKS_URL: http://keycloak:8080/realms/backlog/protocol/openid-connect/certs
+      BACKLOG_OIDC_AUDIENCE: backlog-api
+      BACKLOG_INTERNAL_CLIENT_IDS: agent-service
+      BACKLOG_EVENTS_TICKET_SECRET: ${BACKLOG_EVENTS_TICKET_SECRET:-dev-events-ticket-secret-change-me}
+      BACKLOG_LLM_BASE_URL: ${LLM_BASE_URL:-http://fake-gateway:8090}
+      BACKLOG_LLM_API_KEY: ${LLM_API_KEY:-dev-fake-key}
+      BACKLOG_EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding}
+      BACKLOG_EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      BACKLOG_SKILLS_DIR: /app/skills
+    ports:
+      - "127.0.0.1:8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/readyz', timeout=2).status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  agent-service:
+    build:
+      context: .
+      dockerfile: services/agent-service/Dockerfile
+    restart: unless-stopped
+    # One replica only: MAF approval state is process-local (scale out only with sticky routing by thread).
+    depends_on:
+      postgres: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+      backlog-api: {condition: service_healthy}
+      fake-gateway: {condition: service_healthy, required: false}
+    environment:
+      AGENT_ENV: ${APP_ENV:-production}
+      AGENT_DATABASE_URL: postgresql://agent:${AGENT_DB_PASSWORD:-dev-agent-db-password}@postgres:5432/agentdb
+      AGENT_AUTO_MIGRATE: "true"
+      AGENT_OIDC_ISSUER: *oidc-issuer
+      AGENT_OIDC_JWKS_URL: http://keycloak:8080/realms/backlog/protocol/openid-connect/certs
+      AGENT_OIDC_AUDIENCE: agent-service
+      AGENT_SERVICE_CLIENT_ID: agent-service
+      AGENT_SERVICE_CLIENT_SECRET: ${AGENT_SERVICE_CLIENT_SECRET:-dev-agent-service-secret}
+      AGENT_SERVICE_TOKEN_URL: http://keycloak:8080/realms/backlog/protocol/openid-connect/token
+      AGENT_BACKLOG_API_URL: http://backlog-api:8001
+      AGENT_LLM_BASE_URL: ${LLM_BASE_URL:-http://fake-gateway:8090}
+      AGENT_LLM_API_KEY: ${LLM_API_KEY:-dev-fake-key}
+      AGENT_LLM_MODEL: ${LLM_MODEL:-reasoning-large}
+      AGENT_SKILLS_DIR: /app/skills
+    ports:
+      - "127.0.0.1:8002:8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8002/readyz', timeout=2).status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 20s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      backlog-api: {condition: service_healthy}
+      agent-service: {condition: service_healthy}
+    environment:
+      AUTH_MODE: oidc
+      # The browser-facing issuer (must equal KC_HOSTNAME + /realms/backlog).
+      OIDC_AUTHORITY: *oidc-issuer
+      OIDC_CLIENT_ID: backlog-web
+      OIDC_SCOPE: openid profile email
+      AGENT_ID: backlog-refiner
+      BACKLOG_API_URL: http://backlog-api:8001
+      AGENT_API_URL: http://agent-service:8002
+    ports:
+      - "8088:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/config.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

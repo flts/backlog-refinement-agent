@@ -1,0 +1,41 @@
+# Routing and SSE-safe timeouts. Envoy does not buffer responses, so server-sent events stream through unchanged;
+# what matters are the timeouts: the AG-UI run (POST /api/agent/agents/{id}, up to the 180 s run timeout) and the
+# project event stream (GET .../events, kept open up to 15 minutes, 15 s keepalives) must not hit the route timeout.
+# Retries are disabled: a retried POST would start a second agent run or repeat a write.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: backlog
+spec:
+  hosts: ["backlog.example.com"]
+  gateways: ["backlog"]
+  http:
+    # Project event stream: no route timeout (the service ends each connection after 15 minutes; clients resume
+    # with Last-Event-ID).
+    - name: backlog-api-events
+      match:
+        - uri:
+            regex: "^/api/backlog/projects/[^/]+/events/?$"
+      route:
+        - destination: {host: backlog-api, port: {number: 8001}}
+      timeout: 0s
+      retries: {attempts: 0}
+    - name: backlog-api
+      match:
+        - uri: {prefix: /api/backlog}
+      route:
+        - destination: {host: backlog-api, port: {number: 8001}}
+      timeout: 120s
+      retries: {attempts: 0}
+    # AG-UI runs: timeout above the 180 s run timeout.
+    - name: agent-service
+      match:
+        - uri: {prefix: /api/agent}
+      route:
+        - destination: {host: agent-service, port: {number: 8002}}
+      timeout: 300s
+      retries: {attempts: 0}
+    - name: web
+      route:
+        - destination: {host: web, port: {number: 8080}}
+      timeout: 30s

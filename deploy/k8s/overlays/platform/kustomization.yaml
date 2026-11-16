@@ -1,0 +1,26 @@
+# Platform mode: the platform's gateway authenticates the browser (OIDC login, session cookie) and injects the bearer
+# token, so the SPA runs with auth.mode=platform (no oidc-client-ts, no token in the browser). Production-sized.
+#   kubectl kustomize deploy/k8s/overlays/platform | kubectl apply -f -
+# Replace the `.example.com` placeholders. See ../../README.md ("Platform mode") for the oauth2-proxy / ext-authz setup.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ../../istio
+  - gateway
+
+configMapGenerator:
+  - name: web-config
+    behavior: merge
+    literals:
+      - AUTH_MODE=platform
+      # No authority: the Content-Security-Policy then allows no third-party origin.
+      - OIDC_AUTHORITY=
+  # Issuer/JWKS/token URLs stay as in the base (public Keycloak); override them here for your realm.
+
+# Pin tags by digest or release version in your own overlay: the `latest` tags of the base are for illustration.
+images:
+  - {name: backlog-web, newName: ghcr.io/example/backlog-web, newTag: latest}
+  - {name: backlog-api, newName: ghcr.io/example/backlog-api, newTag: latest}
+  - {name: agent-service, newName: ghcr.io/example/agent-service, newTag: latest}

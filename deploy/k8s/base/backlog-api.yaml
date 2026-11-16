@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backlog-api
+  labels: {app.kubernetes.io/name: backlog-api, app.kubernetes.io/component: backend}
+spec:
+  # Stateless: scales horizontally (Postgres LISTEN/NOTIFY fans events out, jobs are claimed with SKIP LOCKED,
+  # migrations take an advisory lock). The HPA owns the replica count after the first rollout.
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: {maxSurge: 1, maxUnavailable: 0}
+  selector:
+    matchLabels: {app.kubernetes.io/name: backlog-api}
+  template:
+    metadata:
+      labels: {app.kubernetes.io/name: backlog-api, app.kubernetes.io/component: backend}
+      annotations:
+        # The first thing the app does is open a database connection: wait for the sidecar.
+        proxy.istio.io/config: '{"holdApplicationUntilProxyStarts": true}'
+    spec:
+      serviceAccountName: backlog-api
+      automountServiceAccountToken: false
+      # SSE streams (project events, up to 15 minutes) must be able to finish when a pod is replaced.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile: {type: RuntimeDefault}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {app.kubernetes.io/name: backlog-api}
+      containers:
+        - name: backlog-api
+          image: backlog-api
+          imagePullPolicy: IfNotPresent
+          ports:
+            - {name: http, containerPort: 8001}
+          envFrom:
+            - configMapRef: {name: backlog-api-config}
+            - secretRef: {name: backlog-api-secrets}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 3
+            failureThreshold: 40
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 20
+            timeoutSeconds: 3
+          readinessProbe:
+            httpGet: {path: /readyz, port: http}
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits: {memory: 768Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {sizeLimit: 256Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backlog-api
+  labels: {app.kubernetes.io/name: backlog-api}
+spec:
+  selector: {app.kubernetes.io/name: backlog-api}
+  ports:
+    - {name: http, port: 8001, targetPort: http}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backlog-api
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: backlog-api}
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 70}
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: backlog-api
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: {app.kubernetes.io/name: backlog-api}

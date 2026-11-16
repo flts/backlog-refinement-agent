@@ -1,0 +1,76 @@
+# Development / test cluster: one replica per service, placeholder Secrets, auth.mode=oidc (SPA signs in against Keycloak).
+# Replace the hostnames below with your own (the `.example.test` names are placeholders), then:
+#   kubectl kustomize deploy/k8s/overlays/dev | kubectl apply -f -
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+  - ../../istio
+
+images:
+  - {name: backlog-web, newName: backlog-web, newTag: dev}
+  - {name: backlog-api, newName: backlog-api, newTag: dev}
+  - {name: agent-service, newName: agent-service, newTag: dev}
+
+configMapGenerator:
+  - name: web-config
+    behavior: merge
+    literals:
+      - OIDC_AUTHORITY=https://keycloak.dev.example.test/realms/backlog
+  - name: backlog-api-config
+    behavior: merge
+    literals:
+      - BACKLOG_OIDC_ISSUER=https://keycloak.dev.example.test/realms/backlog
+      - BACKLOG_OIDC_JWKS_URL=http://keycloak.keycloak.svc.cluster.local:8080/realms/backlog/protocol/openid-connect/certs
+      - BACKLOG_LLM_BASE_URL=https://llm-gateway.dev.example.test
+  - name: agent-service-config
+    behavior: merge
+    literals:
+      - AGENT_OIDC_ISSUER=https://keycloak.dev.example.test/realms/backlog
+      - AGENT_OIDC_JWKS_URL=http://keycloak.keycloak.svc.cluster.local:8080/realms/backlog/protocol/openid-connect/certs
+      - AGENT_SERVICE_TOKEN_URL=http://keycloak.keycloak.svc.cluster.local:8080/realms/backlog/protocol/openid-connect/token
+      - AGENT_LLM_BASE_URL=https://llm-gateway.dev.example.test
+
+# DEV PLACEHOLDERS ONLY (not secrets). Override with real values or create the Secrets yourself and drop this block.
+secretGenerator:
+  - name: backlog-api-secrets
+    options: {disableNameSuffixHash: true}
+    literals:
+      - BACKLOG_DATABASE_URL=postgresql://backlog:CHANGE-ME@postgres.dev.example.test:5432/backlogdb
+      - BACKLOG_EVENTS_TICKET_SECRET=CHANGE-ME-dev-only
+      - BACKLOG_LLM_API_KEY=CHANGE-ME
+  - name: agent-service-secrets
+    options: {disableNameSuffixHash: true}
+    literals:
+      - AGENT_DATABASE_URL=postgresql://agent:CHANGE-ME@postgres.dev.example.test:5432/agentdb
+      - AGENT_SERVICE_CLIENT_SECRET=CHANGE-ME-dev-only
+      - AGENT_LLM_API_KEY=CHANGE-ME
+
+patches:
+  # Single replicas, small HPA.
+  - target: {kind: Deployment, name: web}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 1}
+  - target: {kind: Deployment, name: backlog-api}
+    patch: |-
+      - {op: replace, path: /spec/replicas, value: 1}
+  - target: {kind: HorizontalPodAutoscaler, name: backlog-api}
+    patch: |-
+      - {op: replace, path: /spec/minReplicas, value: 1}
+      - {op: replace, path: /spec/maxReplicas, value: 2}
+  # Hostname.
+  - target: {kind: Gateway, name: backlog}
+    patch: |-
+      - {op: replace, path: /spec/servers/0/hosts/0, value: backlog.dev.example.test}
+      - {op: replace, path: /spec/servers/1/hosts/0, value: backlog.dev.example.test}
+  - target: {kind: VirtualService, name: backlog}
+    patch: |-
+      - {op: replace, path: /spec/hosts/0, value: backlog.dev.example.test}
+  # Keycloak issuer / JWKS for the sidecar JWT validation.
+  - target: {kind: RequestAuthentication, name: backlog-api}
+    patch: &jwt-rule |-
+      - {op: replace, path: /spec/jwtRules/0/issuer, value: "https://keycloak.dev.example.test/realms/backlog"}
+      - {op: replace, path: /spec/jwtRules/0/jwksUri, value: "http://keycloak.keycloak.svc.cluster.local:8080/realms/backlog/protocol/openid-connect/certs"}
+  - target: {kind: RequestAuthentication, name: agent-service}
+    patch: *jwt-rule
