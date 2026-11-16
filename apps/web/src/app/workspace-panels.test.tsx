@@ -6,8 +6,7 @@ import { expectNoAxeViolations } from '../test/axe';
 import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { ChatPanel, type ChatPanelProps } from '../chat';
-import { ProjectPanel } from './ProjectPanel';
-import type { Item, Project, Source } from '../api';
+import type { Item } from '../api';
 import { initialRunState, type RunState } from '../run';
 import { makeThread } from '../test/fakeAgentBackend';
 
@@ -16,28 +15,6 @@ const item: Item = {
   createdBy: 'alice@example.test', updatedBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
   document: '## Assumptions\n- [ ] Users are logged in\n\n## Open questions\n- [ ] Which format?',
 };
-const project: Project = { id: 'p', name: 'Project', version: 1, role: 'owner', createdBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
-const source: Source = {
-  id: 's1', projectId: 'p', name: 'Spec', kind: 'url', mode: 'searchable', url: 'https://example.com/spec', charCount: 1200, pageCount: null, mediaType: null, hasFile: false,
-  indexStatus: 'indexed', indexError: null, version: 1, addedBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-};
-const noop = { onSelect: vi.fn(), onCreate: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onExport: vi.fn(), onImport: vi.fn() };
-
-describe('ProjectPanel', () => {
-  it('summarises the AI context and offers the Sources drawer button', () => {
-    render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[{ ...source, mode: 'pinned' }, source]} pinnedBudget={{ used: 1200, limit: 100000 }} busy={false} />);
-    expect(screen.getByText(/1 pinned and 1 searchable sources/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Sources (2)' })).toHaveAttribute('aria-haspopup', 'dialog');
-  });
-
-  it('offers rename, delete and export to owners only', () => {
-    const { rerender } = render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[]} busy={false} />);
-    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.getByRole('button', { name })).toBeInTheDocument();
-    rerender(<ProjectPanel {...noop} projects={[{ ...project, role: 'contributor' }]} project={{ ...project, role: 'contributor' }} sources={[]} busy={false} />);
-    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.queryByRole('button', { name })).toBeNull();
-  });
-});
-
 describe('PreviewPanel', () => {
   it('lists open uncertainty, edits the title and triggers quality assessment', async () => {
     const user = userEvent.setup();

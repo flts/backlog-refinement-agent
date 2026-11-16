@@ -74,7 +74,7 @@ export function ImportExportSection({ project, isOwner, hasUnsaved, onImported }
     </section>
     {isOwner && <section className="settings-block" aria-labelledby="backup-title">
       <h4 id="backup-title">Project backup (format v2)</h4>
-      <p className="settings-help">Everything in the project: sources and files, items, relationships, revisions and guidance. Members and conversations are not included. To restore a backup, use “Import project” on the projects bar; it always creates a new project.</p>
+      <p className="settings-help">Everything in the project: sources and files, items, relationships, revisions and guidance. Members and conversations are not included. To restore a backup, use “Import project…” in the project menu of the top bar; it always creates a new project.</p>
       <div className="guidance-actions"><button type="button" className="button button-secondary button-small" disabled={exportBackup.isPending} onClick={downloadBackup}>Export project backup</button></div>
     </section>}
     <div role="status">{notice && <p className="guidance-meta">{notice}</p>}</div>

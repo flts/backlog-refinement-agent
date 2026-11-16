@@ -8,22 +8,30 @@ import { expectNoAxeViolations } from '../test/axe';
 
 afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
 
+const projectMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: /^Project: / }));
+  return screen.getByRole('menu', { name: /^Project: / });
+};
+
 describe('projects screen', () => {
   it('lists the projects from the server and restores the selected one', async () => {
     const api = createFakeBacklogApi({ projects: [makeProject({ id: 'alpha', name: 'Alpha' }), makeProject({ id: 'beta', name: 'Beta' })] });
     localStorage.setItem('selected-project-id', 'beta');
     renderWithApi(<Projects />, api);
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('beta');
+    expect(await screen.findByRole('button', { name: 'Project: Beta' })).toBeInTheDocument();
     const user = userEvent.setup();
-    await user.selectOptions(screen.getByLabelText('Choose project'), 'alpha');
+    const menu = await projectMenu(user);
+    expect(within(menu).getByRole('menuitemradio', { name: 'Beta' })).toHaveAttribute('aria-checked', 'true');
+    await user.click(within(menu).getByRole('menuitemradio', { name: 'Alpha' }));
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
+    expect(await screen.findByRole('button', { name: 'Project: Alpha' })).toBeInTheDocument();
   });
 
   it('falls back to the first project when the remembered one is gone', async () => {
     const api = createFakeBacklogApi({ projects: [makeProject({ id: 'alpha', name: 'Alpha' })] });
     localStorage.setItem('selected-project-id', 'deleted');
     renderWithApi(<Projects />, api);
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('alpha');
+    expect(await screen.findByRole('button', { name: 'Project: Alpha' })).toBeInTheDocument();
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
   });
 
@@ -32,9 +40,11 @@ describe('projects screen', () => {
     const api = createFakeBacklogApi();
     renderWithApi(<Projects />, api);
     expect(await screen.findByText('Create or import a project to start a backlog.')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('New project name'), 'Alpha');
+    await user.click(screen.getByRole('button', { name: 'Choose a project' }));
+    await user.click(screen.getByRole('menuitem', { name: 'New project…' }));
+    await user.type(screen.getByLabelText('Project name'), 'Alpha');
     await user.click(screen.getByRole('button', { name: 'Create project' }));
-    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Alpha'));
+    expect(await screen.findByRole('button', { name: 'Project: Alpha' })).toBeInTheDocument();
     expect(api.callsTo('POST', /^\/projects$/)[0].body).toEqual({ name: 'Alpha' });
     expect(await screen.findByText('Project created.')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Create first item' })).toBeInTheDocument();
@@ -45,13 +55,13 @@ describe('projects screen', () => {
     const api = createFakeBacklogApi({ projects: [makeProject({ version: 3 })] });
     vi.spyOn(window, 'prompt').mockReturnValue('Renamed');
     renderWithApi(<Projects />, api);
-    await user.click(await screen.findByRole('button', { name: 'Rename project' }));
-    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Renamed'));
+    await user.click(within(await projectMenu(user)).getByRole('menuitem', { name: 'Rename project' }));
+    expect(await screen.findByRole('button', { name: 'Project: Renamed' })).toBeInTheDocument();
     expect(api.callsTo('PATCH', /^\/projects\/p1$/)[0].headers.get('If-Match')).toBe('"3"');
 
     api.state.projects[0].version = 9;
     vi.mocked(window.prompt).mockReturnValue('Again');
-    await user.click(screen.getByRole('button', { name: 'Rename project' }));
+    await user.click(within(await projectMenu(user)).getByRole('menuitem', { name: 'Rename project' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Someone else changed this project; reload to see their changes.');
     expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
   });
@@ -61,46 +71,52 @@ describe('projects screen', () => {
     const api = createFakeBacklogApi({ projects: [makeProject({ id: 'a', name: 'Alpha' }), makeProject({ id: 'b', name: 'Beta' })] });
     const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     renderWithApi(<Projects />, api);
-    await screen.findByLabelText('Choose project');
-    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await user.click(within(await projectMenu(user)).getByRole('menuitem', { name: 'Delete project' }));
     expect(api.callsTo('DELETE', /^\/projects\//)).toHaveLength(0);
-    await user.click(screen.getByRole('button', { name: 'Delete project' }));
-    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Beta'));
+    await user.click(within(await projectMenu(user)).getByRole('menuitem', { name: 'Delete project' }));
+    expect(await screen.findByRole('button', { name: 'Project: Beta' })).toBeInTheDocument();
     expect(api.callsTo('DELETE', /^\/projects\/a$/)).toHaveLength(1);
     expect(confirm).toHaveBeenCalledTimes(2);
   });
 
-  it('hides owner actions from contributors', async () => {
+  it('hides owner actions from contributors but keeps new, import and project settings', async () => {
+    const user = userEvent.setup();
     const api = createFakeBacklogApi({ projects: [makeProject({ role: 'contributor' })] });
     renderWithApi(<Projects />, api);
-    await screen.findByLabelText('Choose project');
-    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.queryByRole('button', { name })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Import project' })).toBeInTheDocument();
+    const menu = await projectMenu(user);
+    for (const name of ['Rename project', 'Delete project']) expect(within(menu).queryByRole('menuitem', { name })).toBeNull();
+    for (const name of ['New project…', 'Import project…', 'Project settings…']) expect(within(menu).getByRole('menuitem', { name })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Export project' })).toBeNull();
   });
 
-  it('exports through the backup endpoint and imports a file as a new project', async () => {
+  it('imports a backup file as a new project and exports through the project settings', async () => {
     const api = createFakeBacklogApi({ projects: [makeProject()] });
     const download = vi.fn();
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(download);
     URL.createObjectURL = vi.fn(() => 'blob:x');
     URL.revokeObjectURL = vi.fn();
     const user = userEvent.setup();
-    const { container } = renderWithApi(<Projects />, api);
-    await user.click(await screen.findByRole('button', { name: 'Export project' }));
+    renderWithApi(<Projects />, api);
+    await user.click(within(await projectMenu(user)).getByRole('menuitem', { name: 'Project settings…' }));
+    await user.click(await screen.findByRole('tab', { name: 'Import / Export' }));
+    await user.click(await screen.findByRole('button', { name: 'Export project backup' }));
     await waitFor(() => expect(download).toHaveBeenCalled());
     expect(api.callsTo('GET', /^\/projects\/p1\/backup$/)).toHaveLength(1);
+    await user.keyboard('{Escape}');
 
-    const input = container.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')!;
-    fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json', { type: 'application/json' })] } });
-    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Imported'));
+    fireEvent.change(screen.getByLabelText('Project backup file'), { target: { files: [new File(['{}'], 'backup.json', { type: 'application/json' })] } });
+    expect(await screen.findByRole('button', { name: 'Project: Imported' })).toBeInTheDocument();
     expect(api.callsTo('POST', /^\/projects\/import$/)).toHaveLength(1);
   });
 
-  it('opens the sources drawer from the toolbar and closes it with Escape', async () => {
+  it('opens the sources drawer from the topbar and closes it with Escape', async () => {
     const user = userEvent.setup();
-    const api = createFakeBacklogApi({ projects: [makeProject()], sources: [makeSource()] });
+    const api = createFakeBacklogApi({ projects: [makeProject()], sources: [makeSource({ mode: 'pinned' })] });
     renderWithApi(<Projects />, api);
-    await user.click(await screen.findByRole('button', { name: /^Sources/ }));
+    const button = await screen.findByRole('button', { name: /^Sources/ });
+    await waitFor(() => expect(button).toHaveTextContent('Sources 1'));
+    expect(button).toHaveTextContent('1 pinned');
+    await user.click(button);
     expect(await screen.findByRole('heading', { name: 'Sources' })).toBeInTheDocument();
     expect(await screen.findByText('Spec')).toBeInTheDocument();
     await user.keyboard('{Escape}');
