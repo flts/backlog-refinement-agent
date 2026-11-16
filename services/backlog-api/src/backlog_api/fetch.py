@@ -22,6 +22,7 @@ import asyncio
 import ipaddress
 import re
 import socket
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from html.parser import HTMLParser
@@ -53,6 +54,7 @@ IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
 _SIX_TO_FOUR = ipaddress.ip_network("2002::/16")
+_IPV4_COMPATIBLE = ipaddress.ip_network("::/96")  # deprecated ::a.b.c.d form
 
 
 def fetch_failed(detail: str) -> ProblemError:
@@ -91,6 +93,8 @@ def _embedded_ipv4(address: ipaddress.IPv6Address) -> ipaddress.IPv4Address | No
         return ipaddress.IPv4Address(int(address) & 0xFFFFFFFF)
     if address in _SIX_TO_FOUR:
         return ipaddress.IPv4Address((int(address) >> 80) & 0xFFFFFFFF)
+    if address in _IPV4_COMPATIBLE:
+        return ipaddress.IPv4Address(int(address))
     return None
 
 
@@ -123,7 +127,10 @@ def validate_url(url: str, policy: FetchPolicy) -> httpx.URL:
         raise fetch_failed("Enter an absolute URL without credentials.")
     if port is not None and port != _DEFAULT_PORTS[scheme]:
         raise fetch_failed("Only the default port of the URL scheme can be fetched.")
-    return httpx.URL(parts._replace(fragment="").geturl())
+    try:
+        return httpx.URL(parts._replace(fragment="").geturl())
+    except httpx.InvalidURL:
+        raise fetch_failed("The URL is not valid.") from None
 
 
 async def _vetted_address(host: str, resolver: Resolver, port: int) -> str:
@@ -185,7 +192,7 @@ async def _fetch_bytes(
             request = _pinned_request(client, current, address)
             try:
                 response = await client.send(request, stream=True)
-            except httpx.HTTPError:
+            except (httpx.HTTPError, httpx.InvalidURL):  # InvalidURL: a malformed redirect Location
                 raise fetch_failed("The server could not be reached.") from None
             try:
                 if response.status_code in _REDIRECT_STATUSES:
@@ -268,6 +275,7 @@ class _TextExtractor(HTMLParser):
         self.parts: list[str] = []
         self.title_parts: list[str] = []
         self._stack: list[tuple[str, bool]] = []  # (tag, hides content)
+        self._open: Counter[str] = Counter()  # open tags by name, so a stray end tag is detected without a scan
         self._hidden = 0
         self._in_title = False
 
@@ -281,6 +289,7 @@ class _TextExtractor(HTMLParser):
         attr_names = dict(attrs)
         hides = tag in _IGNORED or "hidden" in attr_names or (attr_names.get("aria-hidden") or "").lower() == "true"
         self._stack.append((tag, hides))
+        self._open[tag] += 1
         if hides:
             self._hidden += 1
         elif tag in _BLOCK:
@@ -293,10 +302,11 @@ class _TextExtractor(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag == "title":
             self._in_title = False
-        if tag in _VOID or not any(open_tag == tag for open_tag, _ in self._stack):
+        if tag in _VOID or self._open[tag] <= 0:
             return
         while self._stack:
             open_tag, hides = self._stack.pop()
+            self._open[open_tag] -= 1
             if hides:
                 self._hidden -= 1
             if open_tag == tag:

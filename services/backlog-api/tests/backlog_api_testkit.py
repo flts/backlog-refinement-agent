@@ -13,9 +13,29 @@ import jwt
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from jwt.algorithms import ECAlgorithm, RSAAlgorithm
 
+from backlog_api.settings import Settings
+
 TEST_ISSUER = "https://keycloak.test/realms/backlog"
 TEST_AUDIENCE = "backlog-api"
 API = "/api/backlog"
+
+
+def make_settings(database_url: str, **overrides: Any) -> Settings:
+    """Settings for a test app on ``database_url``: JWT auth against the test issuer, indexing worker off."""
+    values: dict[str, Any] = {
+        "env": "test",
+        "database_url": database_url,
+        "auto_migrate": False,
+        "worker_enabled": False,
+        "auth_mode": "jwt",
+        "oidc_issuer": TEST_ISSUER,
+        "oidc_audience": TEST_AUDIENCE,
+        "max_body_bytes": 64 * 1024,
+        "db_pool_size": 2,
+        "db_max_overflow": 2,
+        **overrides,
+    }
+    return Settings(_env_file=None, **values)  # pyright: ignore[reportCallIssue]
 
 
 class TokenFactory:

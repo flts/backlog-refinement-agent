@@ -29,7 +29,7 @@ from backlog_api.db.migrate import upgrade_database
 from backlog_api.events import DomainEvent, InProcessEventPublisher
 from backlog_api.main import create_app
 from backlog_api.settings import Settings
-from backlog_api_testkit import TEST_AUDIENCE, TEST_ISSUER, TokenFactory
+from backlog_api_testkit import TokenFactory, make_settings
 
 POSTGRES_IMAGE = "pgvector/pgvector:pg17"
 
@@ -83,19 +83,7 @@ async def truncate_all(url: str) -> None:
 
 @pytest.fixture
 def settings(database_url: str) -> Settings:
-    return Settings(
-        _env_file=None,  # pyright: ignore[reportCallIssue]
-        env="test",
-        database_url=database_url,
-        auto_migrate=False,
-        worker_enabled=False,
-        auth_mode="jwt",
-        oidc_issuer=TEST_ISSUER,
-        oidc_audience=TEST_AUDIENCE,
-        max_body_bytes=64 * 1024,
-        db_pool_size=2,
-        db_max_overflow=2,
-    )
+    return make_settings(database_url)
 
 
 @pytest.fixture

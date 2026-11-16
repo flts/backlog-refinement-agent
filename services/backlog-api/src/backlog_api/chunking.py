@@ -16,8 +16,41 @@ PAGE_BREAK = "\f"
 DEFAULT_TARGET_CHARS = 3200
 DEFAULT_OVERLAP_RATIO = 0.15
 MIN_TARGET_CHARS = 200
-_HEADING = re.compile(r"^ {0,3}(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$")
 _FENCE = re.compile(r"^ {0,3}(```|~~~)")
+
+
+def _match_heading(line: str) -> tuple[int, str] | None:
+    """``(level, title)`` of an ATX heading line: ``^ {0,3}(#{1,6})[ \\t]+(.+?)[ \\t]*#*[ \\t]*$`` without regex.
+
+    Computed in linear time: that regular expression backtracks cubically on long runs of spaces, which a source
+    text (up to the extraction limit) can contain.
+    """
+    length = len(line)
+    index = 0
+    while index < length and line[index] == " ":
+        index += 1
+    if index > 3:
+        return None
+    level_end = index
+    while level_end < length and line[level_end] == "#":
+        level_end += 1
+    level = level_end - index
+    if not 1 <= level <= 6 or level_end >= length or line[level_end] not in " \t":
+        return None
+    lead = level_end
+    while lead < length and line[lead] in " \t":
+        lead += 1
+    tail = length
+    while tail > level_end and line[tail - 1] in " \t":
+        tail -= 1
+    while tail > level_end and line[tail - 1] == "#":
+        tail -= 1
+    while tail > level_end and line[tail - 1] in " \t":
+        tail -= 1
+    if lead < length:
+        title = line[lead : max(tail, lead + 1)]
+        return None if "\n" in title else (level, title)
+    return (level, line[length - 1]) if length - level_end >= 2 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,11 +86,11 @@ def _segments(text: str) -> list[_Segment]:
             stripped = line.rstrip("\r\n")
             if _FENCE.match(stripped):
                 in_fence = not in_fence
-            heading = None if in_fence else _HEADING.match(stripped)
+            heading = None if in_fence else _match_heading(stripped)
             if heading:
                 if current.end > current.start:
                     segments.append(current)
-                level, title = len(heading.group(1)), heading.group(2).strip()
+                level, title = heading[0], heading[1].strip()
                 while stack and stack[-1][0] >= level:
                     stack.pop()
                 stack.append((level, title))
@@ -83,7 +116,7 @@ def _merge_heading_only(text: str, segments: list[_Segment]) -> list[_Segment]:
             previous is not None
             and previous.page == segment.page
             and previous.end == segment.start
-            and _HEADING.match(text[previous.start : previous.end].strip())
+            and _match_heading(text[previous.start : previous.end].strip())
         ):
             previous.end = segment.end
             previous.heading_path = segment.heading_path

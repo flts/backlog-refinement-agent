@@ -24,12 +24,13 @@ _WS = f"[{_JS_WHITESPACE}]"
 # JavaScript's ``.`` does not match line terminators.
 _ANY = "[^\n\r\u2028\u2029]"
 
-_HEADING_RE = re.compile(rf"^##{_WS}+({_ANY}+?){_WS}*#*{_WS}*$")
+_WS_CHARS = frozenset(_JS_WHITESPACE)
+_LINE_TERMINATORS = "\n\r\u2028\u2029"
+_LINE_TERMINATOR_RE = re.compile(f"[{_LINE_TERMINATORS}]")
 _TASK_RE = re.compile(rf"^({_WS}*[-*]{_WS}+)\[( |x|X)\]{_WS}?({_ANY}*)$")
 _FENCE_RE = re.compile(rf"^{_WS}*```")
 _ASSUMPTION_RE = re.compile(r"assumption|aanname", re.IGNORECASE)
 _QUESTION_RE = re.compile(rf"open{_WS}+question|open{_WS}+vra|openstaande{_WS}+vra", re.IGNORECASE)
-_HINT_RE = re.compile(r"<!--[\s\S]*?-->")
 _LEADING_HASHES_RE = re.compile(rf"^#+{_WS}*")
 _WS_RUN_RE = re.compile(f"{_WS}+")
 
@@ -89,6 +90,37 @@ def _trim(value: str) -> str:
     return value.strip(_JS_WHITESPACE)
 
 
+def _heading_title(line: str) -> str | None:
+    """The title of a level-2 heading line: group 1 of ``/^##\\s+(.+?)\\s*#*\\s*$/``, or ``None`` when it is none.
+
+    Computed in linear time: the equivalent regular expression backtracks cubically on long whitespace runs, so one
+    crafted 200 000-character line would stall the service.
+    """
+    if not line.startswith("##"):
+        return None
+    length = len(line)
+    lead = 2
+    while lead < length and line[lead] in _WS_CHARS:
+        lead += 1
+    if lead == 2:
+        return None
+    tail = length  # the longest suffix that matches "whitespace, hashes, whitespace" starts here
+    while tail > 2 and line[tail - 1] in _WS_CHARS:
+        tail -= 1
+    while tail > 2 and line[tail - 1] == "#":
+        tail -= 1
+    while tail > 2 and line[tail - 1] in _WS_CHARS:
+        tail -= 1
+    if lead < length:
+        title = line[lead : max(tail, lead + 1)]  # a lower start only adds characters, so it cannot become valid
+        return None if _LINE_TERMINATOR_RE.search(title) else title
+    # Only whitespace follows "##": the title is the last character of it that is not a line terminator.
+    for index in range(length - 1, 2, -1):
+        if line[index] not in _LINE_TERMINATORS:
+            return line[index]
+    return None
+
+
 def _lines(document: str) -> list[str]:
     return document.replace("\r\n", "\n").split("\n")
 
@@ -111,9 +143,9 @@ def split_sections(document: str) -> SplitDocument:
     for line in _lines(document):
         if _FENCE_RE.match(line):
             in_fence = not in_fence
-        match = None if in_fence else _HEADING_RE.match(line)
-        if match:
-            sections.append((_trim(match.group(1)), []))
+        title = None if in_fence else _heading_title(line)
+        if title is not None:
+            sections.append((_trim(title), []))
         else:
             (sections[-1][1] if sections else preamble).append(line)
     return SplitDocument(
@@ -196,9 +228,8 @@ def parse_checklist_sections(document: str) -> list[ChecklistEntry]:
     entries: list[ChecklistEntry] = []
     kind: ChecklistKind | None = None
     for index, line in enumerate(_lines(document)):
-        heading = _HEADING_RE.match(line)
-        if heading:
-            title = heading.group(1)
+        title = _heading_title(line)
+        if title is not None:
             kind = "question" if _QUESTION_RE.search(title) else "assumption" if _ASSUMPTION_RE.search(title) else None
             continue
         task = _TASK_RE.match(line) if kind else None
@@ -221,7 +252,20 @@ def update_checklist_line(document: str, line: int, action: Literal["check", "re
 
 
 def _strip_hints(markdown: str) -> str:
-    return _HINT_RE.sub("", markdown)
+    """Remove ``<!-- … -->`` comments (``/<!--[\\s\\S]*?-->/g``); an unclosed ``<!--`` stays.
+
+    A scan instead of the regular expression: with many unclosed openers the regex is quadratic.
+    """
+    parts: list[str] = []
+    position = 0
+    while (opening := markdown.find("<!--", position)) != -1:
+        closing = markdown.find("-->", opening + 4)
+        if closing == -1:
+            break
+        parts.append(markdown[position:opening])
+        position = closing + 3
+    parts.append(markdown[position:])
+    return "".join(parts)
 
 
 def template_headings(template: str) -> list[str]:

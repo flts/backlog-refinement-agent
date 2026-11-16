@@ -7,8 +7,6 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import json
-import socket
 import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -31,61 +29,12 @@ from backlog_api.settings import Settings
 from backlog_api.stream_tickets import StreamTicket, TicketSigner
 from backlog_api_testkit import API, TokenFactory, add_member, create_project
 from conftest import truncate_all
+from live_testkit import SseReader, free_port
 
 ALICE = "alice@example.test"
 BOB = "bob@example.test"
 SERVICE_CLIENT = "agent-service"
 INTERNAL_SECRET = "dev-internal-secret"  # noqa: S105
-
-
-@dataclass
-class Sse:
-    event: str
-    id: int | None
-    data: dict[str, Any]
-
-
-class SseReader:
-    """Reads SSE blocks (and counts keepalive comments) from a streaming httpx response."""
-
-    def __init__(self, response: httpx.Response) -> None:
-        self.response = response
-        self._lines = response.aiter_lines()
-        self.keepalives = 0
-        self.ended = False
-
-    async def next(self, wait: float = 5.0) -> Sse | None:
-        """The next event, or ``None`` when the stream ended. Fails when none arrives within ``wait`` seconds."""
-        async with asyncio.timeout(wait):
-            return await self._next()
-
-    async def _next(self) -> Sse | None:
-        event, event_id, data = "message", None, ""
-        while True:
-            try:
-                line = await self._lines.__anext__()
-            except StopAsyncIteration:
-                self.ended = True
-                return None
-            if line == "":
-                if data:
-                    return Sse(event, event_id, json.loads(data))
-                continue
-            if line.startswith(": keepalive"):
-                self.keepalives += 1
-            elif line.startswith("id:"):
-                event_id = int(line[3:])
-            elif line.startswith("event:"):
-                event = line[6:].strip()
-            elif line.startswith("data:"):
-                data = line[5:].strip()
-
-    async def until(self, event_type: str, wait: float = 5.0) -> Sse:
-        while True:
-            item = await self.next(wait)
-            assert item is not None, f"stream ended before {event_type}"
-            if item.event == event_type:
-                return item
 
 
 @dataclass
@@ -123,12 +72,6 @@ class Live:
         assert response.status_code == 200, response.text
 
 
-def _free_port() -> int:
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
 @pytest.fixture
 def live_settings(settings: Settings) -> Settings:
     return settings.model_copy(
@@ -148,7 +91,7 @@ def live_settings(settings: Settings) -> Settings:
 async def live(live_settings: Settings, tokens: TokenFactory, database_url: str) -> AsyncIterator[Live]:
     await truncate_all(database_url)
     app = create_app(live_settings, key_source=StaticKeySource(tokens.jwks), configure_logs=False)
-    port = _free_port()
+    port = free_port()
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="on", access_log=False)
     )

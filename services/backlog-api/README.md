@@ -124,6 +124,21 @@ uv run ruff check services/backlog-api
 uv run pyright services/backlog-api
 ```
 
+The suite (about 650 tests, 3-4 minutes on a laptop, mostly container start-up and the RBAC matrix over every route)
+shares one session-scoped PostgreSQL container. Tests that take more than ~5 s are marked `slow` (the marker is
+registered in `pyproject.toml`; none currently exceed it):
+
+```bash
+uv run --package backlog-api pytest services/backlog-api -q -m "not slow"   # fast loop
+uv run --package backlog-api pytest services/backlog-api -q -m slow         # only the slow ones
+uv run --package backlog-api pytest services/backlog-api/tests/test_rbac_matrix.py -q  # route x role matrix
+```
+
+Cross-cutting suites: `test_rbac_matrix.py` (fails when a route or MCP tool is not classified), `test_membership_email.py`,
+`test_concurrency.py`, `test_multi_replica.py` (two app instances on one database), `test_search_e2e.py` (worker + fake
+embeddings gateway), `test_backup_roundtrip.py`, `test_pathological_input.py` (ReDoS regressions) and the golden
+fixtures in `test_document.py`. Helpers for live-socket tests are in `tests/live_testkit.py`.
+
 ## OpenAPI snapshot
 
 ```bash
