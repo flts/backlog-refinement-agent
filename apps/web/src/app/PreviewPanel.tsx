@@ -1,5 +1,6 @@
 import React from 'react';
-import type { Item, ItemStatus, ItemSummary, ItemType } from '../api';
+import type { Item, ItemStatus, ItemSummary, ItemType, Revision } from '../api';
+import { PresenceAvatars, RemoteChangeNotice, RevisionAttribution, type PresenceUser, type RemoteItemChange } from '../collab';
 import { QualityAssessmentSchema, type QualityAssessment } from '../domain/backlog-item';
 import type { RefinementSession } from '../domain/refinement-session';
 import { parseChecklistSections } from '../domain/document';
@@ -38,6 +39,14 @@ export type PreviewPanelProps = {
   parentItem?: ItemSummary;
   /** Number of server revisions of the item, newest (the current content) included. */
   revisionCount?: number;
+  /** Saved versions, newest first, for the "who changed this" list. */
+  revisions?: Revision[];
+  /** Resolves an actor email to a display name. */
+  nameOf?: (email: string) => string;
+  /** Other people who have this item open. */
+  presence?: PresenceUser[];
+  /** The latest change of this item by somebody else (announced politely). */
+  remoteChange?: RemoteItemChange & { key: number };
   session?: RefinementSession;
   busy: boolean;
   menuActions: MenuAction[];
@@ -50,7 +59,7 @@ export type PreviewPanelProps = {
   onProposeChildren: (type: ItemType) => void;
 };
 
-export function PreviewPanel({ className, item, parentItem, revisionCount = 0, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onUndo, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
+export function PreviewPanel({ className, item, parentItem, revisionCount = 0, revisions = [], nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onUndo, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
   const checklist = React.useMemo(() => item ? parseChecklistSections(item.document) : [], [item?.document]);
   const quality = React.useMemo(() => {
     const parsed = QualityAssessmentSchema.safeParse(stripNulls(item?.quality?.assessment));
@@ -65,13 +74,14 @@ export function PreviewPanel({ className, item, parentItem, revisionCount = 0, s
               {parentItem && <div className="context-banner"><span className="context-icon" aria-hidden="true">↳</span><span>Refining within <strong>{parentItem.title}</strong></span><button onClick={() => void onSelectItem(parentItem.id)}>View parent</button></div>}
               {/* {parentItem && <p className="preview-crumb"><button className="text-link" onClick={() => void onSelectItem(parentItem.id)}>{parentItem.title}</button><span className="crumb-sep">/</span></p>} */}
               <span className={`status-chip status-${item.status}`}>{statusText(item.status)}</span><ItemMenu actions={menuActions} /></div>
+              <PresenceAvatars people={presence} label="People viewing this item" showLabel /><RemoteChangeNotice change={remoteChange} />
               <label className="field-label" htmlFor="item-title">Title</label><input id="item-title" className="preview-title-input" value={item.title} onChange={(event) => onUpdate({ title: event.target.value })} />
             </div>
             <div className="preview-scroll">
               <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.document} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ document: event.target.value })} rows={14} />
               {checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions to confirm</h3><span className="count-badge amber">{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).map((entry) => <div className="uncertainty-card assumption-card" key={entry.line}><span aria-hidden="true">◇</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => onResolveChecklist(entry.line, 'check', 'Assumption confirmed.')}><span aria-hidden="true">✓</span></button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => onResolveChecklist(entry.line, 'remove', 'Assumption rejected.')}><span aria-hidden="true">×</span></button></div>)}</section>}
               {checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).map((entry) => <div className="uncertainty-card question-card" key={entry.line}><span aria-hidden="true">?</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => onResolveChecklist(entry.line, 'check', 'Question marked resolved.')}><span aria-hidden="true">✓</span></button></div>)}</section>}
-              {revisionCount > 1 && <section className="preview-section"><div className="preview-section-head"><h3>Version history</h3><span className="subtle-label">{revisionCount} saved</span></div><button className="button button-secondary button-small" disabled={busy} onClick={() => onUndo()}>Restore previous version</button></section>}
+              {revisionCount > 1 && <section className="preview-section"><div className="preview-section-head"><h3>Version history</h3><span className="subtle-label">{revisionCount} saved</span></div><button className="button button-secondary button-small" disabled={busy} onClick={() => onUndo()}>Restore previous version</button><RevisionAttribution revisions={revisions} nameOf={nameOf} /></section>}
               
               {quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {item.quality?.stale ? 'Outdated · ' : ''}{quality.overall === 'ready' ? 'Ready' : quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
             </div>

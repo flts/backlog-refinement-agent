@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Projects } from './Projects';
 import { createFakeBacklogApi, makeItem, makeProject, makeSource } from '../test/fakeBacklogApi';
@@ -145,18 +145,19 @@ describe('backlog items', () => {
     expect(api.state.items[0]).toMatchObject({ title: 'Renamed item', version: 5 });
   });
 
-  it('shows "Someone else changed this item; reload" on a 409 and reloads their version', async () => {
+  it('opens the conflict dialog on a 409 when both sides changed the same section, and saves the resolution on top of their version', async () => {
     const user = userEvent.setup();
     const api = setup({ version: 4, document: 'mine-base' });
     renderWithApi(<Projects />, api);
     const document = await screen.findByLabelText('Document (Markdown)');
-    api.state.conflictOnNextItemPatch = { item: makeItem({ version: 5, document: 'theirs' }), changedSections: ['Summary'] };
+    api.state.conflictOnNextItemPatch = { item: makeItem({ version: 5, document: 'theirs', updatedBy: 'bob@example.test' }), changedSections: ['Summary'] };
     await user.type(document, '!');
-    const alert = await screen.findByRole('alert', undefined, { timeout: 3000 });
-    expect(alert).toHaveTextContent('Someone else changed this item; reload to see their changes.');
-    await user.click(screen.getByRole('button', { name: 'Reload' }));
+    const dialog = await screen.findByRole('dialog', { name: /changed this item too/ }, { timeout: 3000 });
+    await user.click(within(dialog).getByRole('radio', { name: 'Theirs' }));
+    await user.click(within(dialog).getByRole('button', { name: 'Save resolved version' }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /changed this item too/ })).toBeNull());
     await waitFor(() => expect(screen.getByLabelText('Document (Markdown)')).toHaveValue('theirs'));
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(api.callsTo('PATCH', /items\/i1$/)).toHaveLength(1);
   });
 
   it('changes the status through the server (draft → refining → ready)', async () => {

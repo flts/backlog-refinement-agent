@@ -2,6 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { ItemType, Project } from '../api';
 import { useAuth } from '../auth';
+import {
+  ConflictDialog, PresenceAvatars, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
+  type RemoteItemChange,
+} from '../collab';
+import type { FinalCloseReason } from '../collab/projectEvents';
 import { ChatPanel } from './ChatPanel';
 import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
@@ -10,6 +15,7 @@ import { ProjectSettingsDialog } from '../settings/ProjectSettingsDialog';
 import { SidebarPanel } from './SidebarPanel';
 import { Toast } from './Toast';
 import { downloadFile, markdownFilename, markdownFor } from './files';
+import { SaveStatus } from './SaveStatus';
 import { useBacklog } from './useBacklog';
 import { errorText, useNotifications } from './useNotifications';
 import { useRefinementFlow } from './useRefinementFlow';
@@ -19,7 +25,7 @@ function initials(name: string): string {
   return letters || '?';
 }
 
-export default function App({ project, projectBusy, renderProjectPanel, onOpenShare }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode; onOpenShare?: () => void }) {
+export default function App({ project, projectBusy, renderProjectPanel, onOpenShare, onProjectGone }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode; onOpenShare?: () => void; onProjectGone?: (reason: FinalCloseReason, message: string) => void }) {
   const auth = useAuth();
   const notifications = useNotifications();
   const { setError, setNotice } = notifications;
@@ -31,6 +37,17 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
   const flow = useRefinementFlow(backlog, notifications);
+
+  const { nameOf } = useMemberDirectory(project.id);
+  const [remoteChange, setRemoteChange] = useState<RemoteItemChange & { key: number }>();
+  useProjectEvents(project.id, {
+    itemId: backlog.selectedId,
+    onRemoteItemChange: (change) => setRemoteChange((current) => ({ ...change, key: (current?.key ?? 0) + 1 })),
+    onProjectGone: (reason) => onProjectGone?.(reason, closeReasonText[reason]),
+  });
+  usePresence(project.id, backlog.selectedId, backlog.hasDraft ? 'editing' : 'viewing');
+  const presence = useProjectPresence(project.id);
+  const conflict = backlog.autosave.openConflict(backlog.selectedId);
 
   function selectItem(id: string) {
     if (flow.busy) return;
@@ -82,7 +99,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
       <header className="topbar">
         <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
         <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> {backlog.saving ? 'Saving…' : 'Saved'}</span><button className="icon-button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
+        <div className="topbar-actions"><PresenceAvatars people={presence.people} label="People in this project right now" /><SaveStatus status={backlog.saveStatus} onResolve={() => backlog.selectedId && backlog.autosave.reopenConflict(backlog.selectedId)} /><button className="icon-button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
       </header>
 
       {renderProjectPanel(flow.busy)}
@@ -97,7 +114,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
         <SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
           items={backlog.items} selectedId={backlog.selectedId}
-          onSelect={selectItem}
+          onSelect={selectItem} presenceFor={presence.forItem}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
         />
 
@@ -118,7 +135,8 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
 
         <PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
-          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} session={backlog.session} busy={flow.busy}
+          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} revisions={backlog.revisions} nameOf={nameOf}
+          presence={presence.forItem(backlog.selectedId)} remoteChange={remoteChange} session={backlog.session} busy={flow.busy}
           menuActions={[
             { id: 'copy', label: <><MdContentCopy aria-hidden /> Copy Markdown</>, onSelect: () => void copyMarkdown() },
             { id: 'duplicate', label: <><MdControlPointDuplicate aria-hidden /> Duplicate item</>, onSelect: () => void backlog.duplicateSelected() },
@@ -133,6 +151,9 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
       </main>
 
       <Toast notifications={notifications} />
+
+      {conflict && backlog.selectedId && <ConflictDialog key={conflict.theirs.version} plan={conflict.plan} theirAuthor={nameOf(conflict.theirs.updatedBy)}
+        onResolve={(merged) => void backlog.autosave.resolveConflict(conflict.itemId, merged)} onClose={() => backlog.autosave.postponeConflict(conflict.itemId)} />}
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
