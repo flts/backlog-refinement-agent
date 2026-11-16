@@ -2,7 +2,25 @@
   "name": "@backlog/apphost",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "start": "aspire run"
+    "start": "aspire run",
+    "build": "tsc -p tsconfig.apphost.json",
+    "typecheck": "tsc -p tsconfig.apphost.json --noEmit",
+    "lint": "eslint apphost.mts",
+    "restore": "aspire restore"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^10.0.3",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1"
   }
 }

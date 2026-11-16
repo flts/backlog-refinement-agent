@@ -1,0 +1,13 @@
+{
+  "responses": [
+    {
+      "tool_calls": [
+        {
+          "name": "ask_user",
+          "arguments": { "question": "Who is the primary persona for this story?", "options": ["Customer", "Support agent"] }
+        }
+      ]
+    },
+    { "content": "Thanks. Here is a refined version of the story with acceptance criteria." }
+  ]
+}

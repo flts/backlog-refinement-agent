@@ -175,8 +175,6 @@ importers:
 
   .: {}
 
-  apphost: {}
-
   apps/web:
     dependencies:
       dexie:

@@ -1,0 +1,33 @@
+[project]
+name = "fake-gateway"
+version = "0.1.0"
+description = "Scripted OpenAI-compatible LLM gateway for local development and end-to-end tests"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "httpx>=0.28",
+]
+
+# Standalone project: deliberately not a member of the root uv workspace (libs/*, services/*).
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = []
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+extend = "../../pyproject.toml"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["fake_gateway"]
