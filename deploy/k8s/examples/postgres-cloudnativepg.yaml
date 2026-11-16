@@ -1,0 +1,30 @@
+# OPTIONAL example: PostgreSQL with pgvector via the CloudNativePG operator (https://cloudnative-pg.io). The application
+# treats Postgres as an external dependency; a managed service with the `vector` and `citext` extensions works as well.
+# Not part of the kustomizations. Requires the operator and an image that ships pgvector (CloudNativePG >= 1.26 supports
+# extension images; otherwise use an image such as ghcr.io/cloudnative-pg/postgresql with pgvector added).
+# After applying: the databases `backlogdb` and `agentdb` and their owners are created below; point
+# BACKLOG_DATABASE_URL / AGENT_DATABASE_URL at `backlog-pg-rw.backlog.svc:5432` using the generated `*-credentials` Secrets.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: backlog-pg
+  namespace: backlog
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17
+  storage: {size: 20Gi}
+  postgresql:
+    parameters:
+      max_connections: "200"
+  bootstrap:
+    initdb:
+      database: backlogdb
+      owner: backlog
+      postInitApplicationSQL:
+        - CREATE EXTENSION IF NOT EXISTS vector
+        - CREATE EXTENSION IF NOT EXISTS citext
+        - CREATE ROLE agent LOGIN PASSWORD 'CHANGE-ME'
+        - CREATE DATABASE agentdb OWNER agent
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {memory: 2Gi}

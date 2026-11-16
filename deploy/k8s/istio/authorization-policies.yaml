@@ -1,0 +1,74 @@
+# DENY policies are evaluated before ALLOW. Probes are rewritten by the sidecar and bypass these policies.
+#
+# backlog-api: (1) /mcp and /internal/* only for the agent-service workload identity (mTLS), never through the
+# gateway; (2) every other /api/* path needs a valid JWT (request principal), except the health endpoints and the
+# project event stream: browsers open it with EventSource, which cannot send an Authorization header, so it
+# authenticates with a short-lived signed ticket (`?ticket=`, issued by POST .../events/ticket with the JWT) that
+# backlog-api verifies itself. Istio cannot match a middle wildcard, hence the suffix `*/events`.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: backlog-api-deny-internal-except-agent
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: backlog-api}
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notPrincipals: ["cluster.local/ns/backlog/sa/agent-service"]
+      to:
+        - operation:
+            paths:
+              - /api/backlog/mcp
+              - /api/backlog/mcp/*
+              - /api/backlog/internal/*
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: backlog-api-require-jwt
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: backlog-api}
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            paths: ["/api/*"]
+            notPaths: ["/api/backlog/healthz", "/api/backlog/readyz", "*/events"]
+---
+# agent-service: every /api/* path needs a valid JWT, except the health endpoints. Only the gateway (browser traffic)
+# and nothing else in the mesh may call it.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: agent-service-require-jwt
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: agent-service}
+  action: DENY
+  rules:
+    - from:
+        - source:
+            notRequestPrincipals: ["*"]
+      to:
+        - operation:
+            paths: ["/api/*"]
+            notPaths: ["/api/agent/healthz", "/api/agent/readyz"]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: agent-service-allow-gateway-only
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: agent-service}
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]

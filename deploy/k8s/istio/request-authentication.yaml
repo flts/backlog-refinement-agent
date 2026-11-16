@@ -1,0 +1,30 @@
+# Validates the Keycloak access token at the sidecar (signature, issuer, audience, expiry) in addition to the
+# validation inside the services. A request WITHOUT a token passes this step (it only rejects invalid tokens);
+# authorization-policies.yaml requires a request principal. In auth.mode=platform the gateway's ext-authz
+# (oauth2-proxy) injects the bearer token, so the same policy applies.
+# `issuer` must equal the token's `iss` exactly; `jwksUri` must be reachable from the pods (in-cluster URL allowed).
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata:
+  name: backlog-api
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: backlog-api}
+  jwtRules:
+    - issuer: https://keycloak.example.com/realms/backlog
+      jwksUri: https://keycloak.example.com/realms/backlog/protocol/openid-connect/certs
+      audiences: [backlog-api]
+      forwardOriginalToken: true
+---
+apiVersion: security.istio.io/v1
+kind: RequestAuthentication
+metadata:
+  name: agent-service
+spec:
+  selector:
+    matchLabels: {app.kubernetes.io/name: agent-service}
+  jwtRules:
+    - issuer: https://keycloak.example.com/realms/backlog
+      jwksUri: https://keycloak.example.com/realms/backlog/protocol/openid-connect/certs
+      audiences: [agent-service]
+      forwardOriginalToken: true

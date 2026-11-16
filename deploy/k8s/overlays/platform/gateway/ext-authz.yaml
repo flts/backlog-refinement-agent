@@ -1,0 +1,31 @@
+# Platform login at the ingress gateway. Prerequisites (platform team):
+#   1. oauth2-proxy (or similar) deployed, configured for the Keycloak realm with `--set-authorization-header=true`
+#      (or `--pass-access-token`) so the upstream response carries `Authorization: Bearer <access token>`.
+#   2. An ext-authz provider named `oauth2-proxy` in the mesh config (meshConfig.extensionProviders):
+#        - name: oauth2-proxy
+#          envoyExtAuthzHttp:
+#            service: oauth2-proxy.oauth2-proxy.svc.cluster.local
+#            port: 4180
+#            includeRequestHeadersInCheck: [cookie, authorization, x-forwarded-proto, x-forwarded-host]
+#            headersToUpstreamOnAllow: [authorization, x-auth-request-email, set-cookie]
+#            headersToDownstreamOnDeny: [content-type, set-cookie, location]
+#   3. The access token must carry the audiences backlog-api and agent-service (Keycloak audience mappers) and a
+#      verified `email` claim; Keycloak client for oauth2-proxy: confidential, standard flow only.
+# Everything except the health endpoints is sent to the provider; unauthenticated browsers are redirected to the login.
+# API calls without a session get a 401 (the SPA then reloads the page once, which triggers the login redirect).
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: backlog-platform-login
+spec:
+  selector:
+    matchLabels:
+      istio: ingressgateway
+  action: CUSTOM
+  provider:
+    name: oauth2-proxy
+  rules:
+    - to:
+        - operation:
+            hosts: ["backlog.example.com"]
+            notPaths: ["/oauth2/*", "/healthz", "/api/backlog/healthz", "/api/agent/healthz"]

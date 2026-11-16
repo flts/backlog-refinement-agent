@@ -52,6 +52,21 @@ docker run -p 8080:8080 -e OIDC_AUTHORITY=http://localhost:8080/realms/backlog -
 
 Values must not contain double quotes or backslashes (they are inserted into JSON verbatim). Caddy reads the variables when it loads the Caddyfile, so changing a value requires restarting the container or rolling the pods.
 
+## Run with Docker Compose
+
+The root `docker-compose.yml` starts the full stack: Postgres (pgvector, databases `backlogdb` and `agentdb`), Keycloak (realm `backlog` imported), backlog-api, agent-service, the web app (Caddy) and an optional scripted fake LLM gateway.
+
+```sh
+docker compose --profile fake up -d --build --wait   # fake LLM gateway: no LLM needed, the agent echoes
+docker compose up -d --build --wait                  # real gateway: set LLM_BASE_URL, LLM_API_KEY, LLM_MODEL in .env first
+deploy/compose-smoke.sh                              # end-to-end check (curl + jq): token, API, thread, AG-UI stream
+docker compose --profile fake down -v                # stop and delete the data
+```
+
+Open <http://localhost:8088> and sign in as `alice@example.test` (also `bob`, `carol`; password `dev-password`). Keycloak is at <http://localhost:8080> (admin: `admin` / `dev-admin-password`), the services are published on `127.0.0.1:8001` / `8002`. `.env.example` documents all settings (LLM gateway, embedding model and dimension, secrets); every secret there is a **dev-only default**. Without the `fake` profile no gateway is started, so configure a real `LLM_BASE_URL` (the default points at the `fake-gateway` service).
+
+Issuer: browsers reach Keycloak at `http://localhost:8080`, containers at `http://keycloak:8080`. Keycloak runs with `KC_HOSTNAME=http://localhost:8080` and `KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true`, so every token carries `iss=http://localhost:8080/realms/backlog` while the services fetch keys and tokens through `BACKLOG_OIDC_JWKS_URL` / `AGENT_OIDC_JWKS_URL` / `AGENT_SERVICE_TOKEN_URL` on the internal address. Request tokens from the host (`http://localhost:8080`), not from inside the network, or `iss` will not match. Services run with `*_ENV=production` (override with `APP_ENV=development`); agent-service must stay a single replica. For Kubernetes see `deploy/k8s/README.md`.
+
 Until the API client lands, projects and items are still stored in the browser (IndexedDB) and sending a message to the agent only shows "The agent is being connected".
 
 Agent instructions and Markdown templates can be exported and imported as JSON under Settings > Backup. Exports contain saved settings, not unsaved edits; imports replace saved settings and discard unsaved Settings edits. Default templates are Markdown files under `src/defaults/templates/`; the base refinement principles and per-type instructions are Markdown files under `src/defaults/instructions/`. User edits to templates, principles and type instructions are saved in IndexedDB (configuration export format version 4 only) and can be reset to the source files. The agent is given the user's saved template for an item type verbatim. Templates are plain Markdown (headings plus `<!-- hint -->` comments, no placeholders): each item stores one Markdown document and the agent decides what to fill in. The agent returns only per-section updates, which the app merges so untouched sections stay byte-identical; confirmed `- [x]` items are never dropped, and the last 10 versions are kept with an “Undo last AI change” button. Sections titled “Assumptions” / “Open questions” (`- [ ]` task lists) get confirm/reject/resolve buttons. “Break this down” gives the model the template of the requested child type and pre-fills each proposed child (including assumptions and open questions); the app then rebuilds every child description on that template's headings, keeping any extra content under “Additional notes”. Refinement sessions and accepted backlog changes remain local and survive reloads; generated child items are only persisted after explicit acceptance.
