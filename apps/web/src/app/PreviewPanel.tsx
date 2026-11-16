@@ -1,10 +1,12 @@
 import React from 'react';
 import type { Item, ItemStatus, ItemSummary, ItemType, Revision } from '../api';
-import { PresenceAvatars, RemoteChangeNotice, RevisionAttribution, type PresenceUser, type RemoteItemChange } from '../collab';
+import { PresenceAvatars, RemoteChangeNotice, type PresenceUser, type RemoteItemChange } from '../collab';
+import { HistoryPanel } from '../history';
 import { QualityAssessmentSchema, type QualityAssessment } from '../domain/backlog-item';
 import { parseChecklistSections } from '../domain/document';
 import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
+import { PanelTabs, tabButtonId, tabPanelId, type PanelTab } from './PanelTabs';
 import { itemTypeLabel, statusText, typeShort } from './labels';
 
 export function qualityDiagnostics(quality: QualityAssessment): string[] {
@@ -32,14 +34,19 @@ function stripNulls(value: unknown): unknown {
   return value;
 }
 
+/** Tab ids of the document panel; further tabs (for example Quality) are added to `tabs` in PreviewPanel. */
+export type PreviewTabId = 'document' | 'open-items' | 'history';
+const tabsPrefix = 'preview';
+
 export type PreviewPanelProps = {
   className: string;
   item?: Item;
   parentItem?: ItemSummary;
-  /** Number of server revisions of the item, newest (the current content) included. */
-  revisionCount?: number;
-  /** Saved versions, newest first, for the "who changed this" list. */
+  /** Needed for the History tab (compare loads single revisions). */
+  projectId?: string;
+  /** Saved versions, newest first; the first one is the current content. */
   revisions?: Revision[];
+  revisionsLoading?: boolean;
   /** Resolves an actor email to a display name. */
   nameOf?: (email: string) => string;
   /** Other people who have this item open. */
@@ -53,18 +60,29 @@ export type PreviewPanelProps = {
   onSelectItem: (id: string) => void;
   onUpdate: (changes: { title?: string; document?: string }) => void;
   onResolveChecklist: (line: number, action: 'check' | 'remove', message: string) => void;
-  onUndo: () => void;
+  /** Restores a saved version as a new version; resolves to whether it worked. The History tab is only offered when this is set. */
+  onRestore?: (revisionId: string) => Promise<boolean>;
   onChangeStatus: (status: ItemStatus) => void;
   onAssessQuality: () => void;
   onProposeChildren: (type: ItemType) => void;
 };
 
-export function PreviewPanel({ className, item, parentItem, revisionCount = 0, revisions = [], nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onUndo, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
+export function PreviewPanel({ className, item, parentItem, projectId, revisions = [], revisionsLoading = false, nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onRestore, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
   const checklist = React.useMemo(() => item ? parseChecklistSections(item.document) : [], [item?.document]);
   const quality = React.useMemo(() => {
     const parsed = QualityAssessmentSchema.safeParse(stripNulls(item?.quality?.assessment));
     return parsed.success ? parsed.data : undefined;
   }, [item?.quality]);
+  const [tabByItem, setTabByItem] = React.useState<Record<string, PreviewTabId>>({});
+  const openAssumptions = checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked);
+  const openQuestions = checklist.filter((entry) => entry.kind === 'question' && !entry.checked);
+  const tabs: PanelTab<PreviewTabId>[] = [
+    { id: 'document', label: 'Document' },
+    { id: 'open-items', label: 'Open items', count: openAssumptions.length + openQuestions.length },
+    ...(projectId && onRestore ? [{ id: 'history' as const, label: 'History' }] : []),
+  ];
+  const requestedTab = item ? tabByItem[item.id] : undefined;
+  const activeTab: PreviewTabId = tabs.some((tab) => tab.id === requestedTab) ? requestedTab! : 'document';
   return (
     <aside className={className}>
       {item ? <>
@@ -77,13 +95,18 @@ export function PreviewPanel({ className, item, parentItem, revisionCount = 0, r
               <PresenceAvatars people={presence} label="People viewing this item" showLabel /><RemoteChangeNotice change={remoteChange} />
               <label className="field-label" htmlFor="item-title">Title</label><input id="item-title" className="preview-title-input" value={item.title} onChange={(event) => onUpdate({ title: event.target.value })} />
             </div>
-            <div className="preview-scroll">
+            <PanelTabs tabs={tabs} active={activeTab} idPrefix={tabsPrefix} label="Item views" onChange={(id) => setTabByItem((current) => ({ ...current, [item.id]: id }))} />
+            <div className="preview-scroll" role="tabpanel" id={tabPanelId(tabsPrefix, activeTab)} aria-labelledby={tabButtonId(tabsPrefix, activeTab)}>
+              {activeTab === 'document' && <>
               <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.document} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ document: event.target.value })} rows={14} />
-              {checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions to confirm</h3><span className="count-badge amber">{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).map((entry) => <div className="uncertainty-card assumption-card" key={entry.line}><span aria-hidden="true">◇</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => onResolveChecklist(entry.line, 'check', 'Assumption confirmed.')}><span aria-hidden="true">✓</span></button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => onResolveChecklist(entry.line, 'remove', 'Assumption rejected.')}><span aria-hidden="true">×</span></button></div>)}</section>}
-              {checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).map((entry) => <div className="uncertainty-card question-card" key={entry.line}><span aria-hidden="true">?</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => onResolveChecklist(entry.line, 'check', 'Question marked resolved.')}><span aria-hidden="true">✓</span></button></div>)}</section>}
-              {revisionCount > 1 && <section className="preview-section"><div className="preview-section-head"><h3>Version history</h3><span className="subtle-label">{revisionCount} saved</span></div><button className="button button-secondary button-small" disabled={busy} onClick={() => onUndo()}>Restore previous version</button><RevisionAttribution revisions={revisions} nameOf={nameOf} /></section>}
-              
               {quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {item.quality?.stale ? 'Outdated · ' : ''}{quality.overall === 'ready' ? 'Ready' : quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
+              </>}
+              {activeTab === 'open-items' && <>
+              {openAssumptions.length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions to confirm</h3><span className="count-badge amber">{openAssumptions.length}</span></div>{openAssumptions.map((entry) => <div className="uncertainty-card assumption-card" key={entry.line}><span aria-hidden="true">◇</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => onResolveChecklist(entry.line, 'check', 'Assumption confirmed.')}><span aria-hidden="true">✓</span></button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => onResolveChecklist(entry.line, 'remove', 'Assumption rejected.')}><span aria-hidden="true">×</span></button></div>)}</section>}
+              {openQuestions.length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{openQuestions.length}</span></div>{openQuestions.map((entry) => <div className="uncertainty-card question-card" key={entry.line}><span aria-hidden="true">?</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => onResolveChecklist(entry.line, 'check', 'Question marked resolved.')}><span aria-hidden="true">✓</span></button></div>)}</section>}
+              {openAssumptions.length + openQuestions.length === 0 && <p className="history-note">No open assumptions or questions. Unchecked checklist items under “Assumptions” and “Open questions” in the document show up here.</p>}
+              </>}
+              {activeTab === 'history' && projectId && onRestore && <HistoryPanel key={item.id} projectId={projectId} item={item} revisions={revisions} loading={revisionsLoading} nameOf={nameOf} busy={busy} onRestore={onRestore} />}
             </div>
             <div className="bottom-area">
               <section className="preview-section quality-section status-section">

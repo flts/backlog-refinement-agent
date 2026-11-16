@@ -6,7 +6,7 @@ import { SidebarPanel } from '../app/SidebarPanel';
 import { createFakeBacklogApi, makeItem, makeMember, makeProject } from '../test/fakeBacklogApi';
 import { expectNoAxeViolations } from '../test/axe';
 import { renderWithApi } from '../test/render';
-import { RevisionAttribution, attributionText } from './RevisionAttribution';
+import { attributionText } from './RevisionAttribution';
 
 describe('collaboration wiring', () => {
   it('opens the Share dialog from the project toolbar', async () => {
@@ -35,15 +35,10 @@ describe('collaboration wiring', () => {
     await expectNoAxeViolations(container);
   });
 
-  it('attributes revisions to members and marks agent changes', async () => {
+  it('attributes revisions to members and marks agent changes', () => {
     const revision = (id: string, actor: string, origin: 'manual' | 'agent' | 'restore', version: number) => ({ id, itemId: 'i1', version, title: 'T', origin, label: null, actor, runId: null, createdAt: '2026-01-01T10:00:00Z' });
     const names = (email: string) => email === 'anna@example.test' ? 'Anna' : email;
     expect(attributionText(revision('a', 'anna@example.test', 'agent', 3), names)).toBe('Anna via agent');
     expect(attributionText(revision('b', 'frank@example.test', 'manual', 2), names)).toBe('frank@example.test');
-    const { container } = render(<RevisionAttribution nameOf={names} revisions={[revision('a', 'anna@example.test', 'agent', 3), revision('b', 'frank@example.test', 'restore', 2)]} />);
-    await userEvent.click(screen.getByText('Who changed this'));
-    expect(screen.getByText('Anna via agent')).toBeInTheDocument();
-    expect(screen.getByText('frank@example.test restored a version')).toBeInTheDocument();
-    await expectNoAxeViolations(container);
   });
 });

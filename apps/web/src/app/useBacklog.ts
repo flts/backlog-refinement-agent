@@ -132,13 +132,6 @@ export function useBacklog(notifications: Notifications, projectId: string) {
     } catch (cause) { report('Could not restore version', cause, 'item', () => reload(selectedId)); return false; }
   }
 
-  /** Server revisions are newest first and the newest is the current content, so "undo" restores the second one. */
-  async function undoLastChange(): Promise<boolean> {
-    const previous = revisions[1];
-    if (!previous) { setNotice('There is no earlier version to restore.'); return false; }
-    return restoreRevision(previous.id);
-  }
-
   async function resolveChecklist(line: number, action: 'check' | 'remove', message: string) {
     if (!selectedItem) return;
     const document = updateChecklistLine(selectedItem.document, line, action);
@@ -174,10 +167,10 @@ export function useBacklog(notifications: Notifications, projectId: string) {
   useEffect(() => { if (loadError) setError(`Could not load the backlog: ${errorText(loadError)}`); }, [loadError]);
 
   return {
-    items, selectedId, selectedItem, serverItem, selectedSummary, parentItem, revisions, session, sessions,
+    items, selectedId, selectedItem, serverItem, selectedSummary, parentItem, revisions, revisionsLoading: revisionsQuery.isLoading, session, sessions,
     loading: itemsQuery.isLoading || (Boolean(selectedId) && itemQuery.isLoading), saving: autosave.saving, saveStatus: autosave.status, autosave,
     hasDraft: Boolean(selectedId && drafts[selectedId]),
-    selectItem, createItem, startNewSession, switchSession, deleteCurrentSession, editSelected, flush, changeStatus, restoreRevision, undoLastChange,
+    selectItem, createItem, startNewSession, switchSession, deleteCurrentSession, editSelected, flush, changeStatus, restoreRevision,
     resolveChecklist, duplicateSelected, deleteSelected, reload: () => reload(selectedId),
   };
 }

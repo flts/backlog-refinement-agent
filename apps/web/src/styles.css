@@ -2986,26 +2986,219 @@ dialog.modal-dialog.conflict-dialog {
     margin-top: 12px
 }
 
-.revision-attribution {
-    margin-top: 8px;
+/* --- ux-history --- */
+.panel-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--line)
+}
+
+.panel-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 10px 8px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer
+}
+
+.panel-tab:hover {
+    color: var(--ink)
+}
+
+.panel-tab[aria-selected="true"] {
+    color: var(--accent-text);
+    border-bottom-color: var(--accent-border)
+}
+
+.panel-tab-count {
+    min-width: 18px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: var(--warning-soft);
+    color: var(--warning-text);
     font-size: 0.75rem;
-    color: var(--muted)
+    text-align: center
 }
 
-.revision-attribution ol {
-    margin: 6px 0 0;
+.history-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px
+}
+
+.history-note {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8125rem
+}
+
+.history-list {
+    list-style: none;
+    margin: 0;
     padding: 0;
-    list-style: none
+    position: relative
 }
 
-.revision-attribution li {
+.history-entry {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 8px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer
+}
+
+.history-entry:hover {
+    background: var(--panel-subtle)
+}
+
+.history-entry.selected {
+    border-color: var(--accent-border);
+    background: var(--green-soft)
+}
+
+.history-dot {
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    margin-top: 6px;
+    border-radius: 50%;
+    border: 2px solid var(--accent-border);
+    background: var(--panel)
+}
+
+.history-entry-main {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    font-size: 0.8125rem
+}
+
+.history-entry-main time,
+.history-detail-head time {
+    color: var(--muted);
+    font-size: 0.75rem
+}
+
+.history-entry-top {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    padding: 2px 0
+    align-items: center;
+    gap: 6px
 }
 
-.revision-version {
-    font-weight: 700;
-    color: var(--ink)
+.history-badge,
+.revision-label {
+    padding: 0 7px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--panel-subtle);
+    color: var(--muted);
+    font-size: 0.75rem
+}
+
+.history-badge-agent {
+    background: var(--violet-soft);
+    color: var(--violet-text)
+}
+
+.history-badge-restore {
+    background: var(--warning-soft);
+    color: var(--warning-text)
+}
+
+.history-badge-current {
+    background: var(--green-soft);
+    color: var(--accent-text)
+}
+
+.history-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel)
+}
+
+.history-detail-head h4 {
+    margin: 0;
+    font-size: 0.875rem
+}
+
+.history-detail-head p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 0.75rem
+}
+
+.history-current {
+    color: var(--accent-text);
+    font-weight: 600
+}
+
+.history-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 0;
+    padding: 0;
+    border: 0
+}
+
+.history-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.8125rem
+}
+
+.history-title {
+    margin: 0 0 6px;
+    font-size: 0.8125rem
+}
+
+.history-document {
+    margin: 0;
+    padding: 8px 10px;
+    max-height: 320px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    background: var(--panel-subtle);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere
+}
+
+.history-content .diff-view,
+.history-content .diff-empty {
+    margin-top: 0
+}
+
+.history-confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px
+}
+
+.history-confirm p {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 0.8125rem
 }

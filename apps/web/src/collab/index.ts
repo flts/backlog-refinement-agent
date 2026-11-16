@@ -1,7 +1,7 @@
 export { ConflictDialog, type ConflictDialogProps } from './ConflictDialog';
 export { PresenceAvatars, PresenceDot, Avatar, presenceSentence } from './PresenceAvatars';
 export { RemoteChangeNotice } from './RemoteChangeNotice';
-export { RevisionAttribution, attributionText } from './RevisionAttribution';
+export { attributionText } from './RevisionAttribution';
 export { ShareDialog, type ShareDialogProps } from './ShareDialog';
 export { applyMerge, planMerge, type MergeInput, type MergePlan, type SectionChoice } from './merge';
 export { displayName, initialsOf, normalizeEmail, useMemberDirectory } from './people';
