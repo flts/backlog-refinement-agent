@@ -3009,3 +3009,23 @@ dialog.modal-dialog.conflict-dialog {
     font-weight: 700;
     color: var(--ink)
 }
+
+/* --- ux-backlog-filter --- */
+.backlog-filter { display: grid; gap: 6px; margin: 0 0 8px }
+.filter-input { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--border-control); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.8125rem }
+.filter-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
+.filter-chip { border: 1px solid var(--border-control); border-radius: 999px; padding: 2px 8px; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.75rem; cursor: pointer }
+.filter-chip:hover { background: var(--panel-subtle) }
+.filter-chip.active { background: var(--green-soft); border-color: var(--accent-border); color: var(--accent-text); font-weight: 600 }
+.filter-clear { border: 0; background: transparent; color: var(--accent-text); font: inherit; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 2px 4px }
+.filter-count { margin: 0; min-height: 0; color: var(--muted); font-size: 0.75rem }
+.filter-count:empty { display: none }
+.tree-row-context .tree-title { color: var(--muted); font-style: italic; font-weight: 400 }
+
+/* --- ux-needs-input --- */
+.thread-badge { flex: none; display: inline-flex; align-items: center; margin: 0 4px; padding: 1px 7px; border-radius: 999px; border: 1px solid transparent; font-size: 0.6875rem; font-weight: 600; white-space: nowrap }
+.thread-badge-input { background: var(--warning-soft); color: var(--warning-text); border-color: var(--warning-text) }
+.thread-badge-review { background: var(--violet-soft); color: var(--violet-text); border-color: var(--violet-text) }
+.thread-badge-running { padding: 0; border: 0 }
+.thread-spinner { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--track); border-top-color: var(--accent-text); animation: thread-spin .8s linear infinite }
+@keyframes thread-spin { to { transform: rotate(360deg) } }

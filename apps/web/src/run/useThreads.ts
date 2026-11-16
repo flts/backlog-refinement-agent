@@ -38,7 +38,10 @@ export function useThreads(projectId: string | undefined, itemId: string | undef
   });
   const removeMutation = useMutation({
     mutationFn: (threadId: string) => api.remove(threadId),
-    onSuccess: (_void, threadId) => queryClient.setQueryData<Thread[]>(key, (current) => (current ?? []).filter((entry) => entry.id !== threadId)),
+    onSuccess: (_void, threadId) => {
+      queryClient.setQueryData<Thread[]>(key, (current) => (current ?? []).filter((entry) => entry.id !== threadId));
+      void queryClient.invalidateQueries({ queryKey: agentKeys.projectThreads(projectId ?? '') });
+    },
   });
 
   const selectThread = useCallback((threadId: string) => setPicked({ itemId, threadId }), [itemId]);

@@ -20,6 +20,7 @@ import { useBacklog } from './useBacklog';
 import { errorText, useNotifications } from './useNotifications';
 import { useAgentRun, useThreads } from '../run';
 import { changeSelectedStatus } from './statusActions';
+import { useProjectThreadStatuses } from '../backlog';
 
 function initials(name: string): string {
   const letters = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
@@ -38,6 +39,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
   const [message, setMessage] = useState('');
+  const threadStatuses = useProjectThreadStatuses(project.id);
   const threads = useThreads(project.id, selectedItem?.id);
   const run = useAgentRun(threads.activeThreadId, { projectId: project.id, itemId: selectedItem?.id ?? '', itemType: selectedItem?.type, ensureThread: threads.ensureThread });
   const agentBusy = run.busy;
@@ -135,7 +137,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
         <SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
           items={backlog.items} selectedId={backlog.selectedId}
-          onSelect={selectItem} presenceFor={presence.forItem}
+          onSelect={selectItem} presenceFor={presence.forItem} projectId={project.id} threadStatuses={threadStatuses.statuses}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
         />
 
