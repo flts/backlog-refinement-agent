@@ -54,7 +54,7 @@ The browser sends an API key when the user has entered one, or when a developmen
 
 ### Accessibility
 
-Target is WCAG 2.2 AA plus 1.4.6 (7:1 text contrast). Colour tokens in `src/styles.css` are checked by `src/styles.contrast.test.ts`; modals use native `<dialog>` through `src/app/useModalDialog.ts`; chat streaming is announced via a single `role="status"`; OS/browser preferences (zoom, reduced motion, increased contrast, forced colours) are respected without in-app settings. Component tests run axe-core via `src/test/axe.ts`. Details, SC matrix and manual test protocol: `docs/accessibility.md`.
+Target is WCAG 2.2 AA plus 1.4.6 (7:1 text contrast). Colour tokens in `src/styles.css` are checked by `src/styles.contrast.test.ts`; modals use native `<dialog>` through `src/app/useModalDialog.ts`; chat streaming is announced via a single `role="status"`; OS/browser preferences (zoom, colour scheme, reduced motion, increased contrast, forced colours) are respected. Light and dark themes share colour tokens; the theme follows `prefers-color-scheme` unless the user picks Light or Dark in Settings › General. That choice is stored only in `localStorage` (`theme-preference`, managed by `src/app/theme.ts`), applied as `data-theme` on `<html>` by an inline script in `index.html` before first paint, and is not part of IndexedDB settings or the configuration export. Component tests run axe-core via `src/test/axe.ts`. Details, SC matrix and manual test protocol: `docs/accessibility.md`.
 
 ### Build, run, test
 

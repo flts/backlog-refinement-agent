@@ -6,8 +6,14 @@ import { fetchAvailableModels } from '../infrastructure/llm/availableModels';
 import type { LlmOverrides } from '../infrastructure/llm/llmConfig';
 import { isValidLlmEndpoint } from '../infrastructure/llm/apiUrl';
 import { itemTypeLabel, itemTypes } from './labels';
+import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 
 type Tab = 'general' | 'backup' | BacklogItemType;
+const themeOptions: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'System' },
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+];
 const tabs: { id: Tab; label: string }[] = [
   { id: 'general', label: 'General' },
   ...itemTypes.map((type) => ({ id: type, label: itemTypeLabel[type] })),
@@ -33,6 +39,7 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   const [importing, setImporting] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
   const [endpointError, setEndpointError] = useState('');
+  const [theme, setTheme] = useState<ThemePreference>(getThemePreference);
   const dialog = useModalDialog(onClose, () => !importing);
 
   async function loadModels() {
@@ -100,6 +107,19 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
         </div>
         <div className="settings-body" inert={importing}>
           <div role="tabpanel" id="settings-panel-general" aria-labelledby="settings-tab-general" hidden={tab !== 'general'}>
+            <fieldset className="theme-choice" aria-describedby="theme-help">
+              <legend>Appearance</legend>
+              <p className="settings-help" id="theme-help">Applies immediately and is stored in this browser only. System follows your operating system&apos;s light or dark setting.</p>
+              <div className="theme-options">
+                {themeOptions.map((option) => (
+                  <label key={option.value} className="theme-option">
+                    <input type="radio" name="theme" value={option.value} checked={theme === option.value}
+                      onChange={() => { setTheme(option.value); setThemePreference(option.value); }} />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
             <fieldset className="llm-connection" key={llmFormKey}>
               <legend>LLM connection</legend>
               <span className={llmReady ? 'env-ready' : 'env-missing'}>{llmReady ? 'Endpoint and model configured' : 'Endpoint or model missing'}</span>
