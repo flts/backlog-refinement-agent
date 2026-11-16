@@ -1,0 +1,67 @@
+# agent-service
+
+FastAPI service that hosts the AG-UI agent endpoint (Microsoft Agent Framework), private agent threads and message
+feedback. All routes are under `/api/agent`; probes are at `/healthz` and `/readyz` (also under the prefix).
+
+| Route | Purpose |
+|---|---|
+| `POST /api/agent/agents/{agentId}` | AG-UI run (SSE). `threadId` must be a thread of the caller; `state.projectId` / `state.itemId` must match it |
+| `GET/POST /api/agent/threads`, `PATCH/DELETE /api/agent/threads/{id}` | Own threads (`GET ?projectId=&itemId=`); other users' threads are 404 |
+| `POST /api/agent/feedback` | Thumbs up/down on a message (upsert per thread, message, user) |
+| `GET /readyz` | Database, plus `llm: ok\|unavailable` (optionally required) |
+
+## Run locally
+
+```bash
+uv sync --all-packages
+cp services/agent-service/.env.example services/agent-service/.env
+uv run --package agent-service uvicorn agent_service.main:app --reload --port 8002
+```
+
+Under the Aspire AppHost the database (`ConnectionStrings__agentdb`), Keycloak (`services__keycloak__http__0`) and
+backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI docs: <http://localhost:8002/api/agent/docs>.
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `AGENT_ENV` | `production` | `development`, `test` or `production` |
+| `AGENT_DATABASE_URL` / `ConnectionStrings__agentdb` / `AGENTDB_URI` | — | PostgreSQL URI or Aspire connection string for `agentdb` |
+| `AGENT_AUTO_MIGRATE` | `true` in development | Run alembic on startup (guarded by a Postgres advisory lock) |
+| `AGENT_AUTH_MODE` | `jwt` | `dev` trusts `X-Dev-User-Email`; refused unless `AGENT_ENV=development` |
+| `AGENT_OIDC_ISSUER` / `AGENT_KEYCLOAK_URL` / `services__keycloak__http__0` | — | Token issuer (or Keycloak base URL + `AGENT_OIDC_REALM`, default `backlog`) |
+| `AGENT_OIDC_AUDIENCE` | `agent-service` | Required `aud` |
+| `AGENT_OIDC_JWKS_URL`, `AGENT_OIDC_LEEWAY_SECONDS` | discovered, `60` | JWKS override, clock skew |
+| `AGENT_BACKLOG_API_URL` / `services__backlog-api__http__0` | — | backlog-api base URL (without `/api/backlog`) |
+| `AGENT_LLM_BASE_URL` | — | OpenAI-compatible gateway; `/v1` is appended when missing |
+| `AGENT_LLM_API` | `chat` | `chat` (`/v1/chat/completions`) or `responses` (`/v1/responses`) |
+| `AGENT_LLM_MODEL` | `refiner-default` | Default model alias |
+| `AGENT_LLM_API_KEY` | — | Gateway credential (secret) |
+| `AGENT_LLM_REQUIRED_FOR_READINESS` | `false` | `/readyz` returns 503 while the gateway is unreachable |
+| `AGENT_SKILLS_DIR` | — | Default skills directory (used by the agent loader) |
+| `AGENT_MAX_BODY_BYTES` / `AGENT_AGUI_MAX_BODY_BYTES` | 1 MiB / 2 MiB | Body limits (AG-UI runs have their own) |
+| `AGENT_CORS_ALLOW_ORIGINS` | empty | Comma-separated origins; empty = same-origin through the proxy (MAF's `allow_origins` is a no-op) |
+| `AGENT_LOG_LEVEL` | `INFO` | JSON logs (no content, no tokens) |
+
+## Design notes
+
+- **Identity:** the principal is the normalized verified email (403 without it); the AG-UI scope is `user:<email>`.
+  The scope resolver binds the raw token and principal to context variables (`agent_service.auth.current_token()` /
+  `current_principal()`) for the run; they are never logged or persisted.
+- **AG-UI wiring:** `agents/endpoint.py` registers MAF's endpoint once on `/api/agent/agents/{agent_id}` with an
+  `AgentDispatcher` runner. The `guard_agent_request` dependency checks agent id, thread ownership and state ids before
+  MAF runs; the dispatcher delegates to `AgentRegistry.get(agent_id)`, maintains `threads.status` and refreshes it
+  after each run and on hydrate. `require_confirmation=False`; snapshots live in `PgThreadSnapshotStore`.
+- **Approval state** is process-local in MAF (single replica or sticky routing by thread).
+- **Purge:** `agent_service.threads.purge_threads(session, project_id=, item_id=, owner_email=)` for the event hooks.
+
+## Migrations, tests, image
+
+```bash
+uv run --package agent-service alembic -c services/agent-service/alembic.ini upgrade head
+uv run --package agent-service pytest services/agent-service -q     # Docker (pgvector/pgvector:pg17) or AGENT_TEST_DATABASE_URL
+uv run ruff check services/agent-service && uv run pyright services/agent-service
+docker build -f services/agent-service/Dockerfile -t agent-service .   # build context = repository root
+```
+
+`tests/fakes/fake_gateway.py` is a scripted OpenAI-compatible gateway used by the tests (test-local).
