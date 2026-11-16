@@ -9,6 +9,7 @@ import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
 import { PanelTabs, tabButtonId, tabPanelId, type PanelTab } from './PanelTabs';
 import { itemTypeLabel, statusText, typeShort } from './labels';
+import { PredictivePreview, type ProposalForPreview } from '../review';
 
 function childTypeOptions(type: ItemType): ItemType[] {
   if (type === 'capability') return ['feature', 'enabler'];
@@ -49,9 +50,11 @@ export type PreviewPanelProps = {
   /** Latest assessment of the agent state (`run.agentState.quality`); shown when newer than the stored one. */
   liveQuality?: StateQuality | null;
   onProposeChildren: (type: ItemType) => void;
+  /** Track changes of the proposal that is streaming or waiting for review (`proposalForPreview(run)`). */
+  proposal?: ProposalForPreview | null;
 };
 
-export function PreviewPanel({ className, item, parentItem, projectId, revisions = [], revisionsLoading = false, nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onRestore, onChangeStatus, onAssessQuality, liveQuality, onProposeChildren }: PreviewPanelProps) {
+export function PreviewPanel({ className, item, parentItem, projectId, revisions = [], revisionsLoading = false, nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onRestore, onChangeStatus, onAssessQuality, liveQuality, onProposeChildren, proposal }: PreviewPanelProps) {
   const checklist = React.useMemo(() => item ? parseChecklistSections(item.document) : [], [item?.document]);
   const [tabByItem, setTabByItem] = React.useState<Record<string, PreviewTabId>>({});
   const openAssumptions = checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked);
@@ -79,6 +82,7 @@ export function PreviewPanel({ className, item, parentItem, projectId, revisions
             <PanelTabs tabs={tabs} active={activeTab} idPrefix={tabsPrefix} label="Item views" onChange={(id) => setTabByItem((current) => ({ ...current, [item.id]: id }))} />
             <div className="preview-scroll" role="tabpanel" id={tabPanelId(tabsPrefix, activeTab)} aria-labelledby={tabButtonId(tabsPrefix, activeTab)}>
               {activeTab === 'document' && <>
+              {proposal && <PredictivePreview document={item.document} proposal={proposal.proposal} status={proposal.status} />}
               <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.document} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ document: event.target.value })} rows={14} />
               </>}
               {activeTab === 'open-items' && <>

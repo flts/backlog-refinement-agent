@@ -1,7 +1,7 @@
 import type { Message } from '@ag-ui/core';
 import {
-  AgentStateSchema, ASK_USER_TOOL_NAME, DocumentChangesResultSchema, NextActionSchema, StateQualitySchema,
-  type ChildPreview, type DocumentChangesResult, type DocumentPreview, type NextAction, type StateQuality,
+  AgentStateSchema, ASK_USER_TOOL_NAME, LastApplySchema, NextActionSchema, StateQualitySchema,
+  type ChildPreview, type DocumentPreview, type LastApply, type NextAction, type StateQuality,
 } from '../contracts';
 import type { AgentError, HydrateResult, Interrupt, PendingAskUser, RunEvent, RunRequest } from '../agent';
 import { findPendingClientToolCalls, pendingAskUser as pickPendingAskUser } from '../agent';
@@ -33,7 +33,7 @@ export interface AgentStateView {
   childPreview: ChildPreview | null;
   nextActions: NextAction[];
   quality: StateQuality | null;
-  lastApply: DocumentChangesResult | null;
+  lastApply: LastApply | null;
 }
 
 export interface RunState {
@@ -83,7 +83,7 @@ export function viewOfState(raw: Record<string, unknown>, previous: AgentStateVi
     ? raw.nextActions.flatMap((action): NextAction[] => { const parsed = NextActionSchema.safeParse(action); return parsed.success ? [parsed.data] : []; }).slice(0, 3)
     : previous.nextActions;
   const quality = 'quality' in raw ? StateQualitySchema.nullable().safeParse(raw.quality) : undefined;
-  const lastApply = 'lastApply' in raw ? DocumentChangesResultSchema.nullable().safeParse(raw.lastApply) : undefined;
+  const lastApply = 'lastApply' in raw ? LastApplySchema.nullable().safeParse(raw.lastApply) : undefined;
   return {
     preview: preview.success ? preview.data : null,
     childPreview: childPreview.success ? (childPreview.data ?? null) : null,

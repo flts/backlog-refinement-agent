@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Item, ItemSummary } from '../api';
-import type { FeedbackRating, Thread } from '../agent';
+import type { FeedbackRating, ResumeDecision, Thread } from '../agent';
 import type { AskUserResult, NextAction } from '../contracts';
 import type { RunState } from '../run';
 import { ContextBar } from '../context/ContextBar';
@@ -10,7 +10,7 @@ import { useRunAnnouncements } from './announcements';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
 import { AskUserCard, AskUserInvalidNotice } from '../askuser';
-import { ReviewPlaceholder } from './placeholders';
+import { ApplyResultCard, ReviewPanel, useResultVisibility } from '../review';
 import { SessionTitle } from './SessionTitle';
 import { SuggestionChips } from './SuggestionChips';
 import { ThreadPicker } from './ThreadPicker';
@@ -52,11 +52,19 @@ export type ChatPanelProps = {
   onSlashCommand?: (command: AgentCommandEntry) => void;
   /** Items the composer `@` picker offers; the current item is left out. */
   mentionItems?: readonly MentionCandidate[];
+  /** ReviewCard: one decision per pending proposal (`run.decide`). Falls back to `onDecideAll` (approve everything / reject everything). */
+  onDecide?: (decisions: ResumeDecision[]) => void;
+  /** Sends a chat message (conflict resolution: "Please redo section …"). */
+  onSend?: (text: string) => void;
 };
 
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, threads, activeThreadId, run, busy, canRetry, message,
-    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback, projectId, slashCommands, onSlashCommand, mentionItems } = props;
+    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback, projectId, slashCommands, onSlashCommand, mentionItems, onDecide, onSend } = props;
+  const reviewing = run.phase === 'awaitingReview' && run.interrupts.some((interrupt) => !interrupt.expired);
+  const lastApply = run.agentState.lastApply;
+  const userMessages = run.messages.filter((entry) => entry.kind === 'user').length;
+  const showResult = useResultVisibility(lastApply, userMessages) && !reviewing && run.phase !== 'running';
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
@@ -85,7 +93,11 @@ export function ChatPanel(props: ChatPanelProps) {
           {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserCard key={run.pendingAskUser.toolCallId} args={run.pendingAskUser.args} disabled={busy} onAnswer={onAnswer} />}
           {run.phase === 'awaitingInput' && run.pendingAskUser && !run.pendingAskUser.args && <AskUserInvalidNotice />}
           {run.phase === 'idle' && onSuggestion && <SuggestionChips actions={run.agentState.nextActions} disabled={busy} onSelect={onSuggestion} />}
-          {run.phase === 'awaitingReview' && <ReviewPlaceholder run={run} disabled={busy} onDecideAll={onDecideAll} />}
+          {(reviewing || run.interrupts.some((interrupt) => interrupt.expired)) && (
+            <ReviewPanel run={run} document={item.document} itemId={item.id} disabled={busy} onSelectItem={props.onSelectItem}
+              onDecide={onDecide ?? ((decisions) => onDecideAll(decisions.every((decision) => 'approved' in decision && decision.approved)))} onRetry={onRetry} />
+          )}
+          {showResult && lastApply && <ApplyResultCard result={lastApply} messages={run.messages} disabled={busy} onSend={onSend} onSelectItem={props.onSelectItem} />}
         </MessageList>
         <div className="composer-wrap">
           {projectId && <ContextBar projectId={projectId} item={item} onSelectItem={props.onSelectItem} />}
@@ -93,6 +105,7 @@ export function ChatPanel(props: ChatPanelProps) {
             <span><span className="green-spark" aria-hidden="true">✳</span> Refine with AI</span>
             <span className="composer-hint">Enter to send · Shift+Enter for new line · / commands · @ items</span>
           </div>
+          {reviewing && <p className="composer-note" role="note">Sending a message cancels the pending proposal.</p>}
           <Composer value={message} busy={busy} running={running} reason={reason} asking={asking} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} slashCommands={slashCommands} onSlashCommand={onSlashCommand} mentionItems={mentionItems} />
           <div className="composer-actions">
             {running && <button className="retry-button" onClick={onStop}><span aria-hidden="true">■</span> Stop <span className="composer-hint">(Esc)</span></button>}

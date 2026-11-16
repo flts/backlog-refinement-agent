@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { createAgentClient } from '../agent';
@@ -65,15 +65,33 @@ describe('chat with the agent', () => {
     expect(await screen.findByText('Stopped.')).toBeInTheDocument();
   });
 
-  it('shows a proposal placeholder and approves it', async () => {
+  it('reviews a proposal: partial accept sends full-replacement editedArgs, then shows the result card', async () => {
     const user = userEvent.setup();
     const { http } = setup([sseResponse(approvalPropose), sseResponse(approvalResume)]);
     const box = await screen.findByLabelText('Message the refinement agent');
     await waitFor(() => expect(box).toBeEnabled());
     await user.type(box, 'improve{Enter}');
-    await user.click(await screen.findByRole('button', { name: 'Approve all' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'Approve all' })).toBeNull());
-    const resume = http.requests.at(-1)!.body as { resume: { status: string; payload: { approved: boolean } }[] };
-    expect(resume.resume[0]).toMatchObject({ status: 'resolved', payload: { approved: true } });
-  });
+    const card = await screen.findByRole('region', { name: 'Tighten summary + ACs' });
+    expect(screen.getByText('Sending a message cancels the pending proposal.')).toBeInTheDocument();
+    expect(box).toBeEnabled();
+    // Track changes in the Document tab while the review is pending.
+    expect(screen.getByRole('region', { name: 'Proposed changes' })).toHaveTextContent('Proposed changes — review in the chat');
+    await expectNoAxeViolations(card);
+    const summary = screen.getAllByRole('heading', { name: 'Summary', level: 4 }).find((heading) => card.contains(heading))!.closest('li')!;
+    await user.click(within(summary).getByRole('button', { name: /^Accept/ }));
+    await user.click(screen.getByRole('button', { name: /Reject section Acceptance criteria/ }));
+    await user.click(screen.getByRole('button', { name: 'Apply 1 section' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Apply 1 section' })).toBeNull());
+    const resume = http.requests.at(-1)!.body as { resume: unknown[] };
+    expect(resume.resume).toEqual([{
+      interruptId: 'af-call-6dd7f028c7434143b100efc14e149ad9',
+      status: 'resolved',
+      payload: {
+        approved: true,
+        editedArgs: { summary: 'Tighten summary + ACs', base_version: 7, sections: [{ id: 's1', heading: 'Summary', mode: 'replace', markdown: 'New summary text', rationale: 'clarity' }] },
+      },
+    }]);
+    expect(await screen.findByText('Applied 1 section · 1 edited')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Proposed changes' })).toBeNull();
+  }, 20_000);
 });

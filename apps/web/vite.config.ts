@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.ts',
+      // Integration tests render the whole app and run axe; under a full parallel run they need more than 5 s.
+      testTimeout: 20_000,
       // Lets styles.contrast.test.ts read the real stylesheet via ?raw.
       css: { include: [/styles\.css/] },
     },
