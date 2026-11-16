@@ -1,0 +1,116 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-hyd2"
+ },
+ {
+  "type": "STATE_SNAPSHOT",
+  "snapshot": {
+   "schemaVersion": 1,
+   "projectId": "p1",
+   "itemId": "item-42",
+   "preview": [
+    {
+     "id": "s1",
+     "heading": "Summary",
+     "mode": "replace",
+     "markdown": "New summary text",
+     "rationale": "clarity"
+    },
+    {
+     "id": "s2",
+     "heading": "Acceptance criteria",
+     "mode": "replace",
+     "markdown": "- [ ] AC1\n- [ ] AC2"
+    }
+   ]
+  }
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "improve"
+   },
+   {
+    "id": "a1",
+    "role": "assistant",
+    "content": "Here is my proposal."
+   },
+   {
+    "id": "a2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_prop",
+      "type": "function",
+      "function": {
+       "name": "propose_document_changes",
+       "arguments": "{\"summary\": \"Tighten summary + ACs\", \"base_version\": 7, \"sections\": [{\"id\": \"s1\", \"heading\": \"Summary\", \"mode\": \"replace\", \"markdown\": \"New summary text\", \"rationale\": \"clarity\"}, {\"id\": \"s2\", \"heading\": \"Acceptance criteria\", \"mode\": \"replace\", \"markdown\": \"- [ ] AC1\\n- [ ] AC2\"}]}"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-hyd2",
+  "outcome": {
+   "type": "interrupt",
+   "interrupts": [
+    {
+     "id": "af-call-6dd7f028c7434143b100efc14e149ad9",
+     "reason": "tool_call",
+     "message": "Approve running propose_document_changes?",
+     "toolCallId": "call_prop",
+     "responseSchema": {
+      "type": "object",
+      "properties": {
+       "approved": {
+        "type": "boolean"
+       },
+       "editedArgs": {
+        "type": "object",
+        "description": "Full replacement of the tool arguments. Not merged."
+       }
+      },
+      "additionalProperties": false
+     },
+     "metadata": {
+      "agent_framework": {
+       "type": "function_approval_request",
+       "function_call": {
+        "call_id": "call_prop",
+        "name": "propose_document_changes",
+        "arguments": {
+         "summary": "Tighten summary + ACs",
+         "base_version": 7,
+         "sections": [
+          {
+           "id": "s1",
+           "heading": "Summary",
+           "mode": "replace",
+           "markdown": "New summary text",
+           "rationale": "clarity"
+          },
+          {
+           "id": "s2",
+           "heading": "Acceptance criteria",
+           "mode": "replace",
+           "markdown": "- [ ] AC1\n- [ ] AC2"
+          }
+         ]
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ }
+]
