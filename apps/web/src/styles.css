@@ -3009,3 +3009,78 @@ dialog.modal-dialog.conflict-dialog {
     font-weight: 700;
     color: var(--ink)
 }
+
+/* --- fe-chat-ui --- */
+.conversation-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column }
+.conversation-wrap > .conversation-scroll { flex: 1 }
+.jump-latest { position: absolute; right: 20px; bottom: 12px; box-shadow: 0 4px 14px #1c362520 }
+
+.message-content .markdown { margin-top: 6px; font-size: 0.8125rem; line-height: 1.65; color: var(--ink); overflow-wrap: anywhere }
+.markdown > :first-child { margin-top: 0 }
+.markdown > :last-child { margin-bottom: 0 }
+.markdown p { margin: 0 0 0.6em; white-space: normal; font-size: inherit; color: inherit }
+.markdown ul, .markdown ol { margin: 0 0 0.6em; padding-left: 1.4em }
+.markdown h1, .markdown h2, .markdown h3, .markdown h4 { font: 700 0.875rem var(--font-display); margin: 0.9em 0 0.4em }
+.markdown a { color: var(--accent-text); text-decoration: underline }
+.markdown code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125em; background: var(--panel-subtle); border-radius: 4px; padding: 1px 4px }
+.markdown pre { background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; margin: 0 0 0.6em }
+.markdown pre code { background: none; padding: 0 }
+.markdown blockquote { margin: 0 0 0.6em; padding-left: 10px; border-left: 3px solid var(--line); color: var(--muted) }
+.markdown-table { overflow-x: auto; margin: 0 0 0.6em }
+.markdown table { border-collapse: collapse; font-size: 0.75rem }
+.markdown th, .markdown td { border: 1px solid var(--line); padding: 4px 8px; text-align: left }
+.stream-caret { display: inline-block; width: 0.5em; height: 1em; margin-left: 2px; vertical-align: text-bottom; background: var(--accent-text); animation: caret-blink 1s steps(2, start) infinite }
+@keyframes caret-blink { to { visibility: hidden } }
+.message-note { display: block; margin-top: 4px; font-size: 0.6875rem; color: var(--muted) }
+
+.conversation-skeleton { max-width: 480px }
+.skeleton-line { display: block; height: 12px; margin: 0 0 12px; border-radius: 6px; background: var(--track); opacity: 0.5; animation: pulse 1.2s infinite }
+.skeleton-line.short { width: 55% }
+
+.activity-timeline { margin: 0 0 14px 35px; max-width: 585px; font-size: 0.75rem; color: var(--muted) }
+.activity-toggle { border: 0; background: transparent; padding: 2px 0; color: var(--muted); font-size: 0.75rem; font-weight: 600; cursor: pointer }
+.activity-toggle:hover { color: var(--ink) }
+.activity-list { list-style: none; margin: 6px 0 0; padding: 0 0 0 4px; border-left: 2px solid var(--line) }
+.activity-list[hidden] { display: none }
+.activity-row { display: flex; gap: 8px; padding: 3px 0 3px 8px }
+.activity-mark { width: 14px; flex-shrink: 0; text-align: center; font-weight: 700; color: var(--accent-text) }
+.activity-row[data-status="error"] .activity-mark { color: var(--danger) }
+.spinner { display: inline-block; width: 10px; height: 10px; border: 2px solid var(--track); border-top-color: var(--accent-text); border-radius: 50%; animation: spin 0.8s linear infinite }
+@keyframes spin { to { transform: rotate(360deg) } }
+.activity-body { min-width: 0; overflow-wrap: anywhere }
+.citation-list { list-style: none; margin: 6px 0 4px; padding: 0 }
+.citation { display: flex; gap: 8px; margin: 0 0 6px }
+.citation-index { width: 18px; height: 18px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--violet-soft); color: var(--violet-text); font-size: 0.6875rem; font-weight: 700 }
+.citation-source { font-weight: 700; color: var(--ink) }
+.citation-passage summary { cursor: pointer; color: var(--accent-text) }
+.citation-passage blockquote { margin: 4px 0 0; padding-left: 8px; border-left: 3px solid var(--line); white-space: pre-wrap }
+
+.run-error { margin: 0 0 17px 35px; max-width: 585px; padding: 11px 13px; border: 1px solid var(--danger); border-radius: 9px; background: var(--danger-soft); color: var(--ink) }
+.run-error-message { margin: 0; font-size: 0.8125rem; font-weight: 600; color: var(--danger) }
+.run-error-hint { margin: 4px 0 0; font-size: 0.75rem; color: var(--muted) }
+.run-error-meta { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; font-size: 0.75rem; color: var(--muted) }
+.run-error-meta code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--ink); overflow-wrap: anywhere }
+.run-error-actions { display: flex; gap: 8px; flex-wrap: wrap }
+
+.thread-picker { position: relative; display: flex; align-items: center; gap: 5px }
+.thread-trigger { display: inline-flex; align-items: center; gap: 4px; max-width: 180px; min-height: 26px; padding: 3px 8px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--panel); color: var(--ink); font-size: 0.75rem }
+.thread-trigger:disabled { opacity: 0.6 }
+.thread-trigger-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.thread-panel { position: absolute; z-index: 20; top: calc(100% + 6px); right: 0; width: min(340px, 86vw); padding: 8px; border: 1px solid var(--border-control); border-radius: 9px; background: var(--panel); box-shadow: 0 8px 24px #1c362530 }
+.thread-list { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow-y: auto }
+.thread-row { display: flex; align-items: center; gap: 4px; padding: 2px 0 }
+.thread-row[data-active] { background: var(--green-soft); border-radius: 6px }
+.thread-select { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 8px; border: 0; background: transparent; color: var(--ink); text-align: left }
+.thread-title { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.8125rem; font-weight: 600 }
+.thread-meta { display: flex; gap: 6px; align-items: center; font-size: 0.6875rem; color: var(--muted) }
+.thread-badge[data-status="awaiting_input"] { color: var(--warning-text); background: var(--warning-soft); border-color: var(--warning-text) }
+.thread-badge[data-status="awaiting_review"] { color: var(--violet-text); background: var(--violet-soft); border-color: var(--violet-text) }
+.thread-rename, .thread-confirm { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; padding: 4px; font-size: 0.75rem }
+.thread-rename input { flex: 1 1 120px; min-width: 0; padding: 4px 6px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--panel); color: var(--ink) }
+.thread-empty, .thread-private { margin: 4px 6px; font-size: 0.75rem; color: var(--muted) }
+.thread-error { margin: 4px 6px; font-size: 0.75rem; color: var(--danger) }
+
+@media (prefers-reduced-motion: reduce) {
+    .stream-caret, .skeleton-line, .spinner { animation: none }
+    .spinner { border-top-color: var(--track); border-style: dotted }
+}

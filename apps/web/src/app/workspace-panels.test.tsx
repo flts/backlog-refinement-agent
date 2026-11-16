@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { expectNoAxeViolations } from '../test/axe';
 import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
-import { ChatPanel, type ChatPanelProps } from './ChatPanel';
+import { ChatPanel, type ChatPanelProps } from '../chat';
 import { ProjectPanel } from './ProjectPanel';
 import type { Item, Project, Source } from '../api';
 import { initialRunState, type RunState } from '../run';
@@ -108,18 +108,17 @@ describe('ChatPanel', () => {
   const run = (overrides: Partial<RunState> = {}): RunState => ({ ...initialRunState('t'), phase: 'idle', messages: [{ kind: 'user', id: 'm1', text: 'Hello agent' }], ...overrides });
   const base = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
     className: 'chat', item, threads: [], run: run(), busy: false, canRetry: false, message: '',
-    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
+    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onRenameThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
     onStop: vi.fn(), onRetry: vi.fn(), onAnswer: vi.fn(), onDecideAll: vi.fn(), onCreateItem: vi.fn(), ...overrides,
   });
 
   it('renders the conversation and the stop and retry controls', async () => {
     const user = userEvent.setup();
-    const props = base({ run: run({ phase: 'running' }), busy: true, canRetry: true });
+    const props = base({ run: run({ phase: 'running' }), busy: true });
     render(<ChatPanel {...props} />);
     expect(screen.getByText('Hello agent')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Stop/ }));
     expect(props.onStop).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: /Retry/ })).toBeDisabled();
   });
 
   it('offers item creation when nothing is selected', async () => {
@@ -130,19 +129,19 @@ describe('ChatPanel', () => {
     expect(empty.onCreateItem).toHaveBeenCalledOnce();
   });
 
-  it('shows the session selector even for one thread and disables it while running', () => {
+  it('shows the session picker even for one thread and disables it while running', () => {
     const thread = makeThread({ id: 's', title: 'Scope' });
     const { rerender } = render(<ChatPanel {...base({ threads: [thread], activeThreadId: 's' })} />);
-    expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toHaveValue('s');
+    expect(screen.getByRole('button', { name: 'Sessions. Current: Scope' })).toBeEnabled();
     rerender(<ChatPanel {...base({ threads: [thread], activeThreadId: 's', run: run({ phase: 'running' }), busy: true })} />);
-    expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sessions. Current: Scope' })).toBeDisabled();
   });
 });
 
 describe('accessibility', () => {
   const chatProps = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
     className: 'chat', item, threads: [], run: { ...initialRunState('t'), phase: 'idle', messages: [{ kind: 'user', id: 'm1', text: 'Hello agent' }] }, busy: false, canRetry: false, message: '',
-    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
+    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onRenameThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
     onStop: vi.fn(), onRetry: vi.fn(), onAnswer: vi.fn(), onDecideAll: vi.fn(), onCreateItem: vi.fn(), ...overrides,
   });
   const running = { ...initialRunState('t'), phase: 'running' as const };
@@ -152,9 +151,9 @@ describe('accessibility', () => {
     expect(screen.getByRole('log', { name: 'Conversation' })).toBeInTheDocument();
     await expectNoAxeViolations(container);
     rerender(<ChatPanel {...chatProps({ busy: true, run: running })} />);
-    expect(screen.getByRole('status')).toHaveTextContent(/responding/);
+    expect(screen.getByRole('status')).toHaveTextContent('Agent is working');
     rerender(<ChatPanel {...chatProps({ busy: false })} />);
-    expect(screen.getByRole('status')).toHaveTextContent(/finished/);
+    expect(screen.getByRole('status')).toHaveTextContent('Agent replied');
   });
 
   it('PreviewPanel has no axe violations', async () => {

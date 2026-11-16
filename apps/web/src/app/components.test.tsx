@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expectNoAxeViolations } from '../test/axe';
-import { Composer } from './Composer';
+import { Composer } from '../chat';
 import { ItemMenu } from './ItemMenu';
 import { SettingsModal } from './SettingsModal';
 import { TestAuth, testAuth } from '../test/auth';
