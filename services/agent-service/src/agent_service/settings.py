@@ -104,7 +104,13 @@ class Settings(BaseSettings):
     )
 
     skills_dir: Path | None = Field(
-        default=None, description="Directory with the default Agent Skills (used by the agent loader)."
+        default=None,
+        description="Directory with the default Agent Skills (default: $BACKLOG_SKILLS_DIR or the repo's skills/).",
+    )
+    agents_dir: Path = Field(default=SERVICE_ROOT / "agents", description="Directory with the *.agent.md definitions.")
+    tools_file: Path = Field(default=SERVICE_ROOT / "tools" / "tools.yaml", description="MCP server bindings (YAML).")
+    build_sha: str | None = Field(
+        default=None, description="Version reported by the agent catalogue; defaults to the git short sha, else 'dev'."
     )
     default_agent_id: str = Field(default="backlog-refiner", description="Id of the placeholder agent.")
 

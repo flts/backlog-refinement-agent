@@ -133,6 +133,7 @@ async def run_agui(
     tools: list[dict[str, Any]] | None = None,
     resume: list[dict[str, Any]] | None = None,
     headers: Mapping[str, str] | None = None,
+    forwarded_props: dict[str, Any] | None = None,
 ) -> tuple[int, list[dict[str, Any]]]:
     """POST an AG-UI run and return ``(status, events)``; events are empty for a non-SSE (problem) response."""
     body: dict[str, Any] = {
@@ -141,7 +142,7 @@ async def run_agui(
         "messages": messages,
         "tools": tools or [],
         "context": [],
-        "forwardedProps": {},
+        "forwardedProps": forwarded_props or {},
         "state": state if state is not None else {"schemaVersion": 1, "projectId": PROJECT_ID, "itemId": ITEM_ID},
     }
     if resume is not None:
