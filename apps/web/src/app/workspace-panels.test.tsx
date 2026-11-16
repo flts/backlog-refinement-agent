@@ -8,7 +8,8 @@ import { PreviewPanel } from './PreviewPanel';
 import { ChatPanel, type ChatPanelProps } from './ChatPanel';
 import { ProjectPanel } from './ProjectPanel';
 import type { Item, Project, Source } from '../api';
-import type { RefinementSession } from '../domain/refinement-session';
+import { initialRunState, type RunState } from '../run';
+import { makeThread } from '../test/fakeAgentBackend';
 
 const item: Item = {
   id: 'i1', projectId: 'project-1', parentId: null, type: 'feature', title: 'Export', status: 'draft', version: 1, documentHash: 'h', quality: null,
@@ -61,7 +62,7 @@ describe('PreviewPanel', () => {
     const onResolveChecklist = vi.fn();
     const onAssessQuality = vi.fn();
     const onProposeChildren = vi.fn();
-    render(<PreviewPanel className="preview" item={item} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+    render(<PreviewPanel className="preview" item={item} session={{ id: 's' }} busy={false} menuActions={[]}
       onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={onAssessQuality} onProposeChildren={onProposeChildren} />);
     expect(screen.getByText('Users are logged in')).toBeInTheDocument();
@@ -89,7 +90,7 @@ describe('PreviewPanel', () => {
     const user = userEvent.setup();
     const onChangeStatus = vi.fn();
     const selected = { ...item, status };
-    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' }} busy={false} menuActions={[]}
       onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={onChangeStatus} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const [label, next] of actions) {
@@ -114,7 +115,7 @@ describe('PreviewPanel', () => {
     ['complete', ['Reopen item']],
   ] as const)('disables %s status actions during a request', (status, labels) => {
     const selected = { ...item, status };
-    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' } as RefinementSession} busy menuActions={[]}
+    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' }} busy menuActions={[]}
       onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const label of labels) expect(screen.getByRole('button', { name: label })).toBeDisabled();
@@ -122,67 +123,60 @@ describe('PreviewPanel', () => {
 });
 
 describe('ChatPanel', () => {
+  const run = (overrides: Partial<RunState> = {}): RunState => ({ ...initialRunState('t'), phase: 'idle', messages: [{ kind: 'user', id: 'm1', text: 'Hello agent' }], ...overrides });
   const base = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
-    className: 'chat', item, sessions: [], busy: false, canRetry: false, message: '', reviewChanges: false, selectedProposals: [],
-    session: { id: 's', backlogItemId: 'i1', conversation: [{ id: 'm1', role: 'user', content: 'Hello agent', createdAt: '2026-01-01T10:00:00Z' }] } as unknown as RefinementSession,
-    onSelectItem: vi.fn(), onNewSession: vi.fn(), onSwitchSession: vi.fn(), onDeleteSession: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
-    onCancel: vi.fn(), onRetry: vi.fn(), onToggleReview: vi.fn(), onApplyPending: vi.fn(), onDiscardPending: vi.fn(), onProposalChange: vi.fn(),
-    onSelectedProposalsChange: vi.fn(), onAcceptProposals: vi.fn(), onDismissProposal: vi.fn(), onCreateItem: vi.fn(), ...overrides,
+    className: 'chat', item, threads: [], run: run(), busy: false, canRetry: false, message: '',
+    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
+    onStop: vi.fn(), onRetry: vi.fn(), onAnswer: vi.fn(), onDecideAll: vi.fn(), onCreateItem: vi.fn(), ...overrides,
   });
 
-  it('renders the conversation and the retry and cancel controls', async () => {
+  it('renders the conversation and the stop and retry controls', async () => {
     const user = userEvent.setup();
-    const props = base({ busy: true, canRetry: true });
+    const props = base({ run: run({ phase: 'running' }), busy: true, canRetry: true });
     render(<ChatPanel {...props} />);
     expect(screen.getByText('Hello agent')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Cancel request/ }));
-    expect(props.onCancel).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: /Retry last request/ })).toBeDisabled();
+    await user.click(screen.getByRole('button', { name: /Stop/ }));
+    expect(props.onStop).toHaveBeenCalledOnce();
+    expect(screen.getByRole('button', { name: /Retry/ })).toBeDisabled();
   });
 
-  it('toggles review mode and offers item creation when nothing is selected', async () => {
+  it('offers item creation when nothing is selected', async () => {
     const user = userEvent.setup();
-    const props = base();
-    const { unmount } = render(<ChatPanel {...props} />);
-    await user.click(screen.getByLabelText('Review changes before applying'));
-    expect(props.onToggleReview).toHaveBeenCalledWith(true);
-    unmount();
     const empty = base({ item: undefined });
     render(<ChatPanel {...empty} />);
     await user.click(screen.getByRole('button', { name: 'Create backlog item' }));
     expect(empty.onCreateItem).toHaveBeenCalledOnce();
   });
 
-  it('shows the session selector even for one session and disables it while busy', () => {
-    const session: RefinementSession = { id: 's', backlogItemId: 'i1', conversation: [], pendingQuestions: [], status: 'active', forceGeneration: false, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
-    const { rerender } = render(<ChatPanel {...base({ session, sessions: [session] })} />);
+  it('shows the session selector even for one thread and disables it while running', () => {
+    const thread = makeThread({ id: 's', title: 'Scope' });
+    const { rerender } = render(<ChatPanel {...base({ threads: [thread], activeThreadId: 's' })} />);
     expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toHaveValue('s');
-    rerender(<ChatPanel {...base({ session, sessions: [session], busy: true })} />);
+    rerender(<ChatPanel {...base({ threads: [thread], activeThreadId: 's', run: run({ phase: 'running' }), busy: true })} />);
     expect(screen.getByRole('combobox', { name: 'Choose refinement session' })).toBeDisabled();
   });
 });
 
 describe('accessibility', () => {
   const chatProps = (overrides: Partial<ChatPanelProps> = {}): ChatPanelProps => ({
-    className: 'chat', item, sessions: [], busy: false, canRetry: false, message: '', reviewChanges: false, selectedProposals: [],
-    session: { id: 's', backlogItemId: 'i1', conversation: [{ id: 'm1', role: 'user', content: 'Hello agent', createdAt: '2026-01-01T10:00:00Z' }] } as unknown as RefinementSession,
-    onSelectItem: vi.fn(), onNewSession: vi.fn(), onSwitchSession: vi.fn(), onDeleteSession: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
-    onCancel: vi.fn(), onRetry: vi.fn(), onToggleReview: vi.fn(), onApplyPending: vi.fn(), onDiscardPending: vi.fn(), onProposalChange: vi.fn(),
-    onSelectedProposalsChange: vi.fn(), onAcceptProposals: vi.fn(), onDismissProposal: vi.fn(), onCreateItem: vi.fn(), ...overrides,
+    className: 'chat', item, threads: [], run: { ...initialRunState('t'), phase: 'idle', messages: [{ kind: 'user', id: 'm1', text: 'Hello agent' }] }, busy: false, canRetry: false, message: '',
+    onSelectItem: vi.fn(), onNewThread: vi.fn(), onSelectThread: vi.fn(), onDeleteThread: vi.fn(), onMessageChange: vi.fn(), onSubmit: vi.fn(), onContinue: vi.fn(),
+    onStop: vi.fn(), onRetry: vi.fn(), onAnswer: vi.fn(), onDecideAll: vi.fn(), onCreateItem: vi.fn(), ...overrides,
   });
+  const running = { ...initialRunState('t'), phase: 'running' as const };
 
   it('ChatPanel has no axe violations and announces agent activity', async () => {
     const { container, rerender } = render(<ChatPanel {...chatProps()} />);
     expect(screen.getByRole('log', { name: 'Conversation' })).toBeInTheDocument();
     await expectNoAxeViolations(container);
-    rerender(<ChatPanel {...chatProps({ busy: true })} />);
+    rerender(<ChatPanel {...chatProps({ busy: true, run: running })} />);
     expect(screen.getByRole('status')).toHaveTextContent(/responding/);
     rerender(<ChatPanel {...chatProps({ busy: false })} />);
     expect(screen.getByRole('status')).toHaveTextContent(/finished/);
   });
 
   it('PreviewPanel has no axe violations', async () => {
-    const { container } = render(<PreviewPanel className="preview" item={item} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+    const { container } = render(<PreviewPanel className="preview" item={item} session={{ id: 's' }} busy={false} menuActions={[]}
       onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     await expectNoAxeViolations(container);

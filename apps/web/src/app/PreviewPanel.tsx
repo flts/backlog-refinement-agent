@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Item, ItemStatus, ItemSummary, ItemType } from '../api';
 import { QualityAssessmentSchema, type QualityAssessment } from '../domain/backlog-item';
-import type { RefinementSession } from '../domain/refinement-session';
 import { parseChecklistSections } from '../domain/document';
 import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
@@ -38,7 +37,8 @@ export type PreviewPanelProps = {
   parentItem?: ItemSummary;
   /** Number of server revisions of the item, newest (the current content) included. */
   revisionCount?: number;
-  session?: RefinementSession;
+  /** Only its presence matters: the agent thread (or a placeholder before the first message) the actions go to. */
+  session?: { id: string };
   busy: boolean;
   menuActions: MenuAction[];
   onSelectItem: (id: string) => void;

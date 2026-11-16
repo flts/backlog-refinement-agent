@@ -11,7 +11,8 @@ import { Toast } from './Toast';
 import { downloadFile, markdownFilename, markdownFor } from './files';
 import { useBacklog } from './useBacklog';
 import { errorText, useNotifications } from './useNotifications';
-import { useRefinementFlow } from './useRefinementFlow';
+import { useAgentRun, useThreads } from '../run';
+import { changeSelectedStatus } from './statusActions';
 
 function initials(name: string): string {
   const letters = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
@@ -28,11 +29,28 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
   const [newItem, setNewItem] = useState<{ type: ItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
-  const flow = useRefinementFlow(backlog, notifications);
+  const [message, setMessage] = useState('');
+  const threads = useThreads(project.id, selectedItem?.id);
+  const run = useAgentRun(threads.activeThreadId, { projectId: project.id, itemId: selectedItem?.id ?? '', itemType: selectedItem?.type, ensureThread: threads.ensureThread });
+  const agentBusy = run.busy;
+
+  async function submit(action: () => Promise<{ status: string }>, failure = 'The agent could not start') {
+    try {
+      const result = await action();
+      if (result.status === 'busy') setNotice('The agent is still working. Stop it first or wait for it to finish.');
+    } catch (cause) { setError(`${failure}: ${errorText(cause)}`); }
+  }
+
+  function sendMessage() {
+    const text = message.trim();
+    if (!text) return;
+    setMessage('');
+    void submit(() => run.send(text));
+  }
 
   function selectItem(id: string) {
-    if (flow.busy) return;
-    flow.reset();
+    if (agentBusy) return;
+    setMessage('');
     backlog.selectItem(id);
     setMobilePanel('refine');
   }
@@ -42,17 +60,20 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
     if (await backlog.createItem(newItem.type, newItem.title, newItem.parentId)) setNewItem(undefined);
   }
 
-  function switchSession(id: string) {
-    if (backlog.switchSession(id)) flow.reset();
+  async function newThread() {
+    try { await threads.create(); setMessage(''); setNotice('A new refinement session has started.'); }
+    catch (cause) { setError(`Could not start a session: ${errorText(cause)}`); }
   }
 
-  function deleteSession() {
-    if (flow.busy) return;
-    if (backlog.deleteCurrentSession()) flow.reset();
+  async function deleteThread() {
+    const id = threads.activeThreadId;
+    if (!id || agentBusy || !window.confirm('Delete this refinement session and its conversation? The backlog item and accepted changes will remain.')) return;
+    try { await threads.remove(id); setNotice('Refinement session deleted.'); }
+    catch (cause) { setError(`Could not delete the session: ${errorText(cause)}`); }
   }
 
   async function deleteSelected() {
-    if (await backlog.deleteSelected()) flow.reset();
+    await backlog.deleteSelected();
   }
 
   async function copyMarkdown() {
@@ -83,7 +104,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
         <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> {backlog.saving ? 'Saving…' : 'Saved'}</span><button className="icon-button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
       </header>
 
-      {renderProjectPanel(flow.busy)}
+      {renderProjectPanel(agentBusy)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} aria-pressed={mobilePanel === 'tree'} onClick={() => setMobilePanel('tree')}>Backlog</button>
@@ -101,22 +122,18 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
 
         <ChatPanel
           className={`refinement-column panel-${mobilePanel}`}
-          item={selectedItem} parentItem={backlog.parentItem} session={backlog.session} sessions={backlog.sessions} busy={flow.busy}
-          canRetry={flow.retryState?.sessionId === backlog.session?.id} message={flow.message} reviewChanges={flow.reviewChanges}
-          pending={flow.pending} proposal={flow.proposal} selectedProposals={flow.selectedProposals}
-          onSelectItem={selectItem} onNewSession={() => { flow.reset(); backlog.startNewSession(); }} onSwitchSession={switchSession}
-          onDeleteSession={deleteSession}
-          onMessageChange={flow.setMessage} onSubmit={() => void flow.submitMessage()} onContinue={() => void flow.submitMessage(true)}
-          onCancel={flow.cancelRequest} onRetry={() => void flow.retryAssessment()} onToggleReview={flow.toggleReview}
-          onApplyPending={() => void flow.applyPending()} onDiscardPending={() => void flow.discardPending()}
-          onProposalChange={flow.setProposal} onSelectedProposalsChange={flow.setSelectedProposals}
-          onAcceptProposals={() => void flow.acceptSelectedProposals()} onDismissProposal={() => flow.setProposal(undefined)}
+          item={selectedItem} parentItem={backlog.parentItem} threads={threads.threads} activeThreadId={threads.activeThreadId}
+          run={run.state} busy={agentBusy} canRetry={run.canRetry} message={message}
+          onSelectItem={selectItem} onNewThread={() => void newThread()} onSelectThread={threads.selectThread} onDeleteThread={() => void deleteThread()}
+          onMessageChange={setMessage} onSubmit={sendMessage} onContinue={() => void submit(() => run.continue('continue'))}
+          onStop={run.stop} onRetry={() => void submit(() => run.retry())}
+          onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
           onCreateItem={() => setNewItem({ type: 'capability', title: '' })}
         />
 
         <PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
-          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} session={backlog.session} busy={flow.busy}
+          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} session={{ id: threads.activeThreadId ?? 'new' }} busy={agentBusy}
           menuActions={[
             { id: 'copy', label: <><MdContentCopy aria-hidden /> Copy Markdown</>, onSelect: () => void copyMarkdown() },
             { id: 'duplicate', label: <><MdControlPointDuplicate aria-hidden /> Duplicate item</>, onSelect: () => void backlog.duplicateSelected() },
@@ -124,9 +141,9 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
             { id: 'delete', label: <><MdDelete aria-hidden /> Delete item</>, danger: true, onSelect: () => void deleteSelected() },
           ]}
           onSelectItem={selectItem} onUpdate={backlog.editSelected}
-          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={flow.undoLastChange}
-          onChangeStatus={(status) => void flow.changeSelectedStatus(status)} onAssessQuality={() => void flow.assessQuality()}
-          onProposeChildren={(type) => void flow.proposeChildren(type)}
+          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={() => void backlog.undoLastChange()}
+          onChangeStatus={(status) => void changeSelectedStatus(backlog, status)} onAssessQuality={() => void submit(() => run.continue('assess'))}
+          onProposeChildren={(type) => void submit(() => run.continue('breakdown', type))}
         />
       </main>
 
