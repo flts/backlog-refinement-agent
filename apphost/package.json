@@ -1,0 +1,8 @@
+{
+  "name": "@backlog/apphost",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "aspire run"
+  }
+}
