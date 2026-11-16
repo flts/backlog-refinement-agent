@@ -2,7 +2,6 @@ import React from 'react';
 import type { Item, ItemStatus, ItemSummary, ItemType, Revision } from '../api';
 import { PresenceAvatars, RemoteChangeNotice, RevisionAttribution, type PresenceUser, type RemoteItemChange } from '../collab';
 import { QualityAssessmentSchema, type QualityAssessment } from '../domain/backlog-item';
-import type { RefinementSession } from '../domain/refinement-session';
 import { parseChecklistSections } from '../domain/document';
 import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
@@ -47,7 +46,8 @@ export type PreviewPanelProps = {
   presence?: PresenceUser[];
   /** The latest change of this item by somebody else (announced politely). */
   remoteChange?: RemoteItemChange & { key: number };
-  session?: RefinementSession;
+  /** Only its presence matters: the agent thread (or a placeholder before the first message) the actions go to. */
+  session?: { id: string };
   busy: boolean;
   menuActions: MenuAction[];
   onSelectItem: (id: string) => void;
