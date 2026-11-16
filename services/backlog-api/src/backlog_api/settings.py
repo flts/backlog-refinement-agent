@@ -148,6 +148,16 @@ class Settings(BaseSettings):
     chunk_overlap_ratio: float = Field(default=0.15, ge=0, lt=0.5, description="Overlap between consecutive chunks.")
     item_embedding_max_chars: int = Field(default=12_000, ge=200, description="Document characters embedded per item.")
 
+    # --- mcp ---
+    mcp_max_output_chars: int = Field(
+        default=120_000,
+        ge=1_000,
+        description="Maximum size (JSON characters) of one MCP tool result; longer texts are truncated and marked.",
+    )
+    mcp_similar_min_score: float = Field(
+        default=0.5, ge=-1, le=1, description="Minimum cosine similarity of items returned by find_similar_items."
+    )
+
     _database_url: URL | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")

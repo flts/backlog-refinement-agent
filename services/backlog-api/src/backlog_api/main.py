@@ -25,6 +25,7 @@ from backlog_api.db.session import Database
 from backlog_api.embeddings import EmbeddingClient
 from backlog_api.events import EventPublisher, InProcessEventPublisher
 from backlog_api.indexing import configure_item_debounce
+from backlog_api.mcp_server import McpEndpoint
 from backlog_api.middleware import (
     MULTIPART_OVERHEAD_BYTES,
     SOURCES_PATH,
@@ -71,6 +72,7 @@ def create_app(
     settings = settings or Settings()
     if configure_logs:
         configure_logging(settings.log_level)
+    mcp_endpoint = McpEndpoint()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -98,7 +100,9 @@ def create_app(
                 worker = IndexingWorker(database.sessionmaker, settings, app.state.embedder, app.state.events)
                 worker_task = asyncio.create_task(worker.run_forever(worker_stop), name="indexing-worker")
             logger.info("backlog-api started", extra={"auth_mode": settings.auth_mode, "env": settings.env})
-            yield
+            # --- mcp ---
+            async with mcp_endpoint.run():
+                yield
         finally:
             if worker_stop is not None and worker_task is not None:
                 worker_stop.set()
@@ -146,6 +150,7 @@ def create_app(
     app.include_router(sources_api.router, prefix=API_PREFIX)
     app.include_router(items.router, prefix=API_PREFIX)
     app.include_router(search_api.router, prefix=API_PREFIX)
+    mcp_endpoint.mount(app)  # --- mcp --- (/api/backlog/mcp; not part of the OpenAPI schema)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
