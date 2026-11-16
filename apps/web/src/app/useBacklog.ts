@@ -1,18 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  backlogKeys, isVersionConflict, useChangeItemStatus, useCreateItem, useDeleteItem, useItem, useItems, useRestoreRevision, useRevisions, useUpdateItem,
-  type Item, type ItemChanges, type ItemStatus, type ItemType,
+  backlogKeys, useChangeItemStatus, useCreateItem, useDeleteItem, useItem, useItems, useRestoreRevision, useRevisions, useUpdateItem,
+  type Item, type ItemStatus, type ItemType,
 } from '../api';
 import { updateChecklistLine } from '../domain/document';
+import { useItemAutosave } from '../collab/useItemAutosave';
+import { useMemberDirectory } from '../collab/people';
 import { RefinementSessionSchema, type RefinementSession } from '../domain/refinement-session';
 import { itemTypeLabel } from './labels';
 import { errorText, type Notifications } from './useNotifications';
-
-const autosaveDelayMs = 800;
-
-/** Unsaved edits, based on the server version the user saw when starting to type (sent as `If-Match`). */
-type Draft = { title?: string; document?: string; baseVersion: number };
 
 function newSession(itemId: string): RefinementSession {
   const now = new Date().toISOString();
@@ -22,8 +19,8 @@ function newSession(itemId: string): RefinementSession {
 }
 
 /**
- * The backlog of one project, served by backlog-api. Edits are autosaved with `If-Match: <version>`; a 409 pauses autosave for
- * that item and shows the "someone else changed this item" notice with a Reload action (the conflict dialog is `fe-collab`).
+ * The backlog of one project, served by backlog-api. Edits are autosaved (collab/useItemAutosave: debounced, `If-Match: <version>`);
+ * a 409 is merged per section and only overlapping edits open the conflict dialog (`autosave.openConflict`).
  * Refinement sessions are kept in memory only until the agent-service threads replace them.
  */
 export function useBacklog(notifications: Notifications, projectId: string) {
@@ -36,17 +33,14 @@ export function useBacklog(notifications: Notifications, projectId: string) {
   const itemQuery = useItem(projectId, selectedId);
   const revisionsQuery = useRevisions(projectId, selectedId);
   const createItemMutation = useCreateItem(projectId);
-  const updateItemMutation = useUpdateItem(projectId);
   const statusMutation = useChangeItemStatus(projectId);
   const deleteItemMutation = useDeleteItem(projectId);
   const restoreMutation = useRestoreRevision(projectId);
+  const updateItemMutation = useUpdateItem(projectId);
 
-  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const draftsRef = useRef<Record<string, Draft>>({});
-  const conflicts = useRef(new Set<string>());
-  const timers = useRef(new Map<string, number>());
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
-  const [saving, setSaving] = useState(0);
+  const { nameOf } = useMemberDirectory(projectId);
+  const autosave = useItemAutosave(projectId, notifications, nameOf);
+  const { drafts, flush, dropDraft } = autosave;
 
   const [sessionsByItem, setSessionsByItem] = useState<Record<string, RefinementSession[]>>({});
   const [activeSessionIds, setActiveSessionIds] = useState<Record<string, string>>({});
@@ -64,78 +58,12 @@ export function useBacklog(notifications: Notifications, projectId: string) {
     if (selectedId && !sessionsByItem[selectedId]) setSessionsByItem((current) => current[selectedId] ? current : { ...current, [selectedId]: [newSession(selectedId)] });
   }, [selectedId, sessionsByItem]);
 
-  const setDraftsBoth = (next: Record<string, Draft>) => { draftsRef.current = next; setDrafts(next); };
-  const dropDraft = (itemId: string) => {
-    window.clearTimeout(timers.current.get(itemId));
-    timers.current.delete(itemId);
-    const { [itemId]: _removed, ...rest } = draftsRef.current;
-    setDraftsBoth(rest);
-  };
   const latestItem = (itemId: string) => queryClient.getQueryData<Item>(backlogKeys.item(projectId, itemId));
-
-  const reload = (itemId?: string) => {
-    if (itemId) { conflicts.current.delete(itemId); dropDraft(itemId); }
-    void queryClient.invalidateQueries({ queryKey: backlogKeys.project(projectId) });
-  };
-
-  async function saveDraft(itemId: string): Promise<boolean> {
-    window.clearTimeout(timers.current.get(itemId));
-    timers.current.delete(itemId);
-    const pending = draftsRef.current[itemId];
-    const base = latestItem(itemId);
-    if (!pending) return true;
-    if (conflicts.current.has(itemId) || !base) return false;
-    const changes: ItemChanges = {};
-    // A blank title is kept in the field until the user types one; it is never sent.
-    if (pending.title?.trim() && pending.title !== base.title) changes.title = pending.title;
-    if (pending.document !== undefined && pending.document !== base.document) changes.document = pending.document;
-    if (!Object.keys(changes).length) {
-      if (pending.title === undefined || pending.title.trim()) { if (pending.document === undefined || pending.document === base.document) dropDraft(itemId); }
-      return true;
-    }
-    setSaving((count) => count + 1);
-    try {
-      const saved = await updateItemMutation.mutateAsync({ item: { id: itemId, version: pending.baseVersion }, changes });
-      const current = draftsRef.current[itemId];
-      if (current) {
-        const rest: Draft = { ...current, baseVersion: saved.version };
-        if (rest.title === changes.title) delete rest.title;
-        if (rest.document === changes.document) delete rest.document;
-        if (rest.title === undefined && rest.document === undefined) dropDraft(itemId);
-        else setDraftsBoth({ ...draftsRef.current, [itemId]: rest });
-      }
-      return true;
-    } catch (cause) {
-      if (isVersionConflict(cause)) conflicts.current.add(itemId);
-      report('Could not save item', cause, 'item', () => reload(itemId));
-      return false;
-    } finally { setSaving((count) => count - 1); }
-  }
-
-  const saveRef = useRef(saveDraft);
-  saveRef.current = saveDraft;
-
-  /** Saves the pending edits of an item now (or of all items when none is given). Saves run one after another. */
-  const flush = useCallback((itemId?: string): Promise<boolean> => {
-    const ids = itemId ? [itemId] : Object.keys(draftsRef.current);
-    const run = queue.current.then(async () => {
-      let ok = true;
-      for (const id of ids) ok = (await saveRef.current(id)) && ok;
-      return ok;
-    });
-    queue.current = run;
-    return run;
-  }, []);
-
-  useEffect(() => () => { void flush(); }, [flush]);
+  const reload = (itemId?: string) => autosave.reload(itemId);
 
   function editSelected(changes: { title?: string; document?: string }) {
     if (!selectedId || !serverItem) return;
-    const id = selectedId;
-    const existing = draftsRef.current[id];
-    setDraftsBoth({ ...draftsRef.current, [id]: { ...existing, ...changes, baseVersion: existing?.baseVersion ?? serverItem.version } });
-    window.clearTimeout(timers.current.get(id));
-    timers.current.set(id, window.setTimeout(() => { void flush(id); }, autosaveDelayMs));
+    autosave.edit(serverItem, changes);
   }
 
   function selectItem(id: string) {
@@ -247,7 +175,8 @@ export function useBacklog(notifications: Notifications, projectId: string) {
 
   return {
     items, selectedId, selectedItem, serverItem, selectedSummary, parentItem, revisions, session, sessions,
-    loading: itemsQuery.isLoading || (Boolean(selectedId) && itemQuery.isLoading), saving: saving > 0,
+    loading: itemsQuery.isLoading || (Boolean(selectedId) && itemQuery.isLoading), saving: autosave.saving, saveStatus: autosave.status, autosave,
+    hasDraft: Boolean(selectedId && drafts[selectedId]),
     selectItem, createItem, startNewSession, switchSession, deleteCurrentSession, editSelected, flush, changeStatus, restoreRevision, undoLastChange,
     resolveChecklist, duplicateSelected, deleteSelected, reload: () => reload(selectedId),
   };

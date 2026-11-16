@@ -4,6 +4,7 @@ import {
   useRenameProject, useSources, useUpdateSource,
   type Source, type SourceMode,
 } from '../api';
+import { ShareDialog } from '../collab/ShareDialog';
 import App from './App';
 import { LegacyDataNotice } from './LegacyDataNotice';
 import { ProjectPanel } from './ProjectPanel';
@@ -24,6 +25,7 @@ export function Projects() {
   const projectId = project?.id;
   const sourcesQuery = useSources(projectId);
   const notifications = useNotifications();
+  const [sharing, setSharing] = useState(false);
   const { setError, setNotice, report } = notifications;
 
   const createProject = useCreateProject();
@@ -72,6 +74,7 @@ export function Projects() {
         if (!project || !window.confirm(`Delete “${project.name}” and all its sources, backlog items and relationships?`)) return;
         void run(async () => { await deleteProject.mutateAsync(project); setPickedId(undefined); setNotice('Project deleted.'); }, 'Could not delete the project');
       }}
+      onShare={() => setSharing(true)}
       onAddFile={(file) => { void run(async () => { await createSource.mutateAsync({ kind: 'file', file }); setNotice('Source added; it is being indexed.'); }, 'Could not add the source', 'source'); }}
       onAddUrl={(name, value, text) => run(async () => {
         let url: URL;
@@ -109,8 +112,9 @@ export function Projects() {
   return <>
     <LegacyDataNotice />
     {project
-      ? <App key={project.id} project={project} projectBusy={busy} renderProjectPanel={panel} />
+      ? <App key={project.id} project={project} projectBusy={busy} renderProjectPanel={panel} onProjectGone={(_reason, message) => { setSharing(false); setNotice(message); void projectsQuery.refetch(); }} />
       : <main><h1 className="sr-only">Backlog Studio</h1>{panel(false)}<p>Create or import a project to start a backlog.</p></main>}
+    {project && sharing && <ShareDialog project={project} onClose={() => setSharing(false)} onNotice={(text) => setNotice(text)} />}
     {!project && <Toast notifications={notifications} />}
     {project && (notifications.error || notifications.notice) && <Toast notifications={notifications} />}
   </>;

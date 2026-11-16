@@ -1,4 +1,4 @@
-import type { Item, ItemSummary, Project, Relationship, Source } from '../api';
+import type { Item, ItemSummary, Member, Project, Relationship, Source } from '../api';
 import { createBacklogClient, type BacklogClient } from '../api';
 
 export interface RecordedCall { method: string; path: string; headers: Headers; body?: unknown }
@@ -20,6 +20,10 @@ export function makeItem(overrides: Partial<Item> = {}): Item {
   };
 }
 
+export function makeMember(overrides: Partial<Member> = {}): Member {
+  return { email: 'alice@example.test', role: 'owner', name: 'Alice Owner', signedIn: true, addedBy: 'alice@example.test', addedAt: stamp, ...overrides };
+}
+
 export function makeSource(overrides: Partial<Source> = {}): Source {
   return {
     id: 's1', projectId: 'p1', name: 'Spec', kind: 'url', mode: 'searchable', url: 'https://example.com/spec', charCount: 12, pageCount: null, mediaType: null, hasFile: false,
@@ -32,12 +36,14 @@ const summary = (item: Item): ItemSummary => ({
 });
 
 /** In-memory stand-in for backlog-api: just enough routes and concurrency rules for the SPA tests (no MSW needed). */
-export function createFakeBacklogApi(seed: { projects?: Project[]; items?: Item[]; sources?: Source[]; relationships?: Relationship[] } = {}) {
+export function createFakeBacklogApi(seed: { projects?: Project[]; items?: Item[]; sources?: Source[]; relationships?: Relationship[]; members?: Member[] } = {}) {
   const state = {
     projects: [...(seed.projects ?? [])], items: [...(seed.items ?? [])], sources: [...(seed.sources ?? [])], relationships: [...(seed.relationships ?? [])],
     /** The next item PATCH answers 409 as if somebody else saved first (`item` is the current server item). */
     conflictOnNextItemPatch: undefined as undefined | { item: Item; changedSections?: string[] },
+    members: [...(seed.members ?? [])],
     failNext: undefined as undefined | Response,
+    presence: [] as { email: string; name?: string | null; itemId?: string | null; state: string }[],
     nextId: 1,
   };
   const calls: RecordedCall[] = [];
@@ -84,6 +90,42 @@ export function createFakeBacklogApi(seed: { projects?: Project[]; items?: Item[
         }
         Object.assign(project, { name: (body as { name: string }).name, version: project.version + 1 });
         return json(project, 200, { ETag: `"${project.version}"` });
+      }
+    }
+    if (/^\/projects\/[^/]+\/presence$/.test(path)) return method === 'DELETE' ? new Response(null, { status: 204 }) : json({ users: state.presence });
+    if (/^\/projects\/[^/]+\/events$/.test(path) && method === 'GET') {
+      // An idle stream that ends when the client aborts.
+      const encoder = new TextEncoder();
+      return new Response(new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('retry: 3000\n: connected\n\n'));
+          request.signal.addEventListener('abort', () => { try { controller.close(); } catch { /* already closed */ } });
+        },
+      }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    }
+    if ((m = /^\/projects\/([^/]+)\/members(?:\/([^/]+))?$/.exec(path))) {
+      const target = m[2] ? decodeURIComponent(m[2]) : undefined;
+      const owners = () => state.members.filter((member) => member.role === 'owner');
+      if (!target && method === 'GET') return json({ items: state.members });
+      if (!target && method === 'POST') {
+        const input = body as { email: string; role: Member['role'] };
+        if (state.members.some((member) => member.email === input.email)) return problem(409, 'already-member');
+        const member: Member = { email: input.email, role: input.role, name: null, signedIn: false, addedBy: 'alice@example.test', addedAt: stamp };
+        state.members.push(member);
+        return json(member, 201);
+      }
+      const member = state.members.find((entry) => entry.email === target);
+      if (!member) return problem(404, 'member-not-found');
+      if (method === 'PATCH') {
+        const role = (body as { role: Member['role'] }).role;
+        if (member.role === 'owner' && role !== 'owner' && owners().length <= 1) return problem(409, 'last-owner');
+        member.role = role;
+        return json(member);
+      }
+      if (method === 'DELETE') {
+        if (member.role === 'owner' && owners().length <= 1) return problem(409, 'last-owner');
+        state.members = state.members.filter((entry) => entry !== member);
+        return new Response(null, { status: 204 });
       }
     }
     if ((m = /^\/projects\/([^/]+)\/backup$/.exec(path)) && method === 'GET') return json({ format: 'backlog-project-backup', formatVersion: 2, project: { id: m[1] } });

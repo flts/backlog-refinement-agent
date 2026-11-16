@@ -18,6 +18,7 @@ type Props = {
   onAddUrl: (name: string, url: string, text: string) => Promise<boolean>;
   onChangeMode: (source: Source, mode: SourceMode) => void;
   onRemove: (source: Source) => void;
+  onShare?: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
 };
@@ -59,6 +60,7 @@ export function ProjectPanel(props: Props) {
       </form>
       <button className="button button-secondary button-small" disabled={busy} onClick={() => importInput.current?.click()}>Import project</button>
       <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onImport(file); }} />
+      {project && props.onShare && <button className="button button-secondary button-small" disabled={busy} onClick={props.onShare}>Share</button>}
       {project && isOwner && <>
         <button className="button button-secondary button-small" disabled={busy} onClick={props.onExport}>Export project</button>
         <button className="button button-secondary button-small" disabled={busy} onClick={() => {
