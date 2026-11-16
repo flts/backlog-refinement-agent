@@ -7,7 +7,7 @@ import {
   type RemoteItemChange,
 } from '../collab';
 import type { FinalCloseReason } from '../collab/projectEvents';
-import { ChatPanel } from './ChatPanel';
+import { ChatPanel } from '../chat';
 import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { SettingsModal } from './SettingsModal';
@@ -86,11 +86,9 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
     catch (cause) { setError(`Could not start a session: ${errorText(cause)}`); }
   }
 
-  async function deleteThread() {
-    const id = threads.activeThreadId;
-    if (!id || agentBusy || !window.confirm('Delete this refinement session and its conversation? The backlog item and accepted changes will remain.')) return;
-    try { await threads.remove(id); setNotice('Refinement session deleted.'); }
-    catch (cause) { setError(`Could not delete the session: ${errorText(cause)}`); }
+  async function deleteThread(id: string) {
+    await threads.remove(id);
+    setNotice('Refinement session deleted.');
   }
 
   async function deleteSelected() {
@@ -145,7 +143,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           className={`refinement-column panel-${mobilePanel}`}
           item={selectedItem} parentItem={backlog.parentItem} threads={threads.threads} activeThreadId={threads.activeThreadId}
           run={run.state} busy={agentBusy} canRetry={run.canRetry} message={message}
-          onSelectItem={selectItem} onNewThread={() => void newThread()} onSelectThread={threads.selectThread} onDeleteThread={() => void deleteThread()}
+          onSelectItem={selectItem} onNewThread={() => void newThread()} onSelectThread={threads.selectThread} onRenameThread={threads.rename} onDeleteThread={deleteThread}
           onMessageChange={setMessage} onSubmit={sendMessage} onContinue={() => void submit(() => run.continue('continue'))}
           onStop={run.stop} onRetry={() => void submit(() => run.retry())}
           onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
