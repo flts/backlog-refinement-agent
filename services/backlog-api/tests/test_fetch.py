@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gzip
+from collections.abc import AsyncIterator
+
 import httpx
 import pytest
 
@@ -222,3 +225,200 @@ def test_html_to_text_drops_scripts_navigation_and_hidden() -> None:
     assert "secret" not in text
     assert "foot" not in text
     assert text == "Heading\n\nOne two\n\na\n\nb"
+
+
+# --- additional SSRF edge cases (api-tests) --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "file:///etc/passwd",
+        "ftp://good.example/file",
+        "javascript:alert(1)",
+        "data:text/html,<p>x</p>",
+        "gopher://good.example/",
+        "https://user:pw@good.example/",
+        "https://good.example:8443/",
+        "//evil.example/",  # protocol-relative, resolves to a private address
+        "https://[::ffff:127.0.0.1]/",
+        "https://[::ffff:7f00:1]/",
+    ],
+)
+async def test_redirects_to_unsafe_locations_are_refused_without_a_second_request(location: str) -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(302, headers={"location": location})
+
+    resolver = resolver_for({"good.example": [PUBLIC_IP], "evil.example": ["10.0.0.1"]})
+    await failure("https://good.example/", resolver=resolver, transport=httpx.MockTransport(handler))
+    assert len(requests) == 1
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "[::ffff:127.0.0.1]",
+        "[::ffff:7f00:1]",
+        "[::ffff:169.254.169.254]",
+        "[::ffff:a00:1]",
+        "[64:ff9b::7f00:1]",
+        "[2002:7f00:1::]",
+        "[0:0:0:0:0:ffff:127.0.0.1]",
+        "[::127.0.0.1]",
+        "[::]",
+        "[::1]",
+    ],
+)
+async def test_ipv6_literals_embedding_private_ipv4_addresses_are_blocked(host: str) -> None:
+    def no_network(request: httpx.Request) -> httpx.Response:  # pragma: no cover
+        raise AssertionError("must not connect")
+
+    await failure(f"https://{host}/", resolver=resolver_for({}), transport=httpx.MockTransport(no_network))
+
+
+@pytest.mark.parametrize("host", ["2130706433", "0x7f000001", "017700000001", "127.1", "0177.0.0.1", "0"])
+async def test_numeric_ip_notations_for_loopback_are_never_fetched(host: str) -> None:
+    """The system resolver turns these into 127.0.0.1 (or fails); either way no request may be sent."""
+
+    def no_network(request: httpx.Request) -> httpx.Response:  # pragma: no cover
+        raise AssertionError("must not connect")
+
+    await failure(f"https://{host}/", transport=httpx.MockTransport(no_network))
+
+
+async def test_dns_rebinding_between_resolution_and_connection_is_prevented_by_pinning() -> None:
+    """The first answer is public, any later one is the metadata service: the connection uses the first answer."""
+    lookups: list[str] = []
+    requests: list[httpx.Request] = []
+
+    async def rebinding_resolver(host: str, port: int) -> list[str]:
+        lookups.append(host)
+        return [PUBLIC_IP] if len(lookups) == 1 else ["169.254.169.254"]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return html_response("<p>fine</p>")
+
+    fetched = await fetch_source(
+        "https://rebind.example/", POLICY, LIMITS, resolver=rebinding_resolver, transport=httpx.MockTransport(handler)
+    )
+    assert fetched.extracted.text == "fine"
+    assert lookups == ["rebind.example"]  # resolved once; the vetted address is what gets connected to
+    assert [r.url.host for r in requests] == [PUBLIC_IP]
+    assert requests[0].headers["host"] == "rebind.example"
+    assert requests[0].extensions["sni_hostname"] == "rebind.example"
+
+
+async def test_every_redirect_hop_is_resolved_and_vetted_separately() -> None:
+    answers = {"a.example": [PUBLIC_IP], "b.example": ["10.0.0.9"]}
+    lookups: list[str] = []
+    requests: list[httpx.Request] = []
+
+    async def resolver(host: str, port: int) -> list[str]:
+        lookups.append(host)
+        return answers[host]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(302, headers={"location": "https://b.example/"})
+
+    await failure("https://a.example/", resolver=resolver, transport=httpx.MockTransport(handler))
+    assert lookups == ["a.example", "b.example"]
+    assert [r.url.host for r in requests] == [PUBLIC_IP]  # the private hop was never connected to
+
+
+async def test_all_resolved_addresses_must_be_public() -> None:
+    def no_network(request: httpx.Request) -> httpx.Response:  # pragma: no cover
+        raise AssertionError("must not connect")
+
+    resolver = resolver_for({"mixed.example": ["::ffff:10.0.0.1", PUBLIC_IP]})
+    await failure("https://mixed.example/", resolver=resolver, transport=httpx.MockTransport(no_network))
+
+
+def _gzip_response(payload: bytes, content_type: str = "text/plain") -> httpx.Response:
+    return httpx.Response(
+        200, content=gzip.compress(payload), headers={"content-type": content_type, "content-encoding": "gzip"}
+    )
+
+
+async def test_oversized_decoded_gzip_body_is_rejected_even_when_the_compressed_body_is_small() -> None:
+    policy = FetchPolicy(timeout_seconds=5, max_bytes=20_000)
+    bomb = gzip.compress(b"a" * 5_000_000)
+    assert len(bomb) < policy.max_bytes
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200, content=bomb, headers={"content-type": "text/plain", "content-encoding": "gzip"}
+        )
+    )
+    error = await failure(
+        "https://good.example/",
+        policy=policy,
+        resolver=resolver_for({"good.example": [PUBLIC_IP]}),
+        transport=transport,
+    )
+    assert "larger" in (error.detail or "")
+
+
+async def test_gzip_body_within_the_limit_is_decoded() -> None:
+    transport = httpx.MockTransport(lambda request: _gzip_response(b"hello " * 100))
+    fetched = await fetch_source(
+        "https://good.example/",
+        POLICY,
+        LIMITS,
+        resolver=resolver_for({"good.example": [PUBLIC_IP]}),
+        transport=transport,
+    )
+    assert fetched.extracted.text.startswith("hello hello")
+
+
+async def test_a_body_without_content_length_is_cut_off_at_the_limit() -> None:
+    async def chunks() -> AsyncIterator[bytes]:
+        for _ in range(100):
+            yield b"x" * 100
+
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=chunks(), headers={"content-type": "text/plain"})
+    )
+    error = await failure(
+        "https://good.example/", resolver=resolver_for({"good.example": [PUBLIC_IP]}), transport=transport
+    )
+    assert "larger" in (error.detail or "")
+
+
+async def test_a_lying_content_length_cannot_smuggle_a_larger_body() -> None:
+    transport = httpx.MockTransport(
+        lambda request: httpx.Response(
+            200, content=b"y" * 5000, headers={"content-type": "text/plain", "content-length": "10"}
+        )
+    )
+    # httpx rejects the inconsistent response itself or the size guard catches it: it is never accepted.
+    await failure("https://good.example/", resolver=resolver_for({"good.example": [PUBLIC_IP]}), transport=transport)
+
+
+async def test_extracted_text_over_the_limit_is_rejected_after_fetching() -> None:
+    small = ExtractionLimits(max_bytes=10_000_000, max_pages=200, max_text_chars=1000)
+    transport = httpx.MockTransport(lambda request: html_response("word " * 300, "text/plain"))
+    with pytest.raises(ProblemError) as info:
+        await fetch_source(
+            "https://good.example/",
+            POLICY,
+            small,
+            resolver=resolver_for({"good.example": [PUBLIC_IP]}),
+            transport=transport,
+        )
+    assert (info.value.status, info.value.slug) == (413, "source-too-large")
+
+
+async def test_a_pdf_that_is_not_a_pdf_and_a_page_without_text_are_refused() -> None:
+    resolver = resolver_for({"good.example": [PUBLIC_IP]})
+    fake_pdf = httpx.MockTransport(
+        lambda request: httpx.Response(200, content=b"<html>", headers={"content-type": "application/pdf"})
+    )
+    await failure("https://good.example/", resolver=resolver, transport=fake_pdf)
+    empty = httpx.MockTransport(lambda request: html_response("<html><script>x()</script></html>"))
+    with pytest.raises(ProblemError) as info:
+        await fetch_source("https://good.example/", POLICY, LIMITS, resolver=resolver, transport=empty)
+    assert info.value.slug == "no-text"

@@ -158,14 +158,34 @@ def _run(function: str, data: dict[str, Any]) -> Any:
     raise AssertionError(f"Unknown fixture function {function!r}")
 
 
-def test_golden_fixtures() -> None:
+GOLDEN_FUNCTIONS = {
+    "applySectionUpdates",
+    "conformToTemplate",
+    "diffDocuments",
+    "joinSections",
+    "normalizeHeading",
+    "parseChecklistSections",
+    "splitSections",
+    "templateHeadings",
+    "updateChecklistLine",
+}
+
+
+def test_golden_fixture_set_is_complete() -> None:
+    """No skips: the shared fixtures must exist, and every function they cover must be ported."""
+    assert FIXTURES.is_dir(), f"missing shared fixtures: {FIXTURES}"
     files = _fixtures()
-    if not files:
-        pytest.skip("contracts/fixtures/document does not exist yet")
-    failures: list[str] = []
+    assert len(files) >= 48, f"expected at least 48 golden fixtures, found {len(files)}"
+    used: set[str] = set()
     for path in files:
         fixture = json.loads(path.read_text(encoding="utf-8"))
-        actual = _run(fixture["fn"], fixture["input"])
-        if actual != fixture["expected"]:
-            failures.append(f"{path.name}: expected {fixture['expected']!r}, got {actual!r}")
-    assert not failures, "\n".join(failures)
+        assert {"name", "fn", "input", "expected"} <= fixture.keys(), path.name
+        assert fixture["name"] == path.stem, path.name
+        used.add(fixture["fn"])
+    assert used == GOLDEN_FUNCTIONS
+
+
+@pytest.mark.parametrize("path", _fixtures(), ids=lambda path: path.stem)
+def test_golden_fixtures(path: Path) -> None:
+    fixture = json.loads(path.read_text(encoding="utf-8"))
+    assert _run(fixture["fn"], fixture["input"]) == fixture["expected"], fixture.get("description", "")

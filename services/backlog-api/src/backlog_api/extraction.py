@@ -51,7 +51,8 @@ _REJECTED_DECLARED_PREFIXES = ("image/", "audio/", "video/")
 _CONTROL_CHARS = re.compile(r"[\x00-\x08\x0b\x0e-\x1f\x7f]")
 _HORIZONTAL_SPACE = re.compile(r"[^\S\n]+")
 _BLANK_RUNS = re.compile(r"\n{3,}")
-_TRAILING_SPACE = re.compile(r"[ \t]+\n")
+# The lookbehind keeps the match linear: without it every start inside a long run of spaces rescans the whole run.
+_TRAILING_SPACE = re.compile(r"(?<![ \t])[ \t]+\n")
 
 
 @dataclass(frozen=True, slots=True)
