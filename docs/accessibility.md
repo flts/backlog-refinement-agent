@@ -1,6 +1,6 @@
 # Accessibility
 
-Target: **WCAG 2.2 level AA**, plus **SC 1.4.6 Contrast (Enhanced, AAA)**, which requires 7:1 contrast for text. The app has no in-app display preferences. It respects operating-system and browser settings instead: zoom, text size, reduced motion, increased contrast and forced colours.
+Target: **WCAG 2.2 level AA**, plus **SC 1.4.6 Contrast (Enhanced, AAA)**, which requires 7:1 contrast for text. The app respects operating-system and browser settings: zoom, text size, colour scheme (light/dark), reduced motion, increased contrast and forced colours. The only in-app display preference is the theme (System, Light or Dark) under Settings › General.
 
 > Automated checks (axe-core, contrast tests) catch only part of WCAG. Passing them is **not** a conformance claim. Use the manual protocol below before claiming conformance.
 
@@ -26,6 +26,7 @@ Target: **WCAG 2.2 level AA**, plus **SC 1.4.6 Contrast (Enhanced, AAA)**, which
 | Focus | `:focus-visible` outline with at least 3:1 contrast and an offset. Focused elements are not hidden by sticky elements. | 2.4.7, 2.4.11, 2.4.13 (partial) |
 | Targets | Interactive targets are at least 24×24 CSS px. | 2.5.8 |
 | Reflow / text | `rem` typography, no fixed heights on text containers, panels stack on narrow viewports. | 1.4.4, 1.4.10, 1.4.12 |
+| Theme | Light and dark palettes share the same colour tokens. By default `prefers-color-scheme` decides; a manual choice sets `data-theme` on `<html>`. Both palettes meet 7:1 for text and 3:1 for borders and focus. | 1.4.3, 1.4.6, 1.4.11 |
 | Preferences | `prefers-reduced-motion` disables animation. `prefers-contrast: more` strengthens borders and text. `forced-colors: active` uses system colours and keeps focus and borders visible. | 2.3.3 (AAA), 1.4.11 |
 
 ## Automated checks
@@ -34,6 +35,8 @@ Target: **WCAG 2.2 level AA**, plus **SC 1.4.6 Contrast (Enhanced, AAA)**, which
 - `src/styles.contrast.test.ts`: parses the colour tokens in `styles.css` and asserts these contrast ratios:
   - 7:1 for text;
   - 3:1 for UI borders and focus indicators.
+
+  This applies to both the light palette (`:root`) and the dark palette (`:root[data-theme="dark"]`, mirrored in the `prefers-color-scheme: dark` media query).
 
   Adding or changing a colour token requires updating this test.
 - Vitest processes `styles.css` (`test.css.include` in `vite.config.ts`) so that `?raw` imports return the stylesheet contents.
@@ -93,14 +96,14 @@ Run this protocol on each release that changes the UI.
 5. **400% zoom at 1280 px**, which equals 320 CSS px. Content reflows with no horizontal scrolling, except in the Markdown preview of wide tables.
 6. **Text spacing.** Apply the WCAG 1.4.12 bookmarklet (line height 1.5, paragraph spacing 2, letter spacing 0.12, word spacing 0.16). No content is lost.
 7. **Forced colours.** Use Windows High Contrast, or Chrome DevTools forced-colors emulation. Borders, focus and selected states remain visible.
-8. **Increased contrast.** Use macOS *Increase contrast*, or emulate `prefers-contrast: more`.
-9. **Reduced motion.** Enable *Reduce motion*. No animations or transitions run.
+8. **Dark mode.** Switch the OS to dark mode with Settings › General › Appearance on *System*, then choose *Light* and *Dark* explicitly. Check text, borders, focus and selected states in both themes, and that a reload keeps the choice without a flash of the wrong theme.
+9. **Increased contrast.** Use macOS *Increase contrast*, or emulate `prefers-contrast: more`.
+10. **Reduced motion.** Enable *Reduce motion*. No animations or transitions run.
 
 Record the date, browser and assistive technology versions, and any findings, in the pull request.
 
 ## Known limitations
 
-- There is no dark mode. `prefers-color-scheme: dark` is not yet supported.
 - The `--line` dividers are decorative and intentionally below 3:1.
 - Rendered Markdown can contain user-authored content, such as images without alt text or wide tables, that the app cannot fix.
 - axe-core in jsdom does not cover layout, contrast or screen-reader behaviour.

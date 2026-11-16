@@ -36,3 +36,29 @@ describe('colour tokens (WCAG 1.4.6 / 1.4.11)', () => {
     expect(contrast('#ffffff', '#1a5c3f')).toBeGreaterThanOrEqual(7);
   });
 });
+
+describe('dark palette (WCAG 1.4.6 / 1.4.11)', () => {
+  const start = css.indexOf(':root[data-theme="dark"]');
+  const block = css.slice(start, css.indexOf('}', start));
+  const dark = (name: string): string => {
+    const match = block.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{6})`));
+    if (!match) throw new Error(`Dark token --${name} not found`);
+    return match[1];
+  };
+
+  it.each(['ink', 'muted', 'green', 'violet', 'accent-text', 'warning-text', 'danger'])('text token --%s reaches 7:1 on dark surfaces', (name) => {
+    for (const bg of ['bg', 'panel', 'panel-subtle']) expect(contrast(dark(name), dark(bg))).toBeGreaterThanOrEqual(7);
+  });
+
+  it('accent button text reaches 7:1', () => {
+    expect(contrast(dark('on-accent'), dark('green'))).toBeGreaterThanOrEqual(7);
+  });
+
+  it('control borders and focus reach 3:1', () => {
+    for (const name of ['border-control', 'focus']) expect(contrast(dark(name), dark('panel'))).toBeGreaterThanOrEqual(3);
+  });
+
+  it('follows the system preference unless light is chosen', () => {
+    expect(css).toMatch(/@media \(prefers-color-scheme: dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/);
+  });
+});

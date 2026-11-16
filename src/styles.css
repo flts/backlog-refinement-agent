@@ -1,7 +1,8 @@
 :root {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    color: #20242c;
-    background: #f5f6f8;
+    color-scheme: light dark;
+    color: var(--ink);
+    background: var(--bg);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -11,8 +12,88 @@
     --green: #1a5c3f;
     --green-soft: #eaf4ed;
     --violet: #554896;
-    --panel: #fff;
+    --panel: #ffffff;
+    --bg: #f5f6f8;
+    --panel-subtle: #f6f7f8;
+    --accent-text: #1a5a3d;
+    --accent-hover: #134a32;
+    --accent-border: #287b55;
+    --on-accent: #ffffff;
+    --violet-text: #4d418c;
+    --violet-soft: #f0edfc;
+    --warning-text: #634524;
+    --warning-soft: #fbf2df;
+    --danger: #9b1c1c;
+    --danger-soft: #fbefed;
+    --danger-border: #f0d8d1;
+    --border-control: #8a909b;
+    --focus: #1a5c3f;
+    --backdrop: #20242c70;
+    --track: #c9cdd4;
     --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif
+}
+
+/* Dark theme: follows the OS unless the user picked light/dark explicitly (data-theme on <html>). */
+:root[data-theme="light"] {
+    color-scheme: light
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #e8eaed;
+    --muted: #bcc1c9;
+    --line: #353a42;
+    --green: #8fdcb0;
+    --green-soft: #1c3026;
+    --violet: #c9c1f7;
+    --panel: #1b1e23;
+    --bg: #121417;
+    --panel-subtle: #22262c;
+    --accent-text: #8fdcb0;
+    --accent-hover: #a8e6c3;
+    --accent-border: #5fb98a;
+    --on-accent: #0d1f16;
+    --violet-text: #c9c1f7;
+    --violet-soft: #29253f;
+    --warning-text: #f0cf94;
+    --warning-soft: #352b1a;
+    --danger: #ffaa9f;
+    --danger-soft: #3a2220;
+    --danger-border: #6b3a33;
+    --border-control: #7b828e;
+    --focus: #8fdcb0;
+    --backdrop: #000000a8;
+    --track: #4a505b
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --ink: #e8eaed;
+        --muted: #bcc1c9;
+        --line: #353a42;
+        --green: #8fdcb0;
+        --green-soft: #1c3026;
+        --violet: #c9c1f7;
+        --panel: #1b1e23;
+        --bg: #121417;
+        --panel-subtle: #22262c;
+        --accent-text: #8fdcb0;
+        --accent-hover: #a8e6c3;
+        --accent-border: #5fb98a;
+        --on-accent: #0d1f16;
+        --violet-text: #c9c1f7;
+        --violet-soft: #29253f;
+        --warning-text: #f0cf94;
+        --warning-soft: #352b1a;
+        --danger: #ffaa9f;
+        --danger-soft: #3a2220;
+        --danger-border: #6b3a33;
+        --border-control: #7b828e;
+        --focus: #8fdcb0;
+        --backdrop: #000000a8;
+        --track: #4a505b
+    }
 }
 
 * {
@@ -50,7 +131,7 @@ a:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible,
 [role="tab"]:focus-visible {
-    outline: 3px solid #1a5c3f;
+    outline: 3px solid var(--focus);
     outline-offset: 2px
 }
 
@@ -73,8 +154,8 @@ summary:focus-visible,
     z-index: 20;
     padding: 10px 14px;
     border-radius: 8px;
-    background: #1a5c3f;
-    color: #fff;
+    background: var(--green);
+    color: var(--on-accent);
     font-weight: 700;
     text-decoration: underline
 }
@@ -90,14 +171,14 @@ main:focus {
 .field-error {
     display: block;
     margin-top: 6px;
-    color: #9b1c1c;
+    color: var(--danger);
     font-size: 0.8125rem;
     font-weight: 600
 }
 
 [aria-invalid="true"] {
-    border-color: #9b1c1c !important;
-    box-shadow: 0 0 0 1px #9b1c1c
+    border-color: var(--danger) !important;
+    box-shadow: 0 0 0 1px var(--danger)
 }
 
 .app-shell {
@@ -105,14 +186,14 @@ main:focus {
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    background: #f7f8fa
+    background: var(--panel-subtle)
 }
 
 .topbar {
     height: 64px;
     flex-shrink: 0;
-    border-bottom: 1px solid #e8eaee;
-    background: #fff;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel);
     display: flex;
     align-items: center;
     padding: 0 27px;
@@ -124,7 +205,7 @@ main:focus {
     display: flex;
     align-items: center;
     gap: 10px;
-    color: #292e35;
+    color: var(--ink);
     text-decoration: none;
     font: 800 1rem var(--font-display);
     letter-spacing: -.7px
@@ -134,8 +215,8 @@ main:focus {
     width: 29px;
     height: 29px;
     border-radius: 9px;
-    background: #1a5c3f;
-    color: #fff;
+    background: var(--green);
+    color: var(--on-accent);
     display: grid;
     place-items: center;
     font: 800 1.25rem var(--font-display);
@@ -144,7 +225,7 @@ main:focus {
 
 .brand-light {
     font-weight: 500;
-    color: #4f535a
+    color: var(--muted)
 }
 
 .topbar-center {
@@ -152,7 +233,7 @@ main:focus {
     left: 50%;
     transform: translateX(-50%);
     font-size: 0.75rem;
-    color: #4e535d;
+    color: var(--muted);
     display: flex;
     align-items: center;
     gap: 9px
@@ -166,7 +247,7 @@ main:focus {
 }
 
 .topbar-divider {
-    color: #515255
+    color: var(--muted)
 }
 
 .topbar-actions {
@@ -178,9 +259,9 @@ main:focus {
 
 .local-badge {
     font-size: 0.75rem;
-    color: #4e545d;
-    border: 1px solid #e8eaf0;
-    background: #fafbfc;
+    color: var(--muted);
+    border: 1px solid var(--line);
+    background: var(--panel-subtle);
     border-radius: 20px;
     padding: 6px 9px;
     display: flex;
@@ -200,7 +281,7 @@ main:focus {
 .close-button {
     border: 0;
     background: transparent;
-    color: #4f535c
+    color: var(--muted)
 }
 
 .icon-button {
@@ -212,7 +293,7 @@ main:focus {
 
 .icon-button:hover,
 .more-button:hover {
-    background: #f1f3f5
+    background: var(--panel-subtle)
 }
 
 .avatar,
@@ -223,8 +304,8 @@ main:focus {
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: #f4e3d6;
-    color: #724a35;
+    background: var(--warning-soft);
+    color: var(--warning-text);
     font-size: 0.75rem;
     font-weight: 700
 }
@@ -241,7 +322,7 @@ main:focus {
 .workspace-grid>aside,
 .refinement-column {
     min-height: 0;
-    border: 1px solid #eaecf0;
+    border: 1px solid var(--line);
     border-radius: 12px;
     background: var(--panel)
 }
@@ -265,7 +346,7 @@ main:focus {
     font-size: 0.75rem;
     line-height: 1.4;
     letter-spacing: 1.13px;
-    color: #4a505b;
+    color: var(--muted);
     font-weight: 700
 }
 
@@ -279,16 +360,16 @@ main:focus {
 .add-button {
     width: 28px;
     height: 28px;
-    border: 1px solid #e7e9ed;
+    border: 1px solid var(--line);
     border-radius: 8px;
-    background: #fff;
+    background: var(--panel);
     font-size: 1.1875rem;
-    color: #4b5560;
+    color: var(--muted);
     line-height: 1
 }
 
 .add-button:hover {
-    background: #f3f7f4;
+    background: var(--green-soft);
     color: var(--green)
 }
 
@@ -297,12 +378,12 @@ main:focus {
     gap: 6px;
     align-items: center;
     padding: 9px 4px 13px;
-    color: #50535a;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
 .summary-dot {
-    color: #515356
+    color: var(--muted)
 }
 
 .tree-list {
@@ -323,11 +404,11 @@ main:focus {
 }
 
 .tree-row:hover {
-    background: #f7f8f9
+    background: var(--panel-subtle)
 }
 
 .tree-row.selected {
-    background: #eef5f0
+    background: var(--green-soft)
 }
 
 .tree-select {
@@ -346,7 +427,7 @@ main:focus {
 .tree-chevron {
     width: 10px;
     display: inline-block;
-    color: #51545a;
+    color: var(--muted);
     font-size: 0.9375rem;
     transform: rotate(0);
     transition: transform .15s
@@ -366,30 +447,30 @@ main:focus {
     display: grid;
     place-items: center;
     border-radius: 5px;
-    background: #edf0fb;
-    color: #48517a;
+    background: var(--violet-soft);
+    color: var(--violet-text);
     flex-shrink: 0
 }
 
 .tree-type-feature,
 .type-pill {
-    background: #f0ecfb;
-    color: #574c82
+    background: var(--violet-soft);
+    color: var(--violet-text)
 }
 
 .tree-type-user-story {
-    background: #e8f4f4;
-    color: #2b5b5a
+    background: var(--violet-soft);
+    color: var(--accent-text)
 }
 
 .tree-type-enabler {
-    background: #f8f0e5;
-    color: #6c4f25
+    background: var(--warning-soft);
+    color: var(--warning-text)
 }
 
 .tree-title {
     font-size: 0.75rem;
-    color: #4d555e;
+    color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -398,14 +479,14 @@ main:focus {
 
 .selected .tree-title {
     font-weight: 700;
-    color: #285e44
+    color: var(--accent-text)
 }
 
 .tree-status {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #c9cdd4;
+    background: var(--track);
     flex-shrink: 0
 }
 
@@ -428,7 +509,7 @@ main:focus {
     height: 24px;
     border: 0;
     background: transparent;
-    color: #4f5453;
+    color: var(--muted);
     border-radius: 5px;
     font-size: 0.9375rem
 }
@@ -440,7 +521,7 @@ main:focus {
 }
 
 .tree-add:hover {
-    background: #fff
+    background: var(--panel)
 }
 
 .tree-empty {
@@ -455,7 +536,7 @@ main:focus {
     display: grid;
     place-items: center;
     border-radius: 11px;
-    background: #eef5f0;
+    background: var(--green-soft);
     color: var(--green);
     font-size: 1.1875rem;
     margin: 0 auto 13px
@@ -469,7 +550,7 @@ main:focus {
 .no-selection p,
 .preview-empty p {
     font-size: 0.75rem;
-    color: #50545c;
+    color: var(--muted);
     line-height: 1.65
 }
 
@@ -484,7 +565,7 @@ main:focus {
     justify-content: space-between;
     align-items: flex-start;
     padding: 21px 24px 16px;
-    border-bottom: 1px solid #f0f1f3
+    border-bottom: 1px solid var(--line)
 }
 
 .refine-heading h1 {
@@ -500,14 +581,14 @@ main:focus {
 .refine-heading p {
     margin: 0;
     font-size: 0.75rem;
-    color: #50545a
+    color: var(--muted)
 }
 
 .text-link {
     padding: 0;
     border: 0;
     background: transparent;
-    color: #42584b;
+    color: var(--accent-text);
     font-size: inherit
 }
 
@@ -516,7 +597,7 @@ main:focus {
 }
 
 .crumb-sep {
-    color: #525355;
+    color: var(--muted);
     padding: 0 5px
 }
 
@@ -531,28 +612,28 @@ main:focus {
 .context-banner {
     margin: 11px 24px 0;
     border-radius: 7px;
-    background: #f4f7f4;
+    background: var(--green-soft);
     padding: 8px 10px;
     display: flex;
     gap: 7px;
     align-items: center;
-    color: #4c5650;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
 .context-banner strong {
-    color: #43594a
+    color: var(--accent-text)
 }
 
 .context-icon {
-    color: #46584c
+    color: var(--accent-text)
 }
 
 .context-banner button {
     margin-left: auto;
     border: 0;
     background: transparent;
-    color: #405a49;
+    color: var(--accent-text);
     font-size: 0.75rem
 }
 
@@ -569,9 +650,9 @@ main:focus {
     max-width: 590px;
     margin: 0 auto 20px;
     padding: 14px 15px;
-    border: 1px solid #e9eee9;
+    border: 1px solid var(--line);
     border-radius: 10px;
-    background: #fbfdfb
+    background: var(--green-soft)
 }
 
 .agent-icon {
@@ -581,8 +662,8 @@ main:focus {
     display: grid;
     place-items: center;
     border-radius: 8px;
-    background: #e8f3eb;
-    color: #275d43;
+    background: var(--green-soft);
+    color: var(--accent-text);
     font-size: 0.9375rem
 }
 
@@ -593,19 +674,19 @@ main:focus {
 .welcome-card p {
     font-size: 0.75rem;
     line-height: 1.65;
-    color: #4f545b;
+    color: var(--muted);
     margin: 5px 0 11px
 }
 
 .welcome-prompt {
-    border-top: 1px solid #edf0ec;
+    border-top: 1px solid var(--line);
     padding-top: 9px;
     font-size: 0.75rem;
-    color: #4f5550
+    color: var(--muted)
 }
 
 .welcome-prompt span {
-    color: #3c5a47;
+    color: var(--accent-text);
     margin-right: 5px
 }
 
@@ -645,14 +726,14 @@ main:focus {
 
 .message-author {
     font-size: 0.75rem;
-    color: #4f545d;
+    color: var(--muted);
     font-weight: 700;
     display: block
 }
 
 .message-author time {
     font-weight: 400;
-    color: #515356;
+    color: var(--muted);
     margin-left: 6px
 }
 
@@ -662,13 +743,13 @@ main:focus {
     overflow-wrap: anywhere;
     font-size: 0.75rem;
     line-height: 1.65;
-    color: #4d555e
+    color: var(--muted)
 }
 
 .message-user .message-content p {
     display: inline-block;
     text-align: left;
-    background: #f1f3f5;
+    background: var(--panel-subtle);
     border-radius: 10px 2px 10px 10px;
     padding: 8px 10px
 }
@@ -677,7 +758,7 @@ main:focus {
     display: flex;
     align-items: center;
     gap: 4px;
-    color: #505359 !important
+    color: var(--muted) !important
 }
 
 .typing i {
@@ -717,22 +798,22 @@ main:focus {
     justify-content: space-between;
     margin: 0 2px 6px;
     font-size: 0.75rem;
-    color: #4f545a
+    color: var(--muted)
 }
 
 .green-spark {
-    color: #275e42;
+    color: var(--accent-text);
     margin-right: 5px
 }
 
 .composer-hint {
-    color: #505357
+    color: var(--muted)
 }
 
 .composer {
-    border: 1px solid #8a909b;
+    border: 1px solid var(--border-control);
     border-radius: 9px;
-    background: #fff;
+    background: var(--panel);
     box-shadow: 0 2px 8px #20242c08;
     padding: 10px 10px 8px
 }
@@ -745,14 +826,14 @@ main:focus {
     border: 0;
     outline: 0 !important;
     padding: 0 2px;
-    color: #404750;
+    color: var(--ink);
     font-size: 0.75rem;
     line-height: 1.6;
     background: transparent
 }
 
 .composer textarea::placeholder {
-    color: #525459
+    color: var(--muted)
 }
 
 .composer-bottom {
@@ -763,11 +844,11 @@ main:focus {
 
 .composer-tip {
     font-size: 0.75rem;
-    color: #505357
+    color: var(--muted)
 }
 
 .composer-tip span {
-    color: #395b46;
+    color: var(--accent-text);
     margin-right: 4px
 }
 
@@ -776,14 +857,14 @@ main:focus {
     height: 26px;
     border: 0;
     border-radius: 7px;
-    background: #1a5c3f;
-    color: #fff;
+    background: var(--green);
+    color: var(--on-accent);
     font-size: 1rem;
     line-height: 1
 }
 
 .send-button:hover {
-    background: #134a32
+    background: var(--accent-hover)
 }
 
 .continue-button {
@@ -795,21 +876,21 @@ main:focus {
     gap: 6px;
     border: 0;
     background: transparent;
-    color: #50545a;
+    color: var(--muted);
     font-size: 0.75rem;
     text-align: left
 }
 
 .continue-button>span:first-child {
-    color: #564e74
+    color: var(--violet-text)
 }
 
 .continue-button:hover {
-    color: #4d555e
+    color: var(--muted)
 }
 
 .continue-note {
-    color: #515458;
+    color: var(--muted);
     font-size: 0.75rem;
     margin-left: 2px
 }
@@ -825,7 +906,7 @@ main:focus {
     align-items: center;
     justify-content: space-between;
     padding: 18px 17px 14px;
-    border-bottom: 1px solid #eff0f3
+    border-bottom: 1px solid var(--line)
 }
 
 .preview-head h2 {
@@ -834,21 +915,21 @@ main:focus {
 }
 
 .copy-button {
-    border: 1px solid #e7e9ed;
+    border: 1px solid var(--line);
     border-radius: 6px;
-    background: #fff;
+    background: var(--panel);
     padding: 6px 8px;
-    color: #4e545d;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
 .copy-button:hover {
-    background: #f8f9fa
+    background: var(--panel-subtle)
 }
 
 .copy-button span {
     margin-right: 4px;
-    color: #4f545a
+    color: var(--muted)
 }
 
 .preview-scroll {
@@ -862,7 +943,7 @@ main:focus {
     display: flex;
     align-items: center;
     gap: 7px;
-    color: #4f545b;
+    color: var(--muted);
     font-size: 0.75rem;
     margin-bottom: 16px
 }
@@ -870,37 +951,37 @@ main:focus {
 .type-icon {
     width: 29px;
     height: 23px;
-    border: 1px solid #e6e9f2
+    border: 1px solid var(--line)
 }
 
 .status-chip {
     margin-left: auto;
     border-radius: 20px;
-    background: #f0f1f4;
-    color: #50545c;
+    background: var(--panel-subtle);
+    color: var(--muted);
     font-size: 0.75rem;
     padding: 4px 7px
 }
 
 .status-ready,
 .status-ready-with-open-questions {
-    background: #eaf4ec;
-    color: #355c42
+    background: var(--green-soft);
+    color: var(--accent-text)
 }
 
 .status-refining {
-    background: #f0edfc;
-    color: #574d80
+    background: var(--violet-soft);
+    color: var(--violet-text)
 }
 
 .status-complete {
-    background: #edf4ef;
-    color: #435849
+    background: var(--green-soft);
+    color: var(--accent-text)
 }
 
 .field-label {
     display: block;
-    color: #4b525d;
+    color: var(--muted);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: .9px;
@@ -912,7 +993,7 @@ main:focus {
     border: 0;
     padding: 3px 0;
     background: transparent;
-    color: #292e35;
+    color: var(--ink);
     font: 700 0.9375rem var(--font-display);
     letter-spacing: -.35px
 }
@@ -924,18 +1005,18 @@ main:focus {
     min-height: 65px;
     padding: 3px 0;
     background: transparent;
-    color: #4e545d;
+    color: var(--muted);
     font-size: 0.75rem;
     line-height: 1.6
 }
 
 .preview-title-input::placeholder,
 .preview-description::placeholder {
-    color: #515356
+    color: var(--muted)
 }
 
 .preview-section {
-    border-top: 1px solid #eff0f2;
+    border-top: 1px solid var(--line);
     margin-top: 15px;
     padding-top: 12px
 }
@@ -950,36 +1031,36 @@ main:focus {
 .preview-section-head h3 {
     margin: 0;
     font: 700 0.75rem var(--font-display);
-    color: #4b525d
+    color: var(--muted)
 }
 
 .knowledge-tag {
     margin-left: auto;
     font-size: 0.75rem;
     border-radius: 20px;
-    background: #f1f2f4;
+    background: var(--panel-subtle);
     padding: 3px 6px;
-    color: #50545b
+    color: var(--muted)
 }
 
 .knowledge-known {
-    background: #e9f4ed;
-    color: #395b45
+    background: var(--green-soft);
+    color: var(--accent-text)
 }
 
 .knowledge-assumed {
-    background: #fbf2df;
-    color: #694f20
+    background: var(--warning-soft);
+    color: var(--warning-text)
 }
 
 .knowledge-unclear {
-    background: #f8eddf;
-    color: #6c4d28
+    background: var(--warning-soft);
+    color: var(--warning-text)
 }
 
 .preview-section>p {
     margin: 0;
-    color: #4f545c;
+    color: var(--muted);
     font-size: 0.75rem;
     line-height: 1.6
 }
@@ -987,7 +1068,7 @@ main:focus {
 .provenance {
     display: block;
     margin-top: 4px;
-    color: #515357;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
@@ -1002,13 +1083,13 @@ main:focus {
 }
 
 .count-badge.amber {
-    background: #fbf2df;
-    color: #6a4f20
+    background: var(--warning-soft);
+    color: var(--warning-text)
 }
 
 .count-badge.blue {
-    background: #edf2f8;
-    color: #42546b
+    background: var(--violet-soft);
+    color: var(--violet-text)
 }
 
 .uncertainty-card {
@@ -1026,25 +1107,25 @@ main:focus {
 
 .uncertainty-card p {
     margin: 0;
-    color: #4e545d;
+    color: var(--muted);
     font-size: 0.75rem;
     line-height: 1.5
 }
 
 .assumption-card {
-    background: #fcf8ee
+    background: var(--warning-soft)
 }
 
 .assumption-card>span {
-    color: #674f23
+    color: var(--warning-text)
 }
 
 .question-card {
-    background: #f1f5f9
+    background: var(--violet-soft)
 }
 
 .question-card>span {
-    color: #42556b
+    color: var(--violet-text)
 }
 
 .related-item {
@@ -1058,16 +1139,16 @@ main:focus {
     background: transparent;
     text-align: left;
     font-size: 0.75rem;
-    color: #4e545d
+    color: var(--muted)
 }
 
 .related-item:hover {
-    background: #f5f7f6
+    background: var(--green-soft)
 }
 
 .related-item>span:last-child {
     margin-left: auto;
-    color: #505357
+    color: var(--muted)
 }
 
 .type-icon.tiny {
@@ -1077,20 +1158,20 @@ main:focus {
 }
 
 .muted-copy {
-    color: #505357 !important;
+    color: var(--muted) !important;
     font-size: 0.75rem !important
 }
 
 .subtle-label {
     margin-left: auto;
-    color: #525458;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
 .status-indicator {
     /* margin-left: auto; */
     font-size: 0.75rem;
-    color: #48574d;
+    color: var(--accent-text);
     display: flex;
     align-items: center;
     gap: 5px
@@ -1104,7 +1185,7 @@ main:focus {
 }
 
 .quality-section>p {
-    color: #505359;
+    color: var(--muted);
     font-size: 0.75rem;
     margin: 0 0 9px
 }
@@ -1122,22 +1203,22 @@ main:focus {
 }
 
 .button-primary {
-    background: #1a5c3f;
-    color: #fff
+    background: var(--green);
+    color: var(--on-accent)
 }
 
 .button-primary:hover {
-    background: #134a32
+    background: var(--accent-hover)
 }
 
 .button-secondary {
-    background: #fff;
-    border-color: #8a909b;
-    color: #4d545e
+    background: var(--panel);
+    border-color: var(--border-control);
+    color: var(--muted)
 }
 
 .button-secondary:hover {
-    background: #f6f7f8
+    background: var(--panel-subtle)
 }
 
 .button-small {
@@ -1146,7 +1227,7 @@ main:focus {
 }
 
 .decompose-area {
-    border-top: 1px solid #eceef1;
+    border-top: 1px solid var(--line);
     padding: 12px 16px 14px
 }
 
@@ -1158,7 +1239,7 @@ main:focus {
 }
 
 .decompose-title>span {
-    color: #285e43
+    color: var(--accent-text)
 }
 
 .decompose-title strong,
@@ -1172,7 +1253,7 @@ main:focus {
 
 .decompose-title small {
     font-size: 0.75rem;
-    color: #515459;
+    color: var(--muted);
     margin-top: 2px
 }
 
@@ -1227,9 +1308,9 @@ main:focus {
     gap: 9px;
     max-width: min(460px, calc(100vw - 32px));
     padding: 10px 11px;
-    border: 1px solid #deebe2;
-    background: #f6fbf7;
-    color: #234030;
+    border: 1px solid var(--line);
+    background: var(--green-soft);
+    color: var(--accent-text);
     border-radius: 8px;
     box-shadow: 0 8px 24px #17291d16
 }
@@ -1240,7 +1321,7 @@ main:focus {
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: #e4f2e8;
+    background: var(--green-soft);
     font-size: 0.75rem
 }
 
@@ -1256,14 +1337,14 @@ main:focus {
     min-height: 24px;
     border: 0;
     background: transparent;
-    color: #4f5451;
+    color: var(--muted);
     font-size: 1rem
 }
 
 .toast-error {
-    background: #fff8f6;
-    border-color: #f0d8d1;
-    color: #6a2f24
+    background: var(--danger-soft);
+    border-color: var(--danger-border);
+    color: var(--danger)
 }
 
 .modal-backdrop {
@@ -1273,7 +1354,7 @@ main:focus {
     display: grid;
     place-items: center;
     padding: 18px;
-    background: #20242c70;
+    background: var(--backdrop);
     backdrop-filter: blur(2px)
 }
 
@@ -1294,14 +1375,14 @@ dialog.modal-dialog:has(.settings-modal) {
 }
 
 dialog.modal-dialog::backdrop {
-    background: #20242c70;
+    background: var(--backdrop);
     backdrop-filter: blur(2px)
 }
 
 .modal {
     position: relative;
     width: min(440px, 100%);
-    background: #fff;
+    background: var(--panel);
     border-radius: 13px;
     padding: 26px;
     box-shadow: 0 20px 70px #171b2540
@@ -1315,7 +1396,7 @@ dialog.modal-dialog::backdrop {
 
 .modal>p {
     font-size: 0.75rem;
-    color: #4f5359;
+    color: var(--muted);
     line-height: 1.6;
     margin: 0 0 18px
 }
@@ -1325,12 +1406,12 @@ dialog.modal-dialog::backdrop {
     margin: 13px 0 6px;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #4d555e
+    color: var(--muted)
 }
 
 .modal label span {
     font-weight: 400;
-    color: #505357;
+    color: var(--muted);
     margin-left: 4px
 }
 
@@ -1338,12 +1419,12 @@ dialog.modal-dialog::backdrop {
 .modal textarea,
 .modal select {
     width: 100%;
-    border: 1px solid #8a909b;
+    border: 1px solid var(--border-control);
     border-radius: 7px;
     padding: 9px 10px;
     font-size: 0.75rem;
-    color: #404750;
-    background: #fff
+    color: var(--ink);
+    background: var(--panel)
 }
 
 .modal textarea {
@@ -1352,7 +1433,7 @@ dialog.modal-dialog::backdrop {
 }
 
 .modal input::placeholder {
-    color: #515357
+    color: var(--muted)
 }
 
 .modal-close {
@@ -1384,7 +1465,7 @@ dialog.modal-dialog::backdrop {
 .settings-tabs {
     display: flex;
     gap: 2px;
-    border-bottom: 1px solid #eceef1;
+    border-bottom: 1px solid var(--line);
     margin-bottom: 4px;
     overflow-x: auto
 }
@@ -1396,18 +1477,18 @@ dialog.modal-dialog::backdrop {
     padding: 8px 12px;
     font-size: 0.75rem;
     font-weight: 600;
-    color: #4f535a;
+    color: var(--muted);
     border-bottom: 2px solid transparent;
     margin-bottom: -1px
 }
 
 .settings-tab:hover {
-    color: #3e464f
+    color: var(--ink)
 }
 
 .settings-tab.active {
-    color: #1e5f41;
-    border-bottom-color: #277b54
+    color: var(--accent-text);
+    border-bottom-color: var(--accent-border)
 }
 
 .settings-body {
@@ -1423,7 +1504,7 @@ dialog.modal-dialog::backdrop {
 
 .settings-help {
     font-size: 0.75rem !important;
-    color: #50545c !important;
+    color: var(--muted) !important;
     margin: 0 0 6px !important;
     line-height: 1.5
 }
@@ -1437,10 +1518,10 @@ dialog.modal-dialog::backdrop {
     gap: 8px;
     align-items: flex-start;
     margin-top: 13px;
-    background: #f4f7f5;
+    background: var(--green-soft);
     border-radius: 7px;
     padding: 9px;
-    color: #45584c
+    color: var(--accent-text)
 }
 
 .privacy-note>span {
@@ -1450,16 +1531,16 @@ dialog.modal-dialog::backdrop {
 .privacy-note p {
     font-size: 0.75rem;
     line-height: 1.55;
-    color: #4e5650;
+    color: var(--muted);
     margin: 0
 }
 
 .proposal-panel {
-    border: 1px solid #e4e8e5;
+    border: 1px solid var(--line);
     border-radius: 9px;
     margin: 20px 0;
     padding: 13px;
-    background: #fff;
+    background: var(--panel);
     box-shadow: 0 4px 14px #1c362509
 }
 
@@ -1480,13 +1561,13 @@ dialog.modal-dialog::backdrop {
 
 .proposal-rationale {
     font-size: 0.75rem;
-    color: #4f535a;
+    color: var(--muted);
     line-height: 1.55;
     margin: 9px 0
 }
 
 .proposal-list {
-    border-top: 1px solid #eef0f2
+    border-top: 1px solid var(--line)
 }
 
 .proposal-item {
@@ -1494,12 +1575,12 @@ dialog.modal-dialog::backdrop {
     display: flex;
     align-items: center;
     gap: 9px;
-    border-bottom: 1px solid #f1f2f4;
+    border-bottom: 1px solid var(--line);
     padding: 7px 3px
 }
 
 .proposal-item>input {
-    accent-color: #287b55
+    accent-color: var(--accent-border)
 }
 
 .proposal-copy {
@@ -1514,13 +1595,13 @@ dialog.modal-dialog::backdrop {
     background: transparent;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #484f59
+    color: var(--ink)
 }
 
 .proposal-copy small {
     display: block;
     padding: 2px;
-    color: #515459;
+    color: var(--muted);
     font-size: 0.75rem;
     white-space: nowrap;
     overflow: hidden;
@@ -1540,7 +1621,7 @@ dialog.modal-dialog::backdrop {
     align-items: center;
     padding-top: 11px;
     font-size: 0.75rem;
-    color: #50545a
+    color: var(--muted)
 }
 
 .mobile-tabs {
@@ -1553,7 +1634,7 @@ dialog.modal-dialog::backdrop {
     place-content: center;
     justify-items: center;
     gap: 12px;
-    color: #4f5459;
+    color: var(--muted);
     font-size: 0.75rem
 }
 
@@ -1659,8 +1740,8 @@ dialog.modal-dialog::backdrop {
         height: 38px;
         display: flex;
         align-items: stretch;
-        border-bottom: 1px solid #e7e9ed;
-        background: #fff;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
         padding: 0 10px
     }
 
@@ -1669,13 +1750,13 @@ dialog.modal-dialog::backdrop {
         border: 0;
         border-bottom: 2px solid transparent;
         background: transparent;
-        color: #50545a;
+        color: var(--muted);
         font-size: 0.75rem
     }
 
     .mobile-tabs button.active {
-        border-bottom-color: #287b55;
-        color: #285e42;
+        border-bottom-color: var(--accent-border);
+        color: var(--accent-text);
         font-weight: 700
     }
 
@@ -1769,7 +1850,7 @@ dialog.modal-dialog::backdrop {
 .template-editor {
     max-height: 250px;
     overflow: auto;
-    border-top: 1px solid #eef0f2;
+    border-top: 1px solid var(--line);
     margin-top: 15px;
     padding-top: 10px
 }
@@ -1781,32 +1862,32 @@ dialog.modal-dialog::backdrop {
 
 .template-editor>p {
     font-size: 0.75rem;
-    color: #50545c;
+    color: var(--muted);
     margin: 0 0 8px
 }
 
 .uncertainty-action {
     flex-shrink: 0;
-    border: 1px solid #8a909b;
+    border: 1px solid var(--border-control);
     border-radius: 5px;
     width: 24px;
     height: 24px;
-    background: #fff;
-    color: #3b5a44;
+    background: var(--panel);
+    color: var(--accent-text);
     font-size: 0.75rem;
     padding: 0
 }
 
 .uncertainty-action:hover {
-    background: #e8f4eb
+    background: var(--green-soft)
 }
 
 .uncertainty-action.reject {
-    color: #714a45
+    color: var(--warning-text)
 }
 
 .uncertainty-action.reject:hover {
-    background: #fbefed
+    background: var(--danger-soft)
 }
 
 .composer-actions {
@@ -1816,7 +1897,7 @@ dialog.modal-dialog::backdrop {
 .retry-button {
     border: 0;
     background: transparent;
-    color: #73493d;
+    color: var(--warning-text);
     font-size: 0.75rem;
     padding: 2px 0 6px
 }
@@ -1837,17 +1918,17 @@ dialog.modal-dialog::backdrop {
     display: flex;
     align-items: center;
     gap: 5px;
-    color: #50535b;
+    color: var(--muted);
     font-size: 0.75rem;
     font-weight: 600
 }
 
 .session-select {
     max-width: 126px;
-    border: 1px solid #e6e9eb;
+    border: 1px solid var(--line);
     border-radius: 6px;
-    background: #fff;
-    color: #4f545c;
+    background: var(--panel);
+    color: var(--muted);
     font-size: 0.75rem;
     padding: 5px
 }
@@ -1855,15 +1936,15 @@ dialog.modal-dialog::backdrop {
 .new-session-button {
     width: 26px;
     height: 26px;
-    border: 1px solid #e6e9eb;
+    border: 1px solid var(--line);
     border-radius: 6px;
-    background: #fff;
-    color: #48574b;
+    background: var(--panel);
+    color: var(--accent-text);
     font-size: 0.875rem
 }
 
 .new-session-button:hover {
-    background: #f2f7f3
+    background: var(--green-soft)
 }
 
 .tree-expand {
@@ -1873,7 +1954,7 @@ dialog.modal-dialog::backdrop {
     border: 0;
     background: transparent;
     padding: 0;
-    color: #51545a
+    color: var(--muted)
 }
 
 .tree-expand:disabled {
@@ -1890,7 +1971,7 @@ dialog.modal-dialog::backdrop {
 
 .importance-label {
     display: block;
-    color: #505358;
+    color: var(--muted);
     font-size: 0.75rem;
     text-transform: capitalize;
     margin-top: 3px
@@ -1904,13 +1985,13 @@ dialog.modal-dialog::backdrop {
     border: 0;
     background: transparent;
     padding: 3px 2px;
-    color: #50545b;
+    color: var(--muted);
     font-size: 0.75rem;
     line-height: 1.45
 }
 
 .proposal-copy textarea::placeholder {
-    color: #505356
+    color: var(--muted)
 }
 
 .env-config-note {
@@ -1919,29 +2000,29 @@ dialog.modal-dialog::backdrop {
     padding: 10px 11px;
     margin: 12px 0;
     border-radius: 7px;
-    background: #f4f7f5;
-    border: 1px solid #e8eee9
+    background: var(--green-soft);
+    border: 1px solid var(--line)
 }
 
 .env-config-note strong {
     font-size: 0.75rem;
-    color: #43584b
+    color: var(--accent-text)
 }
 
 .env-config-note>span {
     font-size: 0.75rem;
-    color: #4d564f
+    color: var(--muted)
 }
 
 .env-config-note code {
     font-size: 0.75rem;
-    color: #505550
+    color: var(--muted)
 }
 
 .env-config-note small {
     font-size: 0.75rem;
     line-height: 1.5;
-    color: #6a4d44
+    color: var(--warning-text)
 }
 
 .markdown-template-input {
@@ -1968,7 +2049,7 @@ dialog.modal-dialog::backdrop {
 }
 
 .quality-list li:not(:first-child) {
-    border-top: 1px solid #eaecf0;
+    border-top: 1px solid var(--line);
     padding-top: 5px;
 }
 
@@ -1982,22 +2063,22 @@ dialog.modal-dialog::backdrop {
     font-size: 0.75rem;
     padding: 1px 8px;
     border-radius: 999px;
-    background: #eef2f6;
+    background: var(--violet-soft);
 }
 
 .quality-clear .quality-level {
-    background: #dcf5e4;
-    color: #176034;
+    background: var(--green-soft);
+    color: var(--accent-text);
 }
 
 .quality-unclear .quality-level {
-    background: #fff1d6;
-    color: #744c00;
+    background: var(--warning-soft);
+    color: var(--warning-text);
 }
 
 .quality-missing .quality-level {
-    background: #fde0e0;
-    color: #9b1c1c;
+    background: var(--danger-soft);
+    color: var(--danger);
 }
 
 .menu-wrap {
@@ -2010,8 +2091,8 @@ dialog.modal-dialog::backdrop {
     top: 32px;
     z-index: 6;
     min-width: 140px;
-    background: #fff;
-    border: 1px solid #e4e6ea;
+    background: var(--panel);
+    border: 1px solid var(--line);
     border-radius: 8px;
     box-shadow: 0 8px 24px #17291d1f;
     padding: 4px
@@ -2028,11 +2109,11 @@ dialog.modal-dialog::backdrop {
 }
 
 .menu-item:hover {
-    background: #f5f6f8
+    background: var(--bg)
 }
 
 .menu-danger {
-    color: #8b3a2c
+    color: var(--danger)
 }
 
 .workspace-grid>.preview-column {
@@ -2058,7 +2139,7 @@ dialog.modal-dialog::backdrop {
     gap: 6px;
     border: 0;
     background: transparent; */
-    color: #50545a;
+    color: var(--muted);
     font-size: 0.75rem;
     /* text-align: left */
 }
@@ -2080,7 +2161,7 @@ dialog.modal-dialog::backdrop {
 .preview-crumb {
     margin: 0;
     font-size: 0.75rem;
-    color: #50545a
+    color: var(--muted)
 }
 
 .composer-actions {
@@ -2099,7 +2180,7 @@ dialog.modal-dialog::backdrop {
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    border-top: 1px solid #eceef1;
+    border-top: 1px solid var(--line);
     padding: 0 16px 14px
 }
 
@@ -2118,7 +2199,7 @@ dialog.modal-dialog::backdrop {
     padding: 12px 0 0
 }
 .llm-connection {
-    border: 1px solid #eceef1;
+    border: 1px solid var(--line);
     border-radius: 8px;
     padding: 4px 12px 12px;
     margin: 0 0 6px
@@ -2129,9 +2210,53 @@ dialog.modal-dialog::backdrop {
     padding: 0 6px
 }
 
+.theme-choice {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px 12px 12px;
+    margin: 0 0 12px
+}
+
+.theme-choice legend {
+    font: 700 0.75rem var(--font-display);
+    padding: 0 6px
+}
+
+.theme-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px
+}
+
+.modal .theme-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin: 0;
+    padding: 0 14px 0 10px;
+    border: 1px solid var(--border-control);
+    border-radius: 7px;
+    color: var(--ink);
+    cursor: pointer
+}
+
+.modal .theme-option input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--green)
+}
+
+.modal .theme-option:has(input:checked) {
+    border-color: var(--green);
+    box-shadow: inset 0 0 0 1px var(--green)
+}
+
 .llm-connection input {
     width: 100%;
-    border: 1px solid #8a909b;
+    border: 1px solid var(--border-control);
     border-radius: 7px;
     padding: 9px 10px;
     font-size: 0.75rem
@@ -2143,7 +2268,7 @@ dialog.modal-dialog::backdrop {
     max-height: 40vh;
     overflow: auto;
     flex-shrink: 0;
-    color: #4d545e;
+    color: var(--muted);
     font-size: 0.75rem
 }
 .project-toolbar, .project-toolbar form {
@@ -2159,27 +2284,27 @@ dialog.modal-dialog::backdrop {
 .project-panel textarea {
     min-width: 0;
     max-width: 100%;
-    border: 1px solid #8a909b;
+    border: 1px solid var(--border-control);
     border-radius: 7px;
-    background: #fff;
+    background: var(--panel);
     color: var(--ink);
     padding: 7px 9px;
     font-size: 0.75rem
 }
-.project-panel input::placeholder, .project-panel textarea::placeholder { color: #50545a; }
-.project-panel input:disabled, .project-panel select:disabled, .project-panel textarea:disabled { background: #f5f6f8; opacity: .7; }
+.project-panel input::placeholder, .project-panel textarea::placeholder { color: var(--muted); }
+.project-panel input:disabled, .project-panel select:disabled, .project-panel textarea:disabled { background: var(--bg); opacity: .7; }
 .project-panel .composer-hint { margin: 9px 0 0; overflow-wrap: anywhere; }
 .project-panel details { margin-top: 9px; }
 .project-panel summary { cursor: pointer; font-weight: 600; color: var(--green); }
-.project-panel details > p { color: #50535b; line-height: 1.5; overflow-wrap: anywhere; }
-.project-file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: #50535b; }
+.project-panel details > p { color: var(--muted); line-height: 1.5; overflow-wrap: anywhere; }
+.project-file-upload { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; color: var(--muted); }
 .project-reference-form { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin: 12px 0; }
 .project-reference-form input { flex: 1 1 150px; }
 .project-reference-form textarea { flex: 2 1 240px; min-height: 32px; resize: vertical; }
 .project-sources { list-style: none; padding: 0; margin: 0; }
 .project-sources li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); }
 .project-sources li > label { display: flex; align-items: center; gap: 5px; font-weight: 600; }
-.project-sources li > span { color: #50535b; }
+.project-sources li > span { color: var(--muted); }
 .project-sources a { overflow-wrap: anywhere; }
 .project-sources li > div { flex-basis: 100%; }
 .project-sources textarea { display: block; width: min(500px, 100%); min-height: 100px; margin-bottom: 8px; }
@@ -2205,14 +2330,29 @@ dialog.modal-dialog::backdrop {
 @media (prefers-contrast: more) {
     :root {
         --line: #6b7280;
-        --muted: #2f343c
+        --muted: #2f343c;
+        --border-control: #4a505b
+    }
+
+    :root[data-theme="dark"] {
+        --line: #8a909b;
+        --muted: #dde0e5;
+        --border-control: #b4bac4
     }
 
     button,
     input,
     textarea,
     select {
-        border-color: #4a505b
+        border-color: var(--border-control)
+    }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --line: #8a909b;
+        --muted: #dde0e5;
+        --border-control: #b4bac4
     }
 }
 

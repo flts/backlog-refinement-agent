@@ -74,6 +74,21 @@ describe('SettingsModal', () => {
     confirm.mockRestore();
   });
 
+  it('switches the appearance immediately without touching saved settings', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    const { container } = render(<SettingsModal settings={settings} llmReady llm={{ endpoint: '', model: '', apiKey: '' }} llmEnvironment={{ endpoint: '', model: '', apiKey: '' }} onClearLlm={vi.fn()} onSave={onSave} onRestore={vi.fn()} onClose={vi.fn()} onImport={vi.fn()} onExport={vi.fn()} />);
+    expect(screen.getByRole('radio', { name: 'System' })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: 'Dark' }));
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('theme-preference')).toBe('dark');
+    await user.click(screen.getByRole('radio', { name: 'System' }));
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(localStorage.getItem('theme-preference')).toBeNull();
+    expect(onSave).not.toHaveBeenCalled();
+    await expectNoAxeViolations(container);
+  });
+
   it('shows one tab at a time and saves the values of all tabs', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
