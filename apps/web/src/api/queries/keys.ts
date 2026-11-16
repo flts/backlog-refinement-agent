@@ -20,6 +20,7 @@ export const backlogKeys = {
   guidance: (projectId: string) => [...projectRoot(projectId), 'guidance'] as const,
   guidanceDefaults: (projectId: string) => [...projectRoot(projectId), 'guidance', 'defaults'] as const,
   sources: (projectId: string) => [...projectRoot(projectId), 'sources'] as const,
+  search: (projectId: string, kind: 'items' | 'sources', query: string) => [...projectRoot(projectId), 'search', kind, query] as const,
 } as const;
 
 export type { ItemType };

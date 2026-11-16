@@ -8,3 +8,4 @@ export * from './relationships';
 export * from './guidance';
 export * from './sources';
 export * from './backup';
+export * from './search';

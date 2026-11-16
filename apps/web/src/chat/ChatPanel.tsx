@@ -3,6 +3,9 @@ import type { Item, ItemSummary } from '../api';
 import type { FeedbackRating, Thread } from '../agent';
 import type { AskUserResult, NextAction } from '../contracts';
 import type { RunState } from '../run';
+import { ContextBar } from '../context/ContextBar';
+import type { MentionCandidate } from '../context/mentions';
+import type { AgentCommandEntry } from '../palette/commands';
 import { useRunAnnouncements } from './announcements';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
@@ -42,11 +45,18 @@ export type ChatPanelProps = {
   onSuggestion?: (action: NextAction) => void;
   /** Rates an assistant message of the active thread. */
   onFeedback?: (messageId: string, rating: FeedbackRating, comment?: string) => Promise<unknown>;
+  /** Shows the context bar above the composer for this project (context/). */
+  projectId?: string;
+  /** Composer `/` menu (palette/commands.ts) and its handler. */
+  slashCommands?: readonly AgentCommandEntry[];
+  onSlashCommand?: (command: AgentCommandEntry) => void;
+  /** Items the composer `@` picker offers; the current item is left out. */
+  mentionItems?: readonly MentionCandidate[];
 };
 
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, threads, activeThreadId, run, busy, canRetry, message,
-    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback } = props;
+    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback, projectId, slashCommands, onSlashCommand, mentionItems } = props;
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
@@ -78,11 +88,12 @@ export function ChatPanel(props: ChatPanelProps) {
           {run.phase === 'awaitingReview' && <ReviewPlaceholder run={run} disabled={busy} onDecideAll={onDecideAll} />}
         </MessageList>
         <div className="composer-wrap">
+          {projectId && <ContextBar projectId={projectId} item={item} onSelectItem={props.onSelectItem} />}
           <div className="composer-tools">
             <span><span className="green-spark" aria-hidden="true">✳</span> Refine with AI</span>
-            <span className="composer-hint">Enter to send · Shift+Enter for new line</span>
+            <span className="composer-hint">Enter to send · Shift+Enter for new line · / commands · @ items</span>
           </div>
-          <Composer value={message} busy={busy} running={running} reason={reason} asking={asking} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} />
+          <Composer value={message} busy={busy} running={running} reason={reason} asking={asking} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} slashCommands={slashCommands} onSlashCommand={onSlashCommand} mentionItems={mentionItems} />
           <div className="composer-actions">
             {running && <button className="retry-button" onClick={onStop}><span aria-hidden="true">■</span> Stop <span className="composer-hint">(Esc)</span></button>}
             <button className="continue-button" title="Stop asking and capture what’s still unknown" onClick={onContinue} disabled={busy}><span aria-hidden="true">◷</span> Continue with current information</button>

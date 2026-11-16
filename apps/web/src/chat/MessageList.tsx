@@ -1,3 +1,4 @@
+import { displayMentions } from '../context/mentions';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { AskUserTranscriptEntry, showsAskUserSummary } from '../askuser';
 import { ASK_USER_TOOL_NAME } from '../contracts';
@@ -110,7 +111,7 @@ export function MessageList({ run, canRetry = false, busy = false, onRetry, chil
                 <div className="user-avatar" aria-hidden="true">Y</div>
                 <div className="message-content">
                   <span className="message-author">You</span>
-                  <p>{entry.text}</p>
+                  <p>{displayMentions(entry.text)}</p>
                   {entry.dismissed && <span className="message-note">Answered in chat</span>}
                 </div>
               </div>
