@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Project, Source, SourceList } from '../api';
+import { PALETTE_EVENTS, usePaletteEvent } from '../palette/events';
 import { SourcesDrawer } from '../sources';
 
 type Props = {
@@ -22,6 +23,7 @@ export function ProjectPanel(props: Props) {
   const [name, setName] = useState('');
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const importInput = useRef<HTMLInputElement>(null);
+  usePaletteEvent(PALETTE_EVENTS.openSources, () => { if (project && !busy) setSourcesOpen(true); });
   const isOwner = project?.role === 'owner';
 
   async function createProject() {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { ItemType, Project } from '../api';
+import type { AgentIntent } from '../contracts';
 import { useAuth } from '../auth';
 import {
   ConflictDialog, PresenceAvatars, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
@@ -21,6 +22,9 @@ import { errorText, useNotifications } from './useNotifications';
 import { useAgentRun, useThreads } from '../run';
 import { changeSelectedStatus } from './statusActions';
 import { useProjectThreadStatuses } from '../backlog';
+import { toMentionCandidates } from '../context/mentions';
+import { CommandPalette, PALETTE_EVENTS, agentCommandsFor, runAgentCommand, usePaletteEvent, type AgentCommandEntry } from '../palette';
+import { itemTypeLabel } from './labels';
 
 function initials(name: string): string {
   const letters = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
@@ -59,6 +63,20 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
   }
 
   const { nameOf } = useMemberDirectory(project.id);
+
+  const paletteHandlers = {
+    onRunIntent: (intent: AgentIntent, childType?: ItemType) => void submit(() => run.continue(intent, childType)),
+    onNewSession: () => void newThread(),
+  };
+  const slashCommands = agentCommandsFor(selectedItem?.type);
+  const mentionItems = toMentionCandidates(backlog.items, itemTypeLabel, selectedItem?.id);
+  function runSlashCommand(command: AgentCommandEntry) {
+    if (agentBusy) { setNotice('The agent is still working. Stop it first or wait for it to finish.'); return; }
+    runAgentCommand(command, paletteHandlers);
+  }
+  usePaletteEvent(PALETTE_EVENTS.newItem, () => setNewItem({ type: 'capability', title: '' }));
+  usePaletteEvent(PALETTE_EVENTS.openSettings, () => setProjectSettingsOpen(true));
+  usePaletteEvent(PALETTE_EVENTS.share, () => onOpenShare?.());
   const [remoteChange, setRemoteChange] = useState<RemoteItemChange & { key: number }>();
   useProjectEvents(project.id, {
     itemId: backlog.selectedId,
@@ -148,6 +166,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onStop={run.stop} onRetry={() => void submit(() => run.retry())}
           onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
           onCreateItem={() => setNewItem({ type: 'capability', title: '' })}
+          projectId={project.id} slashCommands={slashCommands} onSlashCommand={runSlashCommand} mentionItems={mentionItems}
         />
 
         <PreviewPanel
@@ -166,6 +185,9 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onProposeChildren={(type) => void submit(() => run.continue('breakdown', type))}
         />
       </main>
+
+      <CommandPalette projectId={project.id} currentItem={selectedItem && { id: selectedItem.id, type: selectedItem.type }} agentBusy={agentBusy}
+        onSelectItem={selectItem} {...paletteHandlers} />
 
       <Toast notifications={notifications} />
 

@@ -1,4 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
+import type { MentionCandidate } from '../context/mentions';
+import type { AgentCommandEntry } from '../palette/commands';
+import { useComposerAssist } from '../palette/useComposerAssist';
 
 export interface ComposerProps {
   value: string;
@@ -11,14 +14,23 @@ export interface ComposerProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onStop?: () => void;
+  /** `/` at the start of the message opens this menu (palette/). */
+  slashCommands?: readonly AgentCommandEntry[];
+  onSlashCommand?: (command: AgentCommandEntry) => void;
+  /** `@` opens an item picker that inserts `@[Title](item:<id>)`. */
+  mentionItems?: readonly MentionCandidate[];
 }
 
-export function Composer({ value, busy, running = false, reason, onChange, onSubmit, onStop }: ComposerProps) {
+export function Composer({ value, busy, running = false, reason, onChange, onSubmit, onStop, slashCommands, onSlashCommand, mentionItems }: ComposerProps) {
   const reasonId = 'composer-reason';
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const assist = useComposerAssist({ value, onChange, textareaRef, enabled: !busy && !running, slashCommands, onSlashCommand, mentionItems });
   return (
     <form className="composer" onSubmit={(event) => { event.preventDefault(); onSubmit(); }}>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)}
+      {assist.menu}
+      <textarea ref={textareaRef} value={value} onChange={(event) => { assist.noteCaret(event.target.selectionStart); onChange(event.target.value); }} {...assist.textareaProps}
         onKeyDown={(event) => {
+          if (assist.onKeyDown(event)) return;
           if (event.key === 'Escape' && running && onStop) {
             event.preventDefault();
             onStop();

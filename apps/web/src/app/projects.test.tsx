@@ -174,7 +174,7 @@ describe('backlog items', () => {
   it('renders the backlog tree from parent ids', async () => {
     const api = createFakeBacklogApi({ projects: [makeProject()], items: [makeItem({ id: 'cap', type: 'capability', title: 'Parent' }), makeItem({ id: 'feat', type: 'feature', title: 'Child', parentId: 'cap' })] });
     renderWithApi(<Projects />, api);
-    expect(await screen.findByText('Parent')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Collapse Parent' })).toBeEnabled();
     expect(screen.getByText('Child')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse Parent' })).toBeEnabled();
   });
