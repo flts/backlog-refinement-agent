@@ -3297,3 +3297,49 @@ dialog.modal-dialog.conflict-dialog {
     .stream-caret, .skeleton-line, .spinner { animation: none }
     .spinner { border-top-color: var(--track); border-style: dotted }
 }
+
+/* --- ux-suggestions, ux-feedback, ux-session-names, fe-quality-meta --- */
+.suggestion-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 17px 35px; max-width: 585px }
+.suggestion-chip { padding: 6px 12px; border: 1px solid var(--accent-border); border-radius: 999px; background: var(--panel); color: var(--accent-text); font-size: 0.75rem; font-weight: 600; text-align: left }
+.suggestion-chip:hover:not(:disabled) { background: var(--green-soft) }
+.suggestion-chip:disabled { opacity: 0.6 }
+
+.message-actions { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px }
+.message-action-buttons { display: inline-flex; gap: 2px }
+.message-action { min-height: 24px; padding: 2px 8px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); font-size: 0.75rem }
+.message-action:hover { background: var(--panel-subtle); color: var(--ink) }
+.message-action[aria-pressed="true"] { background: var(--green-soft); border-color: var(--accent-border); color: var(--accent-text) }
+.message-action-status { font-size: 0.75rem; color: var(--muted) }
+.message-action-error { font-size: 0.75rem; color: var(--danger) }
+.feedback-popover { flex-basis: 100%; display: grid; gap: 6px; max-width: 360px; padding: 10px; border: 1px solid var(--border-control); border-radius: 9px; background: var(--panel); font-size: 0.75rem }
+.feedback-popover textarea { padding: 6px 8px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--panel); color: var(--ink); font: inherit; resize: vertical }
+.feedback-popover-actions { display: flex; gap: 6px }
+
+.session-title { display: flex; align-items: center; gap: 6px; min-width: 0; margin: 4px 0 0 }
+.session-title-text { margin: 0; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 1.125rem var(--font-display); letter-spacing: -0.4px }
+.session-title-edit { flex-wrap: wrap }
+.session-title-edit input { flex: 1 1 160px; min-width: 0; padding: 5px 8px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--panel); color: var(--ink) }
+
+.quality-panel { display: grid; gap: 8px; justify-items: start }
+.quality-panel .preview-section-head { width: 100%; margin: 0 }
+.quality-verdict { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border: 1px solid currentColor; border-radius: 999px; font-size: 0.75rem; font-weight: 700 }
+.quality-verdict-ready { color: var(--accent-text); background: var(--green-soft) }
+.quality-verdict-ready-with-open-questions { color: var(--violet-text); background: var(--violet-soft) }
+.quality-verdict-needs-clarification { color: var(--warning-text); background: var(--warning-soft) }
+.quality-summary { margin: 0; font-size: 0.8125rem; line-height: 1.5 }
+.quality-meta { margin: 0; font-size: 0.75rem; color: var(--muted) }
+.quality-meta:empty { display: none }
+.quality-stale { margin: 0; padding: 6px 10px; border: 1px solid var(--warning-text); border-radius: 8px; background: var(--warning-soft); color: var(--warning-text); font-size: 0.75rem; font-weight: 600 }
+.quality-table { width: 100%; border-collapse: collapse; font-size: 0.75rem }
+.quality-table th, .quality-table td { padding: 6px 6px; border-top: 1px solid var(--line); text-align: left; vertical-align: top }
+.quality-table thead th { border-top: 0; color: var(--muted); font-weight: 600 }
+.quality-table tbody th { font-weight: 600; text-transform: capitalize }
+.quality-table .quality-level { display: inline-flex; gap: 4px; white-space: nowrap }
+.quality-not-applicable .quality-level { color: var(--muted) }
+.quality-subhead { margin: 4px 0 0; font-size: 0.8125rem }
+.quality-flags { margin: 0; padding-left: 18px; font-size: 0.8125rem; line-height: 1.5 }
+
+.quality-badge { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin: 0 2px; border-radius: 50%; font-size: 0.625rem; font-weight: 700; line-height: 1 }
+.quality-badge-ready { color: var(--accent-text); background: var(--green-soft) }
+.quality-badge-ready-with-open-questions { color: var(--violet-text); background: var(--violet-soft) }
+.quality-badge-needs-clarification, .quality-badge-stale { color: var(--warning-text); background: var(--warning-soft) }

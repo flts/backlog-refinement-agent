@@ -8,3 +8,6 @@ export { buildBlocks, MessageList, type MessageListProps } from './MessageList';
 export { AskUserPlaceholder, ReviewPlaceholder } from './placeholders';
 export { RunErrorCard, type RunErrorCardProps } from './RunErrorCard';
 export { ThreadPicker, threadTitle, type ThreadPickerProps } from './ThreadPicker';
+export { MessageActions, type MessageActionsProps } from './MessageActions';
+export { SessionTitle, sessionTitle, type SessionTitleProps } from './SessionTitle';
+export { SuggestionChips, suggestionMessage, validActions, type SuggestionChipsProps } from './SuggestionChips';

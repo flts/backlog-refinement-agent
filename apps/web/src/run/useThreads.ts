@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
-import type { Thread } from '../agent';
+import type { FeedbackRating, Thread } from '../agent';
 import { useAgentBackend } from './AgentClientProvider';
 import { agentKeys } from './keys';
 
@@ -44,6 +44,10 @@ export function useThreads(projectId: string | undefined, itemId: string | undef
     },
   });
 
+  const feedbackMutation = useMutation({
+    mutationFn: (input: { threadId: string; messageId: string; rating: FeedbackRating; comment?: string }) => api.feedback(input),
+  });
+
   const selectThread = useCallback((threadId: string) => setPicked({ itemId, threadId }), [itemId]);
 
   /** The active thread, or a newly created one when the item has none yet. */
@@ -65,6 +69,8 @@ export function useThreads(projectId: string | undefined, itemId: string | undef
     create: (title?: string) => createMutation.mutateAsync(title),
     rename: (threadId: string, title: string) => renameMutation.mutateAsync({ threadId, title }),
     remove: (threadId: string) => removeMutation.mutateAsync(threadId),
+    /** Rates an assistant message (thumbs up/down with an optional comment); the service keeps one rating per message. */
+    feedback: (input: { threadId: string; messageId: string; rating: FeedbackRating; comment?: string }) => feedbackMutation.mutateAsync(input),
     refetch: query.refetch,
   };
 }

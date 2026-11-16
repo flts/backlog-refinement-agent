@@ -148,6 +148,8 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onStop={run.stop} onRetry={() => void submit(() => run.retry())}
           onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
           onCreateItem={() => setNewItem({ type: 'capability', title: '' })}
+          onSuggestion={(action) => void submit(() => (action.intent === 'message' ? run.send(action.prompt ?? action.label) : run.continue(action.intent)))}
+          onFeedback={threads.activeThreadId ? (messageId, rating, comment) => threads.feedback({ threadId: threads.activeThreadId!, messageId, rating, ...(comment ? { comment } : {}) }) : undefined}
         />
 
         <PreviewPanel
@@ -162,7 +164,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           ]}
           onSelectItem={selectItem} onUpdate={backlog.editSelected}
           onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onRestore={backlog.restoreRevision}
-          onChangeStatus={(status) => void changeSelectedStatus(backlog, status)} onAssessQuality={() => void submit(() => run.continue('assess'))}
+          onChangeStatus={(status) => void changeSelectedStatus(backlog, status)} onAssessQuality={() => void submit(() => run.continue('assess'))} liveQuality={run.state.agentState.quality}
           onProposeChildren={(type) => void submit(() => run.continue('breakdown', type))}
         />
       </main>
