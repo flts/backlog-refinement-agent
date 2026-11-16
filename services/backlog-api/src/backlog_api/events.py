@@ -24,6 +24,7 @@ PROJECT_DELETED = "project.deleted"
 MEMBER_ADDED = "member.added"
 MEMBER_UPDATED = "member.updated"
 MEMBER_REMOVED = "member.removed"
+GUIDANCE_UPDATED = "guidance.updated"
 
 
 @dataclass(frozen=True, slots=True)

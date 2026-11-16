@@ -93,3 +93,41 @@ class AuditEvent(Base):
     action: Mapped[str] = mapped_column(Text)
     details: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# --- guidance ---
+
+GUIDANCE_PRINCIPLES = "principles"
+GUIDANCE_TYPE_INSTRUCTIONS = "type-instructions"
+GUIDANCE_TEMPLATE = "template"
+GUIDANCE_KINDS = (GUIDANCE_PRINCIPLES, GUIDANCE_TYPE_INSTRUCTIONS, GUIDANCE_TEMPLATE)
+GUIDANCE_ITEM_TYPES = ("capability", "feature", "user-story", "enabler")
+
+
+class ProjectGuidance(Base):
+    """A project's override of one default guidance text (agent principles, type instructions or a template).
+
+    Principles use ``item_type = ''``; the other kinds are keyed by backlog item type. A missing row means the skill
+    default applies. ``version`` counts changes to the row and is the ETag of the override.
+    """
+
+    __tablename__ = "project_guidance"
+    __table_args__ = (
+        CheckConstraint(
+            "(kind = 'principles' AND item_type = '') OR "
+            "(kind IN ('type-instructions', 'template') "
+            "AND item_type IN ('capability', 'feature', 'user-story', 'enabler'))",
+            name="kind_item_type",
+        ),
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    kind: Mapped[str] = mapped_column(Text, primary_key=True)
+    item_type: Mapped[str] = mapped_column(Text, primary_key=True, default="", server_default="")
+    content: Mapped[str] = mapped_column(Text)
+    base_skill_version: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    updated_by: Mapped[str] = mapped_column(CITEXT)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

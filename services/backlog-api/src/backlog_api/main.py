@@ -7,12 +7,13 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+from backlog_skills import load_skills
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 
 from backlog_api import __version__
-from backlog_api.api import health, me, projects
+from backlog_api.api import guidance, health, me, projects
 from backlog_api.auth.dependencies import Authenticator, DevHeaderAuthenticator, JwtAuthenticator
 from backlog_api.auth.directory import UserDirectory
 from backlog_api.auth.tokens import JwksKeySource, KeySource, TokenVerifier
@@ -65,12 +66,15 @@ def create_app(
         database_url = settings.require_runtime_config()
         database = Database(database_url, pool_size=settings.db_pool_size, max_overflow=settings.db_max_overflow)
         authenticator: Authenticator | None = None
+        skills = load_skills(settings.skills_dir)
+        skills.default_guidance()  # fail fast when a required skill, version or template is missing or invalid
         try:
             if settings.should_auto_migrate:
                 logger.info("Applying database migrations")
                 await upgrade_database(database.engine, settings.alembic_ini)
             authenticator = _build_authenticator(settings, key_source)
             app.state.db = database
+            app.state.skills = skills
             app.state.authenticator = authenticator
             app.state.user_directory = UserDirectory(database.sessionmaker, settings.user_directory_refresh_seconds)
             logger.info("backlog-api started", extra={"auth_mode": settings.auth_mode, "env": settings.env})
@@ -105,6 +109,7 @@ def create_app(
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(me.router, prefix=API_PREFIX)
     app.include_router(projects.router, prefix=API_PREFIX)
+    app.include_router(guidance.router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
