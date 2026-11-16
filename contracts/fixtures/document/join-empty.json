@@ -1,0 +1,10 @@
+{
+  "name": "join-empty",
+  "description": "Nothing to join gives an empty string.",
+  "fn": "joinSections",
+  "input": {
+    "preamble": "",
+    "sections": []
+  },
+  "expected": ""
+}

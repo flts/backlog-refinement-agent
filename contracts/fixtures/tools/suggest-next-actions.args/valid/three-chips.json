@@ -1,0 +1,20 @@
+{
+  "actions": [
+    {
+      "id": "a1",
+      "label": "Break it down",
+      "intent": "breakdown"
+    },
+    {
+      "id": "a2",
+      "label": "Assess quality",
+      "intent": "assess"
+    },
+    {
+      "id": "a3",
+      "label": "Ask about scope",
+      "intent": "message",
+      "prompt": "What is out of scope?"
+    }
+  ]
+}

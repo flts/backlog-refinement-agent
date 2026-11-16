@@ -1,0 +1,21 @@
+{
+  "name": "split-basic",
+  "description": "Splits into preamble and level-2 sections with trimmed bodies.",
+  "fn": "splitSections",
+  "input": {
+    "document": "# T\n\n## A\n a \n\n### Sub\nx\n\n## B\n"
+  },
+  "expected": {
+    "preamble": "# T",
+    "sections": [
+      {
+        "heading": "A",
+        "body": "a \n\n### Sub\nx"
+      },
+      {
+        "heading": "B",
+        "body": ""
+      }
+    ]
+  }
+}

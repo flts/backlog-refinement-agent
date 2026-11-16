@@ -1,0 +1,19 @@
+{
+  "name": "apply-append-to-empty-section",
+  "description": "Append to an empty section sets its body.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\n\n## B\ntext",
+    "updates": [
+      {
+        "heading": "A",
+        "markdown": "first",
+        "mode": "append"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\nfirst\n\n## B\ntext",
+    "warnings": []
+  }
+}

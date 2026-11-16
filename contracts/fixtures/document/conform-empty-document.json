@@ -1,0 +1,13 @@
+{
+  "name": "conform-empty-document",
+  "description": "An empty document yields the empty template structure.",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "# T\n\n## Summary\n<!-- hint -->\n\n## Scope\n<!-- hint -->\n\n## Assumptions\n- [ ] \n\n## Open questions\n- [ ] ",
+    "markdown": ""
+  },
+  "expected": {
+    "document": "## Summary\n\n## Scope\n\n## Assumptions\n\n## Open questions",
+    "extraHeadings": []
+  }
+}

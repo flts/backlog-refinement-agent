@@ -1,0 +1,21 @@
+{
+  "name": "apply-replace-uppercase-x",
+  "description": "An uppercase \"[X]\" counts as confirmed.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\n- [X] Done\n- [ ] Todo",
+    "updates": [
+      {
+        "heading": "A",
+        "markdown": "fresh",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\nfresh\n- [X] Done",
+    "warnings": [
+      "\"A\": 1 confirmed item(s) were kept instead of removed."
+    ]
+  }
+}

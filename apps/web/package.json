@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "fixtures:document": "node scripts/generate-document-fixtures.mjs"
   },
   "dependencies": {
     "dexie": "^4.4.7",

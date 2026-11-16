@@ -1,0 +1,28 @@
+{
+  "name": "checklist-parse",
+  "description": "Only task lines under assumption/question headings are returned, with their zero-based line numbers.",
+  "fn": "parseChecklistSections",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?"
+  },
+  "expected": [
+    {
+      "kind": "assumption",
+      "text": "Kept",
+      "checked": true,
+      "line": 4
+    },
+    {
+      "kind": "assumption",
+      "text": "Maybe",
+      "checked": false,
+      "line": 5
+    },
+    {
+      "kind": "question",
+      "text": "Who?",
+      "checked": false,
+      "line": 8
+    }
+  ]
+}

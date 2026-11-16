@@ -1,0 +1,19 @@
+{
+  "name": "apply-unicode-heading",
+  "description": "Non-ASCII headings match case-insensitively.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## Öffnungszeiten\nalt",
+    "updates": [
+      {
+        "heading": "öffnungszeiten",
+        "markdown": "neu",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## Öffnungszeiten\nneu",
+    "warnings": []
+  }
+}

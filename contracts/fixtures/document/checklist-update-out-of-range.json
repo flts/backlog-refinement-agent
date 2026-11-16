@@ -1,0 +1,11 @@
+{
+  "name": "checklist-update-out-of-range",
+  "description": "A line past the end leaves the document unchanged.",
+  "fn": "updateChecklistLine",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?",
+    "line": 99,
+    "action": "remove"
+  },
+  "expected": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?"
+}

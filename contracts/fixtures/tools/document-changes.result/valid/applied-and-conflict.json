@@ -1,0 +1,25 @@
+{
+  "applied": [
+    "s1"
+  ],
+  "edited": [
+    "s2"
+  ],
+  "rejected": [
+    "s3"
+  ],
+  "conflicted": [
+    {
+      "sectionId": "s4",
+      "heading": "Scope",
+      "reason": "Changed by alice@example.test since version 3",
+      "currentMarkdown": "Newer scope"
+    }
+  ],
+  "newVersion": 5,
+  "warnings": [
+    "\"Assumptions\": 1 confirmed item(s) were kept instead of removed."
+  ],
+  "titleApplied": true,
+  "statusApplied": false
+}

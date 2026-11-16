@@ -1,0 +1,12 @@
+{
+  "summary": "x",
+  "baseVersion": 1,
+  "sections": [
+    {
+      "id": "s1",
+      "heading": "Summary",
+      "mode": "prepend",
+      "markdown": "A clearer summary."
+    }
+  ]
+}

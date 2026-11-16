@@ -1,0 +1,16 @@
+{
+  "name": "diff-empty-before",
+  "description": "Everything is added when the before document is empty.",
+  "fn": "diffDocuments",
+  "input": {
+    "before": "",
+    "after": "## A\nx"
+  },
+  "expected": {
+    "added": [
+      "## A",
+      "x"
+    ],
+    "removed": []
+  }
+}

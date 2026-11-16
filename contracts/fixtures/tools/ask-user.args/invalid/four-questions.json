@@ -1,0 +1,60 @@
+{
+  "questions": [
+    {
+      "id": "q0",
+      "header": "Target users",
+      "question": "Who is the primary user?",
+      "options": [
+        {
+          "label": "Product owners",
+          "description": "Refine backlog items"
+        },
+        {
+          "label": "Developers"
+        }
+      ]
+    },
+    {
+      "id": "q1",
+      "header": "Target users",
+      "question": "Who is the primary user?",
+      "options": [
+        {
+          "label": "Product owners",
+          "description": "Refine backlog items"
+        },
+        {
+          "label": "Developers"
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "header": "Target users",
+      "question": "Who is the primary user?",
+      "options": [
+        {
+          "label": "Product owners",
+          "description": "Refine backlog items"
+        },
+        {
+          "label": "Developers"
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "header": "Target users",
+      "question": "Who is the primary user?",
+      "options": [
+        {
+          "label": "Product owners",
+          "description": "Refine backlog items"
+        },
+        {
+          "label": "Developers"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "rationale": "x",
+  "childType": "feature",
+  "children": [
+    {
+      "proposalId": "c1",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    }
+  ],
+  "relationships": [
+    {
+      "sourceRef": "c1",
+      "targetRef": "c1",
+      "type": "blocks"
+    }
+  ]
+}

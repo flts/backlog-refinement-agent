@@ -1,0 +1,19 @@
+{
+  "name": "apply-subheadings-stay-in-section",
+  "description": "Level-3 headings stay inside their level-2 section body.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\n### Sub\ntext\n\n## B\nb",
+    "updates": [
+      {
+        "heading": "B",
+        "markdown": "new b",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\n### Sub\ntext\n\n## B\nnew b",
+    "warnings": []
+  }
+}

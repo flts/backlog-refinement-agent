@@ -1,0 +1,18 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "header": "123456789012345678901234",
+      "question": "Who is the primary user?",
+      "options": [
+        {
+          "label": "Product owners",
+          "description": "Refine backlog items"
+        },
+        {
+          "label": "Developers"
+        }
+      ]
+    }
+  ]
+}

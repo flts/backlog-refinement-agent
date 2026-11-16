@@ -1,0 +1,28 @@
+{
+  "name": "checklist-parse-localised-headings",
+  "description": "Dutch/Afrikaans headings are recognised; empty items and other sections are skipped.",
+  "fn": "parseChecklistSections",
+  "input": {
+    "document": "## Aannames\n- [ ] A\n* [x] B\n- [ ] \n\n## Openstaande vragen\n- [ ] Q\n\n## Scope\n- [ ] not a checklist entry"
+  },
+  "expected": [
+    {
+      "kind": "assumption",
+      "text": "A",
+      "checked": false,
+      "line": 1
+    },
+    {
+      "kind": "assumption",
+      "text": "B",
+      "checked": true,
+      "line": 2
+    },
+    {
+      "kind": "question",
+      "text": "Q",
+      "checked": false,
+      "line": 6
+    }
+  ]
+}

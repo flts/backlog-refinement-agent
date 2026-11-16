@@ -1,0 +1,12 @@
+{
+  "applied": [],
+  "edited": [],
+  "rejected": [],
+  "conflicted": [
+    {
+      "sectionId": "s1",
+      "heading": "A"
+    }
+  ],
+  "newVersion": 1
+}

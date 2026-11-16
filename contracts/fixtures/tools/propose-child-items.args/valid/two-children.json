@@ -1,0 +1,16 @@
+{
+  "rationale": "Split by user outcome",
+  "childType": "user-story",
+  "children": [
+    {
+      "proposalId": "c1",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    },
+    {
+      "proposalId": "c2",
+      "title": "Sync on reconnect",
+      "markdown": "## Summary\nEdit without network."
+    }
+  ]
+}

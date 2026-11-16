@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p1",
+  "itemId": "i1",
+  "preview": null,
+  "nextActions": [
+    {
+      "id": "a0",
+      "label": "Break it down",
+      "intent": "breakdown"
+    },
+    {
+      "id": "a1",
+      "label": "Break it down",
+      "intent": "breakdown"
+    },
+    {
+      "id": "a2",
+      "label": "Break it down",
+      "intent": "breakdown"
+    },
+    {
+      "id": "a3",
+      "label": "Break it down",
+      "intent": "breakdown"
+    }
+  ]
+}

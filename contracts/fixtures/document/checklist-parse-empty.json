@@ -1,0 +1,9 @@
+{
+  "name": "checklist-parse-empty",
+  "description": "No checklist sections gives an empty list.",
+  "fn": "parseChecklistSections",
+  "input": {
+    "document": "## Summary\n- [ ] x"
+  },
+  "expected": []
+}

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/document-changes.result.schema.json",
+  "title": "propose_document_changes result",
+  "description": "Tool result of propose_document_changes after the user's decision and the authoritative server-side merge. The model transcript keeps the ORIGINAL proposal arguments, so this result is the only place that states what was really applied. If the whole proposal is rejected MAF returns the string \"Error: Tool call invocation was rejected by user.\" instead.",
+  "type": "object",
+  "properties": {
+    "applied": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Section ids applied exactly as proposed."
+    },
+    "edited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Section ids applied with the user's edits."
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Section ids the user rejected (or left out of editedArgs)."
+    },
+    "conflicted": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sectionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "heading": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the section was not applied, e.g. changed by someone else since baseVersion."
+          },
+          "currentMarkdown": {
+            "type": "string",
+            "description": "Current body of the section, when it changed concurrently."
+          }
+        },
+        "required": [
+          "sectionId",
+          "heading",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Sections not applied because of a concurrent change."
+    },
+    "newVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Item version after applying (unchanged when nothing was applied)."
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Merge warnings, e.g. confirmed items that were kept."
+    },
+    "titleApplied": {
+      "type": "boolean",
+      "description": "Whether suggestedTitle was applied."
+    },
+    "statusApplied": {
+      "type": "boolean",
+      "description": "Whether suggestedStatus was applied."
+    }
+  },
+  "required": [
+    "applied",
+    "edited",
+    "rejected",
+    "conflicted",
+    "newVersion"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/run-error-codes.schema.json",
+  "title": "RUN_ERROR codes",
+  "description": "Sanitized `code` values of AG-UI RUN_ERROR events that the SPA maps to messages. The agent-service must map every other exception (MAF otherwise sends the exception class name) to INTERNAL; the SPA treats unknown codes as INTERNAL. The RUN_ERROR message is a fixed, non-sensitive text; the run ID is shown for support.",
+  "type": "string",
+  "enum": [
+    "APPROVAL_RESUME_REQUIRED",
+    "APPROVAL_RESUME_NOT_FOUND",
+    "APPROVAL_RESUME_INVALID",
+    "APPROVAL_RESUME_INVALID_RESPONSE",
+    "UNAUTHENTICATED",
+    "FORBIDDEN",
+    "NOT_FOUND",
+    "THREAD_BUSY",
+    "RATE_LIMITED",
+    "RUN_TIMEOUT",
+    "LLM_UNAVAILABLE",
+    "BACKLOG_UNAVAILABLE",
+    "TOOL_VALIDATION_FAILED",
+    "INVALID_REQUEST",
+    "INTERNAL"
+  ],
+  "x-descriptions": {
+    "APPROVAL_RESUME_REQUIRED": "A pending approval must be answered (resume) before new input is accepted (MAF).",
+    "APPROVAL_RESUME_NOT_FOUND": "The approval is unknown or expired, e.g. after a service restart or another user's thread (MAF). Show 'proposal expired' and offer a retry chip.",
+    "APPROVAL_RESUME_INVALID": "The resume payload is malformed (MAF).",
+    "APPROVAL_RESUME_INVALID_RESPONSE": "The approval response/editedArgs shape is invalid, e.g. editedArgs is not a full replacement (MAF).",
+    "UNAUTHENTICATED": "Missing, expired or invalid access token (HTTP 401).",
+    "FORBIDDEN": "The user may not access the project or thread (HTTP 403).",
+    "NOT_FOUND": "Thread, project or item not found (HTTP 404).",
+    "THREAD_BUSY": "Another run is active on this thread (HTTP 409).",
+    "RATE_LIMITED": "Per-user rate limit exceeded (HTTP 429).",
+    "RUN_TIMEOUT": "The run exceeded the run timeout (180 s).",
+    "LLM_UNAVAILABLE": "The LLM gateway is unreachable or returned an error.",
+    "BACKLOG_UNAVAILABLE": "backlog-api (MCP) is unreachable or returned an error.",
+    "TOOL_VALIDATION_FAILED": "Tool arguments stayed invalid after the allowed retries.",
+    "INVALID_REQUEST": "The AG-UI request itself is invalid.",
+    "INTERNAL": "Any other failure. Raw exception names and messages are never sent to the client."
+  }
+}

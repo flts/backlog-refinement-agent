@@ -1,0 +1,11 @@
+{
+  "rationale": "x",
+  "childType": "epic",
+  "children": [
+    {
+      "proposalId": "c1",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    }
+  ]
+}

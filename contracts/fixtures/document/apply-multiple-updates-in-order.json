@@ -1,0 +1,29 @@
+{
+  "name": "apply-multiple-updates-in-order",
+  "description": "Several updates are applied in order, including one that targets a section created earlier.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?",
+    "updates": [
+      {
+        "heading": "Risks",
+        "markdown": "One",
+        "mode": "replace"
+      },
+      {
+        "heading": "risks",
+        "markdown": "Two",
+        "mode": "append"
+      },
+      {
+        "heading": "Summary",
+        "markdown": "New",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## Summary\nNew\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?\n\n## Risks\nOne\nTwo",
+    "warnings": []
+  }
+}

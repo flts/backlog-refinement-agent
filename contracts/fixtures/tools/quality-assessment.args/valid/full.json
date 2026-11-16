@@ -1,0 +1,28 @@
+{
+  "overall": "needs-clarification",
+  "summary": "Scope is unclear.",
+  "documentHash": "sha256:abc123",
+  "areas": [
+    {
+      "area": "scope",
+      "level": "unclear",
+      "note": "No boundaries"
+    },
+    {
+      "area": "contradictions",
+      "level": "clear"
+    }
+  ],
+  "excessiveTechnicalDetail": true,
+  "speculativeScope": false,
+  "unnecessaryConfigurability": false,
+  "mixedOutcomes": true,
+  "suggestedItemType": "feature",
+  "suggestedSplit": [
+    "Part A",
+    "Part B"
+  ],
+  "excludedFollowUpCandidates": [
+    "Reporting"
+  ]
+}

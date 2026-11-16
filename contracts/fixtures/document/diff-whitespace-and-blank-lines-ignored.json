@@ -1,0 +1,13 @@
+{
+  "name": "diff-whitespace-and-blank-lines-ignored",
+  "description": "Indentation and blank lines do not count as changes.",
+  "fn": "diffDocuments",
+  "input": {
+    "before": "a\n\n  b  ",
+    "after": "a\nb"
+  },
+  "expected": {
+    "added": [],
+    "removed": []
+  }
+}

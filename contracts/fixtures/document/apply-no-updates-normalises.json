@@ -1,0 +1,13 @@
+{
+  "name": "apply-no-updates-normalises",
+  "description": "Without updates the document is re-joined (blank lines normalised, trimmed).",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "\n## A\n\n\nbody  \n\n\n## B\n",
+    "updates": []
+  },
+  "expected": {
+    "document": "## A\nbody\n\n## B",
+    "warnings": []
+  }
+}

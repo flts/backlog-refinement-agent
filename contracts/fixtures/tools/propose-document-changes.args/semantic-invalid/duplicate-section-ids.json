@@ -1,0 +1,18 @@
+{
+  "summary": "x",
+  "baseVersion": 1,
+  "sections": [
+    {
+      "id": "s1",
+      "heading": "Summary",
+      "mode": "replace",
+      "markdown": "A clearer summary."
+    },
+    {
+      "id": "s1",
+      "heading": "Scope",
+      "mode": "replace",
+      "markdown": "A clearer summary."
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/child-items.result.schema.json",
+  "title": "propose_child_items result",
+  "description": "Tool result of propose_child_items after the user's decision and the server-side creation of the children.",
+  "type": "object",
+  "properties": {
+    "created": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "itemId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Id of the new backlog item."
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "itemId",
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Children that were created."
+    },
+    "edited": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "proposalIds of created children that carry the user's edits."
+    },
+    "rejected": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "proposalIds the user rejected."
+    },
+    "failed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposalId",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Children that could not be created."
+    },
+    "relationshipsCreated": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of relationships created."
+    },
+    "relationshipsSkipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceRef": {
+            "type": "string"
+          },
+          "targetRef": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceRef",
+          "targetRef",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Relationships skipped, e.g. because an endpoint was rejected."
+    }
+  },
+  "required": [
+    "created",
+    "edited",
+    "rejected",
+    "failed",
+    "relationshipsCreated"
+  ],
+  "additionalProperties": false
+}

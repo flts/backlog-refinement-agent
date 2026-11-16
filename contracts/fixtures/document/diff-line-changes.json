@@ -1,0 +1,18 @@
+{
+  "name": "diff-line-changes",
+  "description": "Line-based diff on trimmed, non-empty lines.",
+  "fn": "diffDocuments",
+  "input": {
+    "before": "a\nb\nc",
+    "after": "a\nx\nc\nd"
+  },
+  "expected": {
+    "added": [
+      "x",
+      "d"
+    ],
+    "removed": [
+      "b"
+    ]
+  }
+}

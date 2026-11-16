@@ -1,0 +1,11 @@
+{
+  "summary": "x",
+  "sections": [
+    {
+      "id": "s1",
+      "heading": "Summary",
+      "mode": "replace",
+      "markdown": "A clearer summary."
+    }
+  ]
+}

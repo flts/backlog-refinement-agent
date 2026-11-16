@@ -1,0 +1,19 @@
+{
+  "name": "join-basic",
+  "description": "Joins preamble and sections with blank lines; empty bodies produce a bare heading.",
+  "fn": "joinSections",
+  "input": {
+    "preamble": "Intro",
+    "sections": [
+      {
+        "heading": "A",
+        "body": "a"
+      },
+      {
+        "heading": "B",
+        "body": ""
+      }
+    ]
+  },
+  "expected": "Intro\n\n## A\na\n\n## B"
+}

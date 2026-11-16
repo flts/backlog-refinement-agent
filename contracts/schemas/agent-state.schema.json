@@ -1,0 +1,478 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/agent-state.schema.json",
+  "title": "AG-UI shared agent state",
+  "description": "Shared AG-UI state (`RunAgentInput.state`, persisted per thread). The SPA sends schemaVersion, projectId, itemId, itemType and `preview: null`; the agent writes preview, childPreview, nextActions and quality. `preview` is REQUIRED and nullable and must be initialised to null: a JSON-Patch `replace /preview` fails client-side when the key is absent. The item document is never part of the state. Unknown keys are allowed (MAF and the agent-service may add bookkeeping keys). Increase schemaVersion on every breaking change.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Contract version; bump on breaking changes."
+    },
+    "projectId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "itemId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "itemType": {
+      "type": "string",
+      "enum": [
+        "capability",
+        "feature",
+        "user-story",
+        "enabler"
+      ]
+    },
+    "preview": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string"
+            },
+            "suggestedTitle": {
+              "type": "string"
+            },
+            "suggestedStatus": {
+              "type": "string",
+              "enum": [
+                "ready",
+                "ready-with-open-questions"
+              ]
+            },
+            "baseVersion": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Identifier of this section change, unique within the proposal (for example \"s1\"). Used for accept/edit/reject and in the result."
+                  },
+                  "heading": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "description": "Existing or new level-2 (##) heading of the item's Markdown document, without the leading ##. Matching ignores case and whitespace."
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "replace",
+                      "append"
+                    ],
+                    "default": "replace",
+                    "description": "replace swaps the section body (confirmed '- [x]' lines are always kept); append adds new lines to the end without duplicating existing ones."
+                  },
+                  "markdown": {
+                    "type": "string",
+                    "description": "Section body in Markdown, without the heading line."
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "description": "Optional short reason for the change, shown to the reviewer."
+                  }
+                },
+                "required": [
+                  "id",
+                  "heading",
+                  "markdown"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sections"
+          ],
+          "additionalProperties": false,
+          "description": "Predictive preview: the arguments of propose_document_changes (configure MAF predict_state_config with tool_argument \"*\"). Set to null again after apply/reject."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "childPreview": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "rationale": {
+              "type": "string"
+            },
+            "childType": {
+              "type": "string",
+              "enum": [
+                "capability",
+                "feature",
+                "user-story",
+                "enabler"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "proposalId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Identifier of the proposed child, unique within the proposal and different from the parent item id (for example \"c1\")."
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Child item title."
+                  },
+                  "markdown": {
+                    "type": "string",
+                    "description": "The child's full Markdown document (## sections following the child type's template; it is conformed to the template server-side)."
+                  }
+                },
+                "required": [
+                  "proposalId",
+                  "title",
+                  "markdown"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "relationships": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sourceRef": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "proposalId of a proposed child, or the parent item id."
+                  },
+                  "targetRef": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "proposalId of a proposed child, or the parent item id."
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "parent-child",
+                      "supports",
+                      "depends-on",
+                      "related-to"
+                    ]
+                  }
+                },
+                "required": [
+                  "sourceRef",
+                  "targetRef",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "children"
+          ],
+          "additionalProperties": false,
+          "description": "Predictive preview: the arguments of propose_child_items (predict_state_config tool_argument \"*\"). Null when there is no pending breakdown."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nextActions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable id of the chip."
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "Chip text shown to the user (at most 60 characters)."
+          },
+          "intent": {
+            "type": "string",
+            "enum": [
+              "refine",
+              "continue",
+              "breakdown",
+              "assess",
+              "message"
+            ],
+            "description": "What the chip does: start a run with that intent, or send `prompt` as a normal message."
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Message sent when intent is message, or additional instruction for the run."
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "intent"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "intent": {
+                  "const": "message"
+                }
+              },
+              "required": [
+                "intent"
+              ]
+            },
+            "then": {
+              "required": [
+                "prompt"
+              ]
+            }
+          }
+        ]
+      },
+      "maxItems": 3,
+      "description": "Chips from suggest_next_actions."
+    },
+    "quality": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "overall": {
+              "type": "string",
+              "enum": [
+                "needs-clarification",
+                "ready",
+                "ready-with-open-questions"
+              ],
+              "description": "Overall verdict."
+            },
+            "areas": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "area": {
+                    "type": "string",
+                    "enum": [
+                      "problem",
+                      "objective",
+                      "outcome",
+                      "beneficiary",
+                      "value",
+                      "scope",
+                      "acceptance-criteria",
+                      "dependencies",
+                      "contradictions",
+                      "assumptions",
+                      "implementation-detail",
+                      "testability",
+                      "solution-independence",
+                      "abstraction",
+                      "lean-scope",
+                      "vertical-slicing"
+                    ]
+                  },
+                  "level": {
+                    "type": "string",
+                    "enum": [
+                      "clear",
+                      "unclear",
+                      "missing",
+                      "not-applicable"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "description": "Short evidence or remark."
+                  }
+                },
+                "required": [
+                  "area",
+                  "level"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 32,
+              "description": "Assessment per quality area; cover all areas. Explicitly flag contradictions. Never use numeric scores."
+            },
+            "excessiveTechnicalDetail": {
+              "type": "boolean"
+            },
+            "speculativeScope": {
+              "type": "boolean"
+            },
+            "unnecessaryConfigurability": {
+              "type": "boolean"
+            },
+            "mixedOutcomes": {
+              "type": "boolean"
+            },
+            "suggestedItemType": {
+              "type": "string",
+              "enum": [
+                "capability",
+                "feature",
+                "user-story",
+                "enabler"
+              ],
+              "description": "Set when the item is of the wrong type."
+            },
+            "suggestedSplit": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Titles of suggested smaller items."
+            },
+            "excludedFollowUpCandidates": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Out-of-scope follow-up candidates."
+            },
+            "summary": {
+              "type": "string"
+            },
+            "documentHash": {
+              "type": "string"
+            },
+            "assessedAt": {
+              "type": "string",
+              "description": "ISO-8601 timestamp of the assessment."
+            }
+          },
+          "required": [
+            "overall",
+            "areas"
+          ],
+          "additionalProperties": false,
+          "description": "Latest quality assessment, mirrored by record_quality_assessment."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "lastApply": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "applied": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Section ids applied exactly as proposed."
+            },
+            "edited": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Section ids applied with the user's edits."
+            },
+            "rejected": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Section ids the user rejected (or left out of editedArgs)."
+            },
+            "conflicted": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sectionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "heading": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "description": "Why the section was not applied, e.g. changed by someone else since baseVersion."
+                  },
+                  "currentMarkdown": {
+                    "type": "string",
+                    "description": "Current body of the section, when it changed concurrently."
+                  }
+                },
+                "required": [
+                  "sectionId",
+                  "heading",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Sections not applied because of a concurrent change."
+            },
+            "newVersion": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Item version after applying (unchanged when nothing was applied)."
+            },
+            "warnings": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Merge warnings, e.g. confirmed items that were kept."
+            },
+            "titleApplied": {
+              "type": "boolean",
+              "description": "Whether suggestedTitle was applied."
+            },
+            "statusApplied": {
+              "type": "boolean",
+              "description": "Whether suggestedStatus was applied."
+            }
+          },
+          "required": [
+            "applied",
+            "edited",
+            "rejected",
+            "conflicted",
+            "newVersion"
+          ],
+          "additionalProperties": false,
+          "description": "Outcome of the last approved propose_document_changes call (document-changes.result)."
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "itemId",
+    "preview"
+  ],
+  "additionalProperties": true
+}

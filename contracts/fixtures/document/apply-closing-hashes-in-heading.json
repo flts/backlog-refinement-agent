@@ -1,0 +1,19 @@
+{
+  "name": "apply-closing-hashes-in-heading",
+  "description": "Trailing \"#\" characters of a heading are not part of its name.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## Summary ##\nOld",
+    "updates": [
+      {
+        "heading": "Summary",
+        "markdown": "New",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## Summary\nNew",
+    "warnings": []
+  }
+}
