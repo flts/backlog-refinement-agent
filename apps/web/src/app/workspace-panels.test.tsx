@@ -20,31 +20,13 @@ const source: Source = {
   id: 's1', projectId: 'p', name: 'Spec', kind: 'url', mode: 'searchable', url: 'https://example.com/spec', charCount: 1200, pageCount: null, mediaType: null, hasFile: false,
   indexStatus: 'indexed', indexError: null, version: 1, addedBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
 };
-const noop = { onSelect: vi.fn(), onCreate: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onAddFile: vi.fn(), onAddUrl: vi.fn(), onChangeMode: vi.fn(), onRemove: vi.fn(), onExport: vi.fn(), onImport: vi.fn() };
+const noop = { onSelect: vi.fn(), onCreate: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onExport: vi.fn(), onImport: vi.fn() };
 
 describe('ProjectPanel', () => {
-  it('opens the styled file picker and passes the selected file to its handler', async () => {
-    const user = userEvent.setup();
-    const onAddFile = vi.fn();
-    const { container } = render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[]} busy={false} onAddFile={onAddFile} />);
-    await user.click(screen.getByText('Project sources (0)'));
-    const input = container.querySelector<HTMLInputElement>('input[accept^=".pdf"]')!;
-    const click = vi.spyOn(input, 'click');
-    await user.click(screen.getByRole('button', { name: 'Add PDF or text file' }));
-    expect(click).toHaveBeenCalledOnce();
-    const file = new File(['Context'], 'context.txt', { type: 'text/plain' });
-    fireEvent.change(input, { target: { files: [file] } });
-    expect(onAddFile).toHaveBeenCalledWith(file);
-  });
-
-  it('changes the mode of a source and shows its index status', async () => {
-    const user = userEvent.setup();
-    const onChangeMode = vi.fn();
-    render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[source]} pinnedBudget={{ used: 0, limit: 100000 }} busy={false} onChangeMode={onChangeMode} />);
-    await user.click(screen.getByText('Project sources (1)'));
-    expect(screen.getByText('Indexed')).toBeInTheDocument();
-    await user.selectOptions(screen.getByLabelText('Mode of Spec'), 'pinned');
-    expect(onChangeMode).toHaveBeenCalledWith(source, 'pinned');
+  it('summarises the AI context and offers the Sources drawer button', () => {
+    render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[{ ...source, mode: 'pinned' }, source]} pinnedBudget={{ used: 1200, limit: 100000 }} busy={false} />);
+    expect(screen.getByText(/1 pinned and 1 searchable sources/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sources (2)' })).toHaveAttribute('aria-haspopup', 'dialog');
   });
 
   it('offers rename, delete and export to owners only', () => {

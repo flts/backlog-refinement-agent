@@ -96,24 +96,15 @@ describe('projects screen', () => {
     expect(api.callsTo('POST', /^\/projects\/import$/)).toHaveLength(1);
   });
 
-  it('manages sources through the API: add a reference, change the mode, remove', async () => {
+  it('opens the sources drawer from the toolbar and closes it with Escape', async () => {
     const user = userEvent.setup();
     const api = createFakeBacklogApi({ projects: [makeProject()], sources: [makeSource()] });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     renderWithApi(<Projects />, api);
-    await user.click(await screen.findByText('Project sources (1)'));
-    await user.selectOptions(screen.getByLabelText('Mode of Spec'), 'pinned');
-    await waitFor(() => expect(api.state.sources[0].mode).toBe('pinned'));
-    expect(api.callsTo('PATCH', /sources\/s1$/)[0].headers.get('If-Match')).toBe('"1"');
-
-    await user.type(screen.getByLabelText('Reference name'), 'Brief');
-    await user.type(screen.getByLabelText('Reference URL'), 'https://example.com/brief');
-    await user.click(screen.getByRole('button', { name: 'Add reference' }));
-    await waitFor(() => expect(api.state.sources.map((source) => source.name)).toContain('Brief'));
-    expect(api.callsTo('POST', /sources$/)[0].body).toMatchObject({ url: 'https://example.com/brief', name: 'Brief' });
-
-    await user.click(screen.getByRole('button', { name: 'Remove Spec' }));
-    await waitFor(() => expect(api.state.sources.map((source) => source.name)).toEqual(['Brief']));
+    await user.click(await screen.findByRole('button', { name: /^Sources/ }));
+    expect(await screen.findByRole('heading', { name: 'Sources' })).toBeInTheDocument();
+    expect(await screen.findByText('Spec')).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Sources' })).toBeNull());
   });
 
   it('shows the old-data notice only when legacy data exists, and has no axe violations', async () => {

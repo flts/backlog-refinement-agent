@@ -1,15 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useBacklogClient } from '../BacklogApiProvider';
-import { ifMatch, unwrap, type BacklogClient } from '../client';
+import { ifMatch, requestOk, unwrap, type BacklogClient } from '../client';
 import type { Source, SourceList, SourceMode } from '../types';
 import { backlogKeys } from './keys';
 
-/** Sources plus the pinned-context budget (`pinnedBudget.used` / `limit`). */
+/** While a source is waiting for or in indexing the list is refetched at this interval (fallback for a missing `source.*` event). */
+export const SOURCE_POLL_INTERVAL_MS = 5000;
+
+/** Sources plus the pinned-context budget (`pinnedBudget.used` / `limit`). Polls while any source is pending or indexing. */
 export function useSources(projectId: string | undefined) {
   const client = useBacklogClient();
   return useQuery({
     queryKey: backlogKeys.sources(projectId ?? ''),
     enabled: Boolean(projectId),
+    refetchInterval: (query) => query.state.data?.items.some((source) => source.indexStatus === 'pending' || source.indexStatus === 'indexing') ? SOURCE_POLL_INTERVAL_MS : false,
     queryFn: () => unwrap(client.http.GET('/projects/{project_id}/sources', { params: { path: { project_id: projectId! } } })),
   });
 }
@@ -100,4 +104,28 @@ export function useDeleteSource(projectId: string) {
       void queryClient.invalidateQueries({ queryKey: backlogKeys.sources(projectId) });
     },
   });
+}
+
+/** Queues the source for indexing again (202); the list shows it as pending until the worker is done. */
+export function useReindexSource(projectId: string) {
+  const client = useBacklogClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (source: Pick<Source, 'id'>) => {
+      await unwrap(client.http.POST('/projects/{project_id}/sources/{source_id}/reindex', { params: { path: { project_id: projectId, source_id: source.id } } }));
+      return source.id;
+    },
+    onSuccess: (sourceId) => {
+      queryClient.setQueryData<SourceList>(backlogKeys.sources(projectId), (current) => current && {
+        ...current, items: current.items.map((entry) => entry.id === sourceId ? { ...entry, indexStatus: 'pending', indexError: null } : entry),
+      });
+      void queryClient.invalidateQueries({ queryKey: backlogKeys.sources(projectId) });
+    },
+  });
+}
+
+/** The original file of a source (`hasFile`) as a Blob; fetched with the bearer token, so it cannot be a plain link. */
+export async function fetchSourceFile(client: BacklogClient, projectId: string, sourceId: string): Promise<Blob> {
+  const response = await requestOk(client, `/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourceId)}/file`);
+  return response.blob();
 }
