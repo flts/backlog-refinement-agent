@@ -154,7 +154,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
 
         <PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
-          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} revisions={backlog.revisions} nameOf={nameOf}
+          item={selectedItem} parentItem={backlog.parentItem} projectId={project.id} revisions={backlog.revisions} revisionsLoading={backlog.revisionsLoading} nameOf={nameOf}
           presence={presence.forItem(backlog.selectedId)} remoteChange={remoteChange} session={{ id: threads.activeThreadId ?? 'new' }} busy={agentBusy}
           menuActions={[
             { id: 'copy', label: <><MdContentCopy aria-hidden /> Copy Markdown</>, onSelect: () => void copyMarkdown() },
@@ -163,7 +163,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
             { id: 'delete', label: <><MdDelete aria-hidden /> Delete item</>, danger: true, onSelect: () => void deleteSelected() },
           ]}
           onSelectItem={selectItem} onUpdate={backlog.editSelected}
-          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={() => void backlog.undoLastChange()}
+          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onRestore={backlog.restoreRevision}
           onChangeStatus={(status) => void changeSelectedStatus(backlog, status)} onAssessQuality={() => void submit(() => run.continue('assess'))}
           onProposeChildren={(type) => void submit(() => run.continue('breakdown', type))}
         />

@@ -45,8 +45,10 @@ describe('PreviewPanel', () => {
     const onAssessQuality = vi.fn();
     const onProposeChildren = vi.fn();
     render(<PreviewPanel className="preview" item={item} session={{ id: 's' }} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist} onUndo={vi.fn()}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist}
       onChangeStatus={vi.fn()} onAssessQuality={onAssessQuality} onProposeChildren={onProposeChildren} />);
+    expect(screen.getByRole('tab', { name: 'Open items (2)' })).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /Open items/ }));
     expect(screen.getByText('Users are logged in')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm assumption' }));
     expect(onResolveChecklist).toHaveBeenCalledWith(expect.any(Number), 'check', 'Assumption confirmed.');
@@ -58,7 +60,7 @@ describe('PreviewPanel', () => {
 
   it('shows an empty state without an item', () => {
     render(<PreviewPanel className="preview" busy={false} menuActions={[]} onSelectItem={vi.fn()}
-      onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()} onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
+      onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByText('Your item preview')).toBeInTheDocument();
   });
 
@@ -73,7 +75,7 @@ describe('PreviewPanel', () => {
     const onChangeStatus = vi.fn();
     const selected = { ...item, status };
     render(<PreviewPanel className="preview" item={selected} session={{ id: 's' }} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()}
       onChangeStatus={onChangeStatus} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const [label, next] of actions) {
       await user.click(screen.getByRole('button', { name: label }));
@@ -84,7 +86,7 @@ describe('PreviewPanel', () => {
 
   it('disables marking a draft ready until its session is available', () => {
     render(<PreviewPanel className="preview" item={item} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Mark ready' })).toBeDisabled();
   });
@@ -98,7 +100,7 @@ describe('PreviewPanel', () => {
   ] as const)('disables %s status actions during a request', (status, labels) => {
     const selected = { ...item, status };
     render(<PreviewPanel className="preview" item={selected} session={{ id: 's' }} busy menuActions={[]}
-      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const label of labels) expect(screen.getByRole('button', { name: label })).toBeDisabled();
   });
@@ -159,7 +161,7 @@ describe('accessibility', () => {
 
   it('PreviewPanel has no axe violations', async () => {
     const { container } = render(<PreviewPanel className="preview" item={item} session={{ id: 's' }} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     await expectNoAxeViolations(container);
   });
