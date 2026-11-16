@@ -503,6 +503,10 @@ def _parse_import(
     return values
 
 
+parse_guidance_import = _parse_import
+"""Public alias: validates a guidance document into overrides (also used by the project backup import)."""
+
+
 def _legacy_to_v5(settings: object, issues: list[str]) -> dict[str, Any]:
     """Map the single-user app's v4 settings export (plain strings) to the v5 guidance shape."""
     if not isinstance(settings, dict):

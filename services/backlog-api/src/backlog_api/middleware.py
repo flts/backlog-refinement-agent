@@ -22,6 +22,8 @@ logger = logging.getLogger("backlog_api.request")
 # Source uploads (POST .../projects/{id}/sources) may carry a file up to the source size limit plus multipart framing.
 SOURCES_PATH = re.compile(r"^/api/backlog/projects/[^/]+/sources/?$")
 MULTIPART_OVERHEAD_BYTES = 1024 * 1024
+# Project backup import (POST .../projects/import) carries the whole backup document as JSON.
+BACKUP_IMPORT_PATH = re.compile(r"^/api/backlog/projects/import/?$")
 
 
 class RequestContextMiddleware:

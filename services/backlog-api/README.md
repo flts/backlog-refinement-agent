@@ -34,6 +34,7 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
 | `BACKLOG_OIDC_LEEWAY_SECONDS` | `60` | Clock skew for `exp`/`nbf`/`iat` |
 | `BACKLOG_MAX_BODY_BYTES` | `1048576` | Request body limit (413 problem when exceeded) |
 | `BACKLOG_REVISIONS_KEEP` | `50` | Item revisions kept per item |
+| `BACKLOG_BACKUP_MAX_BYTES` | `52428800` | Maximum size of a project backup: export answers 413 `backup-too-large`, the import body limit is 413 `payload-too-large` |
 | `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content) |
 
 ## Authentication and authorization
@@ -46,6 +47,16 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
   `404`; contributors calling owner-only operations get `403` (`owner-required`).
 - Members are added directly by email; access is immediate (no invitations). The last owner cannot be demoted,
   removed or leave (`409 last-owner`).
+
+## Project backup
+
+Owners export a project with `GET /api/backlog/projects/{id}/backup` (JSON attachment, format
+`backlog-project-backup` v2: project name, guidance overrides, items with revisions, relationships, sources with
+base64 original files; no members, conversations, audit log or search indexes). Any verified user imports a backup with
+`POST /api/backlog/projects/import` (`application/json`); the whole document is validated (422 `invalid-backup` with
+`issues`, 422 `unsupported-format`) and a **new** project owned by the importer is created in one transaction
+(" (imported)" is appended when the importer already has a project of that name). Source and item indexing jobs are
+queued. The SPA's v1 export (`backlog-refinement-project`) is accepted and mapped (see `backlog_api/backup.py`).
 
 ## Database migrations
 

@@ -14,6 +14,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 
 from backlog_api import __version__
+from backlog_api.api import backup as backup_api
 from backlog_api.api import guidance, health, items, me, projects
 from backlog_api.api import search as search_api
 from backlog_api.api import sources as sources_api
@@ -26,6 +27,7 @@ from backlog_api.embeddings import EmbeddingClient
 from backlog_api.events import EventPublisher, InProcessEventPublisher
 from backlog_api.indexing import configure_item_debounce
 from backlog_api.middleware import (
+    BACKUP_IMPORT_PATH,
     MULTIPART_OVERHEAD_BYTES,
     SOURCES_PATH,
     BodySizeLimitMiddleware,
@@ -134,7 +136,10 @@ def create_app(
     app.add_middleware(
         BodySizeLimitMiddleware,
         max_body_bytes=settings.max_body_bytes,
-        route_limits=[("POST", SOURCES_PATH, settings.source_max_bytes + MULTIPART_OVERHEAD_BYTES)],
+        route_limits=[
+            ("POST", SOURCES_PATH, settings.source_max_bytes + MULTIPART_OVERHEAD_BYTES),
+            ("POST", BACKUP_IMPORT_PATH, settings.backup_max_bytes),
+        ],
     )
     app.add_middleware(RequestContextMiddleware)
 
@@ -146,6 +151,7 @@ def create_app(
     app.include_router(sources_api.router, prefix=API_PREFIX)
     app.include_router(items.router, prefix=API_PREFIX)
     app.include_router(search_api.router, prefix=API_PREFIX)
+    app.include_router(backup_api.router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
