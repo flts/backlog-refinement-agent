@@ -16,10 +16,10 @@ Target: **WCAG 2.2 level AA**, plus **SC 1.4.6 Contrast (Enhanced, AAA)**, which
 | Area | Measure | SC |
 |---|---|---|
 | App shell (`App.tsx`) | Skip link to `main#main`. One `h1`. `document.title` updated per view. | 2.4.1, 2.4.2, 1.3.1 |
-| Loading / errors | Loading screen with `aria-busy` and `role="status"`. Bootstrap error with `role="alert"`. | 4.1.3 |
+| Loading / errors | Loading screen with `aria-busy` and `role="status"`. Bootstrap, configuration and sign-in errors (`StatusScreen.tsx`) use `role="alert"`, a heading and a retry button. | 4.1.3 |
 | Chat (`ChatPanel.tsx`) | A single visually hidden `role="status"` announces "Refinement agent is responding…" and "Refinement agent finished responding.", instead of reading the streamed tokens aloud. | 4.1.3 |
 | Modals (`useModalDialog.ts`) | Native modal `<dialog>`: focus trap, Escape closes the dialog, focus returns to the trigger, accessible name via `aria-labelledby`. | 2.1.2, 2.4.3, 4.1.2 |
-| Settings (`SettingsModal.tsx`) | `fieldset`/`legend` group the LLM connection fields. Status messages for model loading and configuration import. `aria-busy` while importing. | 1.3.1, 3.3.2, 4.1.3 |
+| Settings (`SettingsModal.tsx`) | `fieldset`/`legend` group the Account (name, email, Sign out) and Appearance sections. Status message for configuration import. `aria-busy` while importing. | 1.3.1, 3.3.2, 4.1.3 |
 | Mobile tabs | Toggle buttons expose their state with `aria-pressed`. | 4.1.2 |
 | Icons / glyphs | Decorative glyphs are `aria-hidden`. Icon-only buttons have an accessible name. | 1.1.1, 4.1.2 |
 | Colour (`styles.css`) | Text tokens are at least 7:1 on their backgrounds. Borders of UI components are at least 3:1. | 1.4.3, 1.4.6, 1.4.11 |

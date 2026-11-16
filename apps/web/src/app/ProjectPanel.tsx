@@ -6,7 +6,6 @@ type Props = {
   project?: Project;
   sources: ProjectSource[];
   busy: boolean;
-  endpoint: string;
   onSelect: (id: string) => void;
   onCreate: (name: string) => Promise<boolean>;
   onRename: (name: string) => Promise<boolean>;
@@ -68,10 +67,10 @@ export function ProjectPanel(props: Props) {
         <button className="button button-secondary button-small" disabled={busy} onClick={props.onDelete}>Delete project</button>
       </>}
     </div>
-    {project && <p className="composer-hint">AI context: {sources.filter((source) => source.selected).length} selected sources sent to {props.endpoint || 'the configured endpoint (not set)'}.</p>}
+    {project && <p className="composer-hint">AI context: {sources.filter((source) => source.selected).length} selected sources are shared with the agent when refining.</p>}
     {project && <details>
       <summary>Project sources ({sources.length})</summary>
-      <p>Only selected sources are sent to the AI endpoint {props.endpoint || '(not configured)'} when refining, decomposing, or assessing an item. Sources begin unselected.</p>
+      <p>Only selected sources are shared with the agent when refining, decomposing, or assessing an item. Sources begin unselected.</p>
       <div className="project-file-upload">
         <button type="button" className="button button-secondary button-small" disabled={busy} onClick={() => sourceInput.current?.click()}>Add PDF or text file</button>
         <span>PDF, TXT or Markdown</span>

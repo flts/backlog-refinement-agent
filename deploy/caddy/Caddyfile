@@ -6,11 +6,49 @@
 	root * /srv
 	encode gzip
 
-	# Generated per request from the container's runtime environment; never baked into the image.
+	# Origin of the OIDC authority (scheme://host[:port]) for the Content-Security-Policy; empty in platform mode.
+	map "{$OIDC_AUTHORITY:}" {oidc_origin} {
+		~^(https?://[^/]+) {1}
+		default ""
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		# The SPA only calls same-origin APIs and the OIDC authority (token endpoint, silent renew frame).
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' {oidc_origin}; frame-src {oidc_origin}; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self' {oidc_origin}; frame-ancestors 'none'"
+	}
+
+	# Runtime configuration, generated per request from the container's environment; never baked into the
+	# image and never secret. Values must not contain double quotes or backslashes (inserted into JSON verbatim).
 	handle /config.json {
 		header Content-Type application/json
 		header Cache-Control no-store
-		respond `{"endpoint":"{$LLM_ENDPOINT:}","model":"{$LLM_MODEL:}","streaming":{$LLM_STREAMING:false}}` 200
+		respond `{"auth":{"mode":"{$AUTH_MODE:oidc}","authority":"{$OIDC_AUTHORITY:}","clientId":"{$OIDC_CLIENT_ID:backlog-web}","scope":"{$OIDC_SCOPE:openid profile email}"},"api":{"backlog":"/api/backlog","agent":"/api/agent"},"agentId":"{$AGENT_ID:backlog-refiner}"}` 200
+	}
+
+	# APIs. flush_interval -1 disables response buffering (SSE: AG-UI runs and the project event stream);
+	# the long timeouts exceed the 180 s agent run timeout.
+	handle /api/backlog/* {
+		reverse_proxy {$BACKLOG_API_URL:http://backlog-api:8001} {
+			flush_interval -1
+			transport http {
+				response_header_timeout 300s
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
+	}
+
+	handle /api/agent/* {
+		reverse_proxy {$AGENT_API_URL:http://agent-service:8002} {
+			flush_interval -1
+			transport http {
+				response_header_timeout 300s
+				read_timeout 300s
+				write_timeout 300s
+			}
+		}
 	}
 
 	handle {
