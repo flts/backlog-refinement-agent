@@ -266,7 +266,7 @@ export class AgentRunService {
   }
 
   private invalidateThreads(): void {
-    void this.options.queryClient?.invalidateQueries({ queryKey: agentKeys.threads(this.options.projectId, this.options.itemId) });
+    void this.options.queryClient?.invalidateQueries({ queryKey: agentKeys.projectThreads(this.options.projectId) });
   }
 
   /** End of an exclusive operation: one more refresh when the run wrote, and the thread list (status, title). */

@@ -213,6 +213,6 @@ describe('AgentRunService', () => {
   it('refreshes the thread list after every operation', async () => {
     const { service, invalidatedKeys } = setup([sseResponse(askAnswer)]);
     await service.send('x');
-    expect(invalidatedKeys()).toContain(JSON.stringify(['agent', 'threads', 'p1', 'item-42']));
+    expect(invalidatedKeys()).toContain(JSON.stringify(['agent', 'threads', 'p1']));
   });
 });
