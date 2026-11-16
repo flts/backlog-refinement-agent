@@ -3297,3 +3297,45 @@ dialog.modal-dialog.conflict-dialog {
     .stream-caret, .skeleton-line, .spinner { animation: none }
     .spinner { border-top-color: var(--track); border-style: dotted }
 }
+
+/* --- fe-review-ui --- */
+.review-card h3 { font: 700 0.875rem var(--font-display); margin: 4px 0 0; outline-offset: 3px }
+.review-card h4 { font: 700 0.8125rem var(--font-display); margin: 0 }
+.review-sections, .review-conflicts, .review-created, .review-problem-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px }
+.review-section, .review-conflict { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--panel) }
+.review-accepted { border-color: var(--accent-border) }
+.review-rejected { border-style: dashed; opacity: 0.85 }
+.review-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px }
+.review-pill { padding: 1px 7px; border: 1px solid var(--border-control); border-radius: 999px; font-size: 0.6875rem; font-weight: 600; color: var(--muted) }
+.review-state { margin-left: auto }
+.review-rationale { margin: 6px 0 0; font-size: 0.75rem; color: var(--muted); line-height: 1.5 }
+.review-row-actions, .review-bulk { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px }
+.review-bulk { padding-top: 6px; border-top: 1px solid var(--line) }
+.review-submit { margin-left: auto }
+.review-row-actions [aria-pressed="true"] { background: var(--green-soft); color: var(--accent-text); border-color: var(--accent-border) }
+.review-tally { margin: 10px 0 0; font-size: 0.75rem; color: var(--muted) }
+.review-toggle { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.75rem }
+.review-editor { display: grid; gap: 6px; margin-top: 8px; font-size: 0.75rem }
+.review-editor textarea, .review-editor input { width: 100%; font: inherit; padding: 6px 8px; border: 1px solid var(--border-control); border-radius: 6px; background: var(--panel); color: var(--ink) }
+.review-editor textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace }
+.review-markdown { margin-top: 8px; font-size: 0.8125rem; max-height: 220px; overflow: auto }
+.review-overlap { margin: 8px 0 0; padding: 6px 9px; border-radius: 7px; background: var(--warning-soft); color: var(--warning-text); font-size: 0.75rem }
+.review-overlap .text-link { color: inherit; text-decoration: underline }
+.review-problem { margin: 8px 0 0; color: var(--danger); font-size: 0.75rem }
+.review-relationships { margin-top: 10px; font-size: 0.75rem }
+.review-relationships ul { margin: 4px 0 0; padding-left: 18px }
+.review-dropped { color: var(--muted); text-decoration: line-through }
+.review-dropped em { text-decoration: none; display: inline-block }
+.review-rel-type { font-weight: 700 }
+.review-result-summary { margin: 0; font-size: 0.8125rem; font-weight: 700 }
+.review-conflict-intro { margin: 8px 0 0; font-size: 0.75rem; color: var(--muted) }
+.review-conflict details { margin-top: 6px; font-size: 0.75rem }
+.review-created { margin-top: 6px }
+.review-created .text-link { font-size: 0.75rem }
+.composer-note { margin: 0 0 6px; font-size: 0.75rem; color: var(--warning-text); background: var(--warning-soft); padding: 4px 9px; border-radius: 6px }
+.predictive-preview { border: 1px solid var(--accent-border); border-radius: 9px; padding: 10px; margin-bottom: 12px; background: var(--panel) }
+.predictive-banner { display: flex; gap: 8px; align-items: center; margin: 0; padding: 6px 9px; border-radius: 7px; background: var(--green-soft); color: var(--accent-text); font-size: 0.75rem }
+.predictive-summary { margin: 8px 0 0; font-size: 0.8125rem }
+.predictive-meta { margin: 4px 0 0; font-size: 0.75rem; color: var(--muted) }
+.predictive-sections { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px }
+.predictive-section h4 { display: flex; gap: 6px; align-items: center; margin: 0; font: 700 0.8125rem var(--font-display) }

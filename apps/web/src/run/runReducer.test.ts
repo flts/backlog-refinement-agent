@@ -258,7 +258,7 @@ describe('runReducer: activity and state', () => {
     });
     expect(state.agentState.nextActions).toEqual([{ id: 'a', label: 'Break down', intent: 'breakdown' }]);
     expect(state.agentState.quality).toMatchObject({ overall: 'ready' });
-    expect(state.agentState.lastApply?.newVersion).toBe(3);
+    expect(state.agentState.lastApply).toMatchObject({ newVersion: 3 });
     expect(runReducer(state, { type: 'stateSnapshot', state: { preview: { sections: 'nope' } } }).agentState.preview).toBeNull();
   });
 });

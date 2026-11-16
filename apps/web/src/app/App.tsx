@@ -19,6 +19,7 @@ import { SaveStatus } from './SaveStatus';
 import { useBacklog } from './useBacklog';
 import { errorText, useNotifications } from './useNotifications';
 import { useAgentRun, useThreads } from '../run';
+import { proposalForPreview } from '../review';
 import { changeSelectedStatus } from './statusActions';
 import { useProjectThreadStatuses } from '../backlog';
 
@@ -147,10 +148,12 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onMessageChange={setMessage} onSubmit={sendMessage} onContinue={() => void submit(() => run.continue('continue'))}
           onStop={run.stop} onRetry={() => void submit(() => run.retry())}
           onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
+          onDecide={(decisions) => void submit(() => run.decide(decisions))} onSend={(text) => void submit(() => run.send(text))}
           onCreateItem={() => setNewItem({ type: 'capability', title: '' })}
         />
 
         <PreviewPanel
+          proposal={proposalForPreview(run.state)}
           className={`preview-column panel-${mobilePanel}`}
           item={selectedItem} parentItem={backlog.parentItem} projectId={project.id} revisions={backlog.revisions} revisionsLoading={backlog.revisionsLoading} nameOf={nameOf}
           presence={presence.forItem(backlog.selectedId)} remoteChange={remoteChange} session={{ id: threads.activeThreadId ?? 'new' }} busy={agentBusy}

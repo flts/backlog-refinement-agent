@@ -8,6 +8,7 @@ import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
 import { PanelTabs, tabButtonId, tabPanelId, type PanelTab } from './PanelTabs';
 import { itemTypeLabel, statusText, typeShort } from './labels';
+import { PredictivePreview, type ProposalForPreview } from '../review';
 
 export function qualityDiagnostics(quality: QualityAssessment): string[] {
   return [
@@ -65,9 +66,11 @@ export type PreviewPanelProps = {
   onChangeStatus: (status: ItemStatus) => void;
   onAssessQuality: () => void;
   onProposeChildren: (type: ItemType) => void;
+  /** Track changes of the proposal that is streaming or waiting for review (`proposalForPreview(run)`). */
+  proposal?: ProposalForPreview | null;
 };
 
-export function PreviewPanel({ className, item, parentItem, projectId, revisions = [], revisionsLoading = false, nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onRestore, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
+export function PreviewPanel({ className, item, parentItem, projectId, revisions = [], revisionsLoading = false, nameOf = (email) => email, presence = [], remoteChange, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onRestore, onChangeStatus, onAssessQuality, onProposeChildren, proposal }: PreviewPanelProps) {
   const checklist = React.useMemo(() => item ? parseChecklistSections(item.document) : [], [item?.document]);
   const quality = React.useMemo(() => {
     const parsed = QualityAssessmentSchema.safeParse(stripNulls(item?.quality?.assessment));
@@ -98,6 +101,7 @@ export function PreviewPanel({ className, item, parentItem, projectId, revisions
             <PanelTabs tabs={tabs} active={activeTab} idPrefix={tabsPrefix} label="Item views" onChange={(id) => setTabByItem((current) => ({ ...current, [item.id]: id }))} />
             <div className="preview-scroll" role="tabpanel" id={tabPanelId(tabsPrefix, activeTab)} aria-labelledby={tabButtonId(tabsPrefix, activeTab)}>
               {activeTab === 'document' && <>
+              {proposal && <PredictivePreview document={item.document} proposal={proposal.proposal} status={proposal.status} />}
               <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.document} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ document: event.target.value })} rows={14} />
               {quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {item.quality?.stale ? 'Outdated · ' : ''}{quality.overall === 'ready' ? 'Ready' : quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
               </>}

@@ -2,11 +2,13 @@ import React from 'react';
 import type { Item, ItemSummary } from '../api';
 import type { Thread } from '../agent';
 import type { AskUserResult } from '../contracts';
+import type { ResumeDecision } from '../agent';
 import type { RunState } from '../run';
 import { useRunAnnouncements } from './announcements';
 import { Composer } from './Composer';
 import { MessageList } from './MessageList';
-import { AskUserPlaceholder, ReviewPlaceholder } from './placeholders';
+import { AskUserPlaceholder } from './placeholders';
+import { ApplyResultCard, ReviewPanel, useResultVisibility } from '../review';
 import { ThreadPicker } from './ThreadPicker';
 
 export type ChatPanelProps = {
@@ -35,11 +37,19 @@ export type ChatPanelProps = {
   /** Placeholder for the ReviewCard (fe-review-ui): approves or rejects every pending proposal. */
   onDecideAll: (approved: boolean) => void;
   onCreateItem: () => void;
+  /** ReviewCard: one decision per pending proposal (`run.decide`). Falls back to `onDecideAll` (approve everything / reject everything). */
+  onDecide?: (decisions: ResumeDecision[]) => void;
+  /** Sends a chat message (conflict resolution: "Please redo section …"). */
+  onSend?: (text: string) => void;
 };
 
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, threads, activeThreadId, run, busy, canRetry, message,
-    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem } = props;
+    onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onDecide, onSend } = props;
+  const reviewing = run.phase === 'awaitingReview' && run.interrupts.some((interrupt) => !interrupt.expired);
+  const lastApply = run.agentState.lastApply;
+  const userMessages = run.messages.filter((entry) => entry.kind === 'user').length;
+  const showResult = useResultVisibility(lastApply, userMessages) && !reviewing && run.phase !== 'running';
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
@@ -63,13 +73,18 @@ export function ChatPanel(props: ChatPanelProps) {
         )}
         <MessageList run={run} canRetry={canRetry} busy={busy} onRetry={onRetry} resetKey={`${item.id}:${activeThreadId ?? ''}`}>
           {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserPlaceholder key={run.pendingAskUser.toolCallId} run={run} disabled={busy} onAnswer={onAnswer} />}
-          {run.phase === 'awaitingReview' && <ReviewPlaceholder run={run} disabled={busy} onDecideAll={onDecideAll} />}
+          {(reviewing || run.interrupts.some((interrupt) => interrupt.expired)) && (
+            <ReviewPanel run={run} document={item.document} itemId={item.id} disabled={busy} onSelectItem={props.onSelectItem}
+              onDecide={onDecide ?? ((decisions) => onDecideAll(decisions.every((decision) => 'approved' in decision && decision.approved)))} onRetry={onRetry} />
+          )}
+          {showResult && lastApply && <ApplyResultCard result={lastApply} messages={run.messages} disabled={busy} onSend={onSend} onSelectItem={props.onSelectItem} />}
         </MessageList>
         <div className="composer-wrap">
           <div className="composer-tools">
             <span><span className="green-spark" aria-hidden="true">✳</span> Refine with AI</span>
             <span className="composer-hint">Enter to send · Shift+Enter for new line</span>
           </div>
+          {reviewing && <p className="composer-note" role="note">Sending a message cancels the pending proposal.</p>}
           <Composer value={message} busy={busy} running={running} reason={reason} onChange={onMessageChange} onSubmit={onSubmit} onStop={onStop} />
           <div className="composer-actions">
             {running && <button className="retry-button" onClick={onStop}><span aria-hidden="true">■</span> Stop <span className="composer-hint">(Esc)</span></button>}

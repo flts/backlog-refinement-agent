@@ -1,11 +1,20 @@
 import { z } from 'zod';
-import { ChildPreviewSchema } from './childItems';
+import { ChildItemsResultSchema, ChildPreviewSchema } from './childItems';
 import { DocumentChangesResultSchema, DocumentPreviewSchema } from './documentChanges';
 import { NextActionSchema } from './nextActions';
 import { AgentIntentSchema, ItemTypeSchema, nonEmpty } from './primitives';
 import { StateQualitySchema } from './quality';
 
 export const AGENT_STATE_SCHEMA_VERSION = 1;
+
+/**
+ * Outcome of the last apply in the shared state: the tool result plus the `toolCallId` of the proposal it belongs to and
+ * the time it was applied (`at`, ISO 8601). Either the document variant or the child-items variant.
+ */
+export const LastApplySchema = z.union([
+  DocumentChangesResultSchema.extend({ toolCallId: z.string().optional(), at: z.string().optional() }),
+  ChildItemsResultSchema.extend({ toolCallId: z.string().optional(), at: z.string().optional() }),
+]);
 
 /**
  * Shared AG-UI state. `preview` is required and nullable: initialise it to `null`, otherwise the
@@ -20,7 +29,7 @@ export const AgentStateSchema = z.looseObject({
   childPreview: ChildPreviewSchema.nullable().optional(),
   nextActions: z.array(NextActionSchema).max(3).optional(),
   quality: StateQualitySchema.nullable().optional(),
-  lastApply: DocumentChangesResultSchema.nullable().optional(),
+  lastApply: LastApplySchema.nullable().optional(),
 });
 
 /** Client-side initial state for a run; `preview` is null by contract. */
@@ -39,4 +48,5 @@ export const ForwardedPropsSchema = z.strictObject({
 });
 
 export type AgentState = z.infer<typeof AgentStateSchema>;
+export type LastApply = z.infer<typeof LastApplySchema>;
 export type ForwardedProps = z.infer<typeof ForwardedPropsSchema>;
