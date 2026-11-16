@@ -290,3 +290,48 @@ class Relationship(Base):
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
     target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(Text)
+
+
+# --- events ---
+
+PRESENCE_STATES = ("viewing", "editing")
+
+
+class ProjectEvent(Base):
+    """Durable-ish event log behind the project SSE streams: ``id`` is the SSE event id (Last-Event-ID).
+
+    ``project_id`` deliberately has no foreign key, so ``project.deleted`` stays deliverable after the project is gone.
+    Rows are pruned by age and by total count.
+    """
+
+    __tablename__ = "project_events"
+    __table_args__ = (
+        Index("ix_project_events_project_id_id", "project_id", "id"),
+        Index("ix_project_events_created_at", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))
+    type: Mapped[str] = mapped_column(Text)
+    actor: Mapped[str] = mapped_column(CITEXT)
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Presence(Base):
+    """Who is looking at what (one row per user and project); unlogged, rows expire after a TTL."""
+
+    __tablename__ = "presence"
+    __table_args__ = (
+        CheckConstraint("state IN ('viewing', 'editing')", name="state"),
+        Index("ix_presence_expires_at", "expires_at"),
+        {"prefixes": ["UNLOGGED"]},
+    )
+
+    project_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    email: Mapped[str] = mapped_column(CITEXT, primary_key=True)
+    item_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    state: Mapped[str] = mapped_column(Text, default="viewing", server_default="viewing")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
