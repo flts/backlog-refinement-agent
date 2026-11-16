@@ -81,6 +81,14 @@ class Settings(BaseSettings):
     max_body_bytes: int = Field(default=1 * MiB, ge=1024)
     user_directory_refresh_seconds: int = Field(default=300, ge=0)
 
+    skills_dir: Path | None = Field(
+        default=None,
+        description="Directory with the default guidance skills (BACKLOG_SKILLS_DIR); default: repo skills/",
+    )
+    guidance_max_chars: int = Field(
+        default=50_000, ge=1_000, description="Maximum length of one guidance override in characters."
+    )
+
     _database_url: URL | None = PrivateAttr(default=None)
 
     @model_validator(mode="after")

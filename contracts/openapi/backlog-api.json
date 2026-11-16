@@ -932,10 +932,1280 @@
           }
         }
       }
+    },
+    "/api/backlog/projects/{project_id}/guidance": {
+      "get": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Effective guidance of a project (members)",
+        "operationId": "get_guidance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveGuidanceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/guidance/defaults": {
+      "get": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Skill defaults to compare an override with (members)",
+        "operationId": "get_guidance_defaults",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DefaultGuidanceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/guidance/principles": {
+      "put": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Override the agent principles (owners)",
+        "operationId": "put_principles",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version (ETag) of the override this change is based on; 0 for the default.",
+              "title": "If-Match"
+            },
+            "description": "Version (ETag) of the override this change is based on; 0 for the default."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceEntryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition Required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Restore the default agent principles (owners)",
+        "operationId": "delete_principles",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version (ETag) of the override this change is based on; 0 for the default.",
+              "title": "If-Match"
+            },
+            "description": "Version (ETag) of the override this change is based on; 0 for the default."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceEntryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition Required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/guidance/{kind}/{item_type}": {
+      "put": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Override type instructions or a template (owners)",
+        "operationId": "put_type_guidance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "type-instructions",
+                "template"
+              ],
+              "type": "string",
+              "description": "Guidance kind: type-instructions or template.",
+              "title": "Kind"
+            },
+            "description": "Guidance kind: type-instructions or template."
+          },
+          {
+            "name": "item_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "capability",
+                "feature",
+                "user-story",
+                "enabler"
+              ],
+              "type": "string",
+              "description": "Backlog item type.",
+              "title": "Item Type"
+            },
+            "description": "Backlog item type."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version (ETag) of the override this change is based on; 0 for the default.",
+              "title": "If-Match"
+            },
+            "description": "Version (ETag) of the override this change is based on; 0 for the default."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceWrite"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceEntryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Precondition Required",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Restore the default type instructions or template (owners)",
+        "operationId": "delete_type_guidance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "type-instructions",
+                "template"
+              ],
+              "type": "string",
+              "description": "Guidance kind: type-instructions or template.",
+              "title": "Kind"
+            },
+            "description": "Guidance kind: type-instructions or template."
+          },
+          {
+            "name": "item_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "capability",
+                "feature",
+                "user-story",
+                "enabler"
+              ],
+              "type": "string",
+              "description": "Backlog item type.",
+              "title": "Item Type"
+            },
+            "description": "Backlog item type."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Version (ETag) of the override this change is based on; 0 for the default.",
+              "title": "If-Match"
+            },
+            "description": "Version (ETag) of the override this change is based on; 0 for the default."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceEntryOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/guidance/export": {
+      "get": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Export the project's guidance as format v5 (members)",
+        "description": "Contains only the project's overrides with their base skill versions. With `includeDefaults=true` the effective text of every entry is included (defaults carry the current skill version).",
+        "operationId": "export_guidance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "includeDefaults",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Includedefaults"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceExport"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/guidance/import": {
+      "post": {
+        "tags": [
+          "guidance"
+        ],
+        "summary": "Replace the project's guidance overrides from an export (owners)",
+        "description": "Accepts format `backlog-guidance` version 5, or a version 4 configuration export of the single-user app (principles, type instructions and templates; the free-text `instructions` field is ignored). Everything is validated first; all overrides are then replaced in one transaction. Entries identical to the current skill default are not stored, and entries missing from the document fall back to the default.",
+        "operationId": "import_guidance",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EffectiveGuidanceOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "DefaultEntryOut": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "skill": {
+            "type": "string",
+            "title": "Skill"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content",
+          "skill",
+          "version"
+        ],
+        "title": "DefaultEntryOut"
+      },
+      "DefaultGuidanceOut": {
+        "properties": {
+          "principles": {
+            "$ref": "#/components/schemas/DefaultEntryOut"
+          },
+          "typeInstructions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DefaultEntryOut"
+            },
+            "type": "object",
+            "title": "Typeinstructions"
+          },
+          "templates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DefaultEntryOut"
+            },
+            "type": "object",
+            "title": "Templates"
+          },
+          "documentFormat": {
+            "type": "string",
+            "title": "Documentformat"
+          },
+          "skills": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Skills"
+          }
+        },
+        "type": "object",
+        "required": [
+          "principles",
+          "typeInstructions",
+          "templates",
+          "documentFormat",
+          "skills"
+        ],
+        "title": "DefaultGuidanceOut"
+      },
+      "EffectiveGuidanceOut": {
+        "properties": {
+          "principles": {
+            "$ref": "#/components/schemas/GuidanceEntryOut"
+          },
+          "typeInstructions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GuidanceEntryOut"
+            },
+            "type": "object",
+            "title": "Typeinstructions",
+            "description": "Keyed by item type."
+          },
+          "templates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GuidanceEntryOut"
+            },
+            "type": "object",
+            "title": "Templates",
+            "description": "Keyed by item type."
+          },
+          "documentFormat": {
+            "type": "string",
+            "title": "Documentformat",
+            "description": "Read-only document format rules of the core skill."
+          },
+          "skills": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Skills",
+            "description": "Skill name to current version."
+          }
+        },
+        "type": "object",
+        "required": [
+          "principles",
+          "typeInstructions",
+          "templates",
+          "documentFormat",
+          "skills"
+        ],
+        "title": "EffectiveGuidanceOut"
+      },
+      "ExportEntry": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "baseSkillVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseskillversion"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "ExportEntry"
+      },
+      "ExportGuidance": {
+        "properties": {
+          "principles": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportEntry"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "typeInstructions": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ExportEntry"
+            },
+            "type": "object",
+            "title": "Typeinstructions"
+          },
+          "templates": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ExportEntry"
+            },
+            "type": "object",
+            "title": "Templates"
+          }
+        },
+        "type": "object",
+        "title": "ExportGuidance"
+      },
+      "ExportProject": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ExportProject"
+      },
+      "GuidanceEntryOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "principles",
+              "type-instructions",
+              "template"
+            ],
+            "title": "Kind"
+          },
+          "itemType": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "capability",
+                  "feature",
+                  "user-story",
+                  "enabler"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemtype",
+            "description": "Backlog item type; null for the agent principles."
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "description": "The effective text."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "default",
+              "project"
+            ],
+            "title": "Source",
+            "description": "Whether the skill default or a project override applies."
+          },
+          "defaultSkill": {
+            "type": "string",
+            "title": "Defaultskill",
+            "description": "Name of the skill that provides the default."
+          },
+          "defaultVersion": {
+            "type": "string",
+            "title": "Defaultversion",
+            "description": "Current version of that skill."
+          },
+          "baseSkillVersion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseskillversion",
+            "description": "Skill version the override was edited from."
+          },
+          "differsFromDefault": {
+            "type": "boolean",
+            "title": "Differsfromdefault",
+            "description": "The override's text differs from the current skill default."
+          },
+          "outdated": {
+            "type": "boolean",
+            "title": "Outdated",
+            "description": "The override is based on an older skill version than the current default."
+          },
+          "version": {
+            "type": "integer",
+            "title": "Version",
+            "description": "Override version, the ETag for writes; 0 while the default applies."
+          },
+          "updatedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedby"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "itemType",
+          "content",
+          "source",
+          "defaultSkill",
+          "defaultVersion",
+          "baseSkillVersion",
+          "differsFromDefault",
+          "outdated",
+          "version",
+          "updatedBy",
+          "updatedAt"
+        ],
+        "title": "GuidanceEntryOut"
+      },
+      "GuidanceExport": {
+        "properties": {
+          "format": {
+            "type": "string",
+            "const": "backlog-guidance",
+            "title": "Format",
+            "default": "backlog-guidance"
+          },
+          "formatVersion": {
+            "type": "integer",
+            "const": 5,
+            "title": "Formatversion",
+            "default": 5
+          },
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Exportedat"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ExportProject"
+          },
+          "skills": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Skills",
+            "description": "Skill name to its current version at export time."
+          },
+          "guidance": {
+            "$ref": "#/components/schemas/ExportGuidance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exportedAt",
+          "project",
+          "skills",
+          "guidance"
+        ],
+        "title": "GuidanceExport"
+      },
+      "GuidanceWrite": {
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 200000,
+            "title": "Content",
+            "description": "The new text; templates must be placeholder-free Markdown."
+          },
+          "baseSkillVersion": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseskillversion",
+            "description": "Skill version this text was edited from; defaults to the existing base or the current version."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "GuidanceWrite"
+      },
       "Me": {
         "properties": {
           "email": {

@@ -18,6 +18,9 @@ PROJECT_DELETED = "project.deleted"
 MEMBER_ADDED = "member.added"
 MEMBER_ROLE_CHANGED = "member.role_changed"
 MEMBER_REMOVED = "member.removed"
+GUIDANCE_UPDATED = "guidance.updated"
+GUIDANCE_RESET = "guidance.reset"
+GUIDANCE_IMPORTED = "guidance.imported"
 
 
 def record(
