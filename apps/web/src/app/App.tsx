@@ -1,10 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
 import type { ItemType, Project } from '../api';
 import type { AgentIntent } from '../contracts';
-import { useAuth } from '../auth';
 import {
-  ConflictDialog, PresenceAvatars, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
+  ConflictDialog, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
   type RemoteItemChange,
 } from '../collab';
 import type { FinalCloseReason } from '../collab/projectEvents';
@@ -16,7 +15,7 @@ import { ProjectSettingsDialog } from '../settings/ProjectSettingsDialog';
 import { SidebarPanel } from './SidebarPanel';
 import { Toast } from './Toast';
 import { downloadFile, markdownFilename, markdownFor } from './files';
-import { SaveStatus } from './SaveStatus';
+import { Topbar, WorkspaceLayout, useWorkspaceLayout, type ProjectControls } from '../shell';
 import { useBacklog } from './useBacklog';
 import { errorText, useNotifications } from './useNotifications';
 import { useAgentRun, useThreads } from '../run';
@@ -26,13 +25,21 @@ import { toMentionCandidates } from '../context/mentions';
 import { CommandPalette, PALETTE_EVENTS, agentCommandsFor, runAgentCommand, usePaletteEvent, type AgentCommandEntry } from '../palette';
 import { itemTypeLabel } from './labels';
 
-function initials(name: string): string {
-  const letters = name.split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((part) => part[0].toUpperCase()).join('');
-  return letters || '?';
+export interface AppProps {
+  project: Project;
+  projectBusy: boolean;
+  /** Project list actions of the topbar's project switcher; without it the switcher only shows the current project. */
+  projectControls?: ProjectControls;
+  onOpenShare?: () => void;
+  onProjectGone?: (reason: FinalCloseReason, message: string) => void;
+  /** Called when the topbar's ⌘K search trigger is activated (it also dispatches `shell:open-palette` on window). */
+  onOpenPalette?: () => void;
 }
 
-export default function App({ project, projectBusy, renderProjectPanel, onOpenShare, onProjectGone }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode; onOpenShare?: () => void; onProjectGone?: (reason: FinalCloseReason, message: string) => void }) {
-  const auth = useAuth();
+const noop = () => undefined;
+
+export default function App({ project, projectBusy, projectControls, onOpenShare, onProjectGone, onOpenPalette }: AppProps) {
+  const layout = useWorkspaceLayout();
   const notifications = useNotifications();
   const { setError, setNotice } = notifications;
   const backlog = useBacklog(notifications, project.id);
@@ -47,6 +54,7 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
   const threads = useThreads(project.id, selectedItem?.id);
   const run = useAgentRun(threads.activeThreadId, { projectId: project.id, itemId: selectedItem?.id ?? '', itemType: selectedItem?.type, ensureThread: threads.ensureThread });
   const agentBusy = run.busy;
+  const controls: ProjectControls = projectControls ?? { projects: [project], busy: false, onSelect: noop, onCreate: async () => false, onRename: async () => false, onDelete: noop, onImport: noop };
 
   async function submit(action: () => Promise<{ status: string }>, failure = 'The agent could not start') {
     try {
@@ -135,13 +143,10 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
     <div className="app-shell">
       <a className="skip-link" href="#main">Skip to main content</a>
       <h1 className="sr-only">Backlog Studio – {project.name}</h1>
-      <header className="topbar">
-        <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
-        <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><PresenceAvatars people={presence.people} label="People in this project right now" /><SaveStatus status={backlog.saveStatus} onResolve={() => backlog.selectedId && backlog.autosave.reopenConflict(backlog.selectedId)} /><button className="icon-button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
-      </header>
-
-      {renderProjectPanel(agentBusy)}
+      <Topbar project={project} controls={controls} locked={agentBusy} people={presence.people}
+        saveStatus={backlog.saveStatus} onResolveConflict={() => backlog.selectedId && backlog.autosave.reopenConflict(backlog.selectedId)}
+        agentPhase={run.state.phase} focusMode={layout.focus !== null} onToggleFocus={layout.toggleFocus}
+        onOpenSettings={() => setSettingsOpen(true)} onOpenProjectSettings={() => setProjectSettingsOpen(true)} onOpenShare={onOpenShare} onOpenPalette={onOpenPalette} />
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} aria-pressed={mobilePanel === 'tree'} onClick={() => setMobilePanel('tree')}>Backlog</button>
@@ -149,15 +154,15 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
         <button className={mobilePanel === 'preview' ? 'active' : ''} aria-pressed={mobilePanel === 'preview'} onClick={() => setMobilePanel('preview')}>Item preview</button>
       </nav>
 
-      <main id="main" tabIndex={-1} className="workspace-grid" inert={projectBusy}>
-        <SidebarPanel
+      <WorkspaceLayout layout={layout} inert={projectBusy}
+        tree={<SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
           items={backlog.items} selectedId={backlog.selectedId}
           onSelect={selectItem} presenceFor={presence.forItem} projectId={project.id} threadStatuses={threadStatuses.statuses}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
-        />
+        />}
 
-        <ChatPanel
+        chat={<ChatPanel
           className={`refinement-column panel-${mobilePanel}`}
           item={selectedItem} parentItem={backlog.parentItem} threads={threads.threads} activeThreadId={threads.activeThreadId}
           run={run.state} busy={agentBusy} canRetry={run.canRetry} message={message}
@@ -169,9 +174,9 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onSuggestion={(action) => void submit(() => (action.intent === 'message' ? run.send(action.prompt ?? action.label) : run.continue(action.intent)))}
           onFeedback={threads.activeThreadId ? (messageId, rating, comment) => threads.feedback({ threadId: threads.activeThreadId!, messageId, rating, ...(comment ? { comment } : {}) }) : undefined}
           projectId={project.id} slashCommands={slashCommands} onSlashCommand={runSlashCommand} mentionItems={mentionItems}
-        />
+        />}
 
-        <PreviewPanel
+        preview={<PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
           item={selectedItem} parentItem={backlog.parentItem} projectId={project.id} revisions={backlog.revisions} revisionsLoading={backlog.revisionsLoading} nameOf={nameOf}
           presence={presence.forItem(backlog.selectedId)} remoteChange={remoteChange} session={{ id: threads.activeThreadId ?? 'new' }} busy={agentBusy}
@@ -185,8 +190,8 @@ export default function App({ project, projectBusy, renderProjectPanel, onOpenSh
           onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onRestore={backlog.restoreRevision}
           onChangeStatus={(status) => void changeSelectedStatus(backlog, status)} onAssessQuality={() => void submit(() => run.continue('assess'))} liveQuality={run.state.agentState.quality}
           onProposeChildren={(type) => void submit(() => run.continue('breakdown', type))}
-        />
-      </main>
+        />}
+      />
 
       <CommandPalette projectId={project.id} currentItem={selectedItem && { id: selectedItem.id, type: selectedItem.type }} agentBusy={agentBusy}
         onSelectItem={selectItem} {...paletteHandlers} />

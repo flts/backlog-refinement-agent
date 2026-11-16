@@ -23,7 +23,7 @@ function setup(responses: Parameters<typeof fakeFetch>[0]) {
   const client = createAgentClient({ baseUrl: '/api/agent', agentId: 'a', tokenProvider: fakeTokens(), fetch: http.fetch });
   const agent = createFakeAgentBackend({ client, threads: [makeThread({ id: 't1', itemId: 'i1' })] });
   const api = createFakeBacklogApi({ projects: [makeProject()], items: [makeItem()] });
-  const view = renderWithApi(<App project={makeProject()} projectBusy={false} renderProjectPanel={() => null} />, api, undefined, agent.backend);
+  const view = renderWithApi(<App project={makeProject()} projectBusy={false} />, api, undefined, agent.backend);
   return { ...view, http, agent };
 }
 

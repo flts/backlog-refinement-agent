@@ -11,7 +11,7 @@ import { makeRevision, withRevisions } from './fakeRevisions';
 function setup() {
   const base = createFakeBacklogApi({ projects: [makeProject()], items: [makeItem({ version: 2, document: '## Summary\nVersion 2' })], members: [makeMember()] });
   const fake = withRevisions(base, [makeRevision(2, { actor: 'anna@example.test', origin: 'agent' }), makeRevision(1)]);
-  const view = renderWithApi(<App project={makeProject()} projectBusy={false} renderProjectPanel={() => null} />, fake.api, undefined, createFakeAgentBackend().backend);
+  const view = renderWithApi(<App project={makeProject()} projectBusy={false} />, fake.api, undefined, createFakeAgentBackend().backend);
   return { ...fake, ...view };
 }
 
