@@ -40,6 +40,7 @@ from backlog_api.document import (
     apply_section_updates as merge_section_updates,
 )
 from backlog_api.events import DomainEvent
+from backlog_api.indexing import enqueue_item_indexing
 from backlog_api.item_rules import (
     DEFAULT_TITLES,
     can_be_child,
@@ -344,6 +345,7 @@ async def create_item(
         events.append(_relationship_event(RELATIONSHIP_CREATED, relationship, actor))
         events[0].data["parentId"] = str(parent_id)
     await _write_revision(session, item, origin=origin, actor=actor, run_id=run_id, label="Created", keep=keep)
+    await enqueue_item_indexing(session, item.id, project_id)
     audit.record(
         session,
         actor=actor,
@@ -450,6 +452,7 @@ async def _apply_changes(
     await session.flush()
     if title_changed or document_changed:
         await _write_revision(session, item, origin=origin, actor=actor, run_id=run_id, label=label, keep=keep)
+        await enqueue_item_indexing(session, item.id, item.project_id)
     audit.record(
         session,
         actor=actor,

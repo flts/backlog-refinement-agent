@@ -3745,6 +3745,215 @@
           }
         }
       }
+    },
+    "/api/backlog/projects/{project_id}/search": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search sources (passages with citations) or items",
+        "operationId": "search_project",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "Search text.",
+              "title": "Q"
+            },
+            "description": "Search text."
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "sources",
+                "items"
+              ],
+              "type": "string",
+              "description": "What to search.",
+              "default": "sources",
+              "title": "Kind"
+            },
+            "description": "What to search."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 8,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResults"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/sources/{source_id}/reindex": {
+      "post": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Queue re-chunking and re-embedding of a source",
+        "operationId": "reindex_source",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "source_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Source Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4183,6 +4392,52 @@
         ],
         "title": "ItemCreate"
       },
+      "ItemHitOut": {
+        "properties": {
+          "itemId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Itemid"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snippet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "itemId",
+          "title",
+          "type",
+          "status",
+          "score",
+          "snippet"
+        ],
+        "title": "ItemHitOut"
+      },
       "ItemList": {
         "properties": {
           "items": {
@@ -4587,6 +4842,79 @@
           "role"
         ],
         "title": "MemberUpdate"
+      },
+      "PassageOut": {
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Sourceid"
+          },
+          "sourceName": {
+            "type": "string",
+            "title": "Sourcename"
+          },
+          "chunkId": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Chunkid"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page",
+            "description": "1-based page of a PDF source; null otherwise."
+          },
+          "headingPath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headingpath",
+            "description": "Markdown heading path, e.g. `Intro > Scope`."
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Reciprocal-rank-fusion score; only meaningful for ordering."
+          },
+          "citationId": {
+            "type": "string",
+            "title": "Citationid",
+            "description": "Stable citation id `src:<sourceId>#<ordinal>`."
+          }
+        },
+        "type": "object",
+        "required": [
+          "sourceId",
+          "sourceName",
+          "chunkId",
+          "ordinal",
+          "page",
+          "headingPath",
+          "text",
+          "score",
+          "citationId"
+        ],
+        "title": "PassageOut"
       },
       "PinnedBudgetOut": {
         "properties": {
@@ -5267,6 +5595,50 @@
           "createdAt"
         ],
         "title": "RevisionSummary"
+      },
+      "SearchResults": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "sources",
+              "items"
+            ],
+            "title": "Kind"
+          },
+          "query": {
+            "type": "string",
+            "title": "Query"
+          },
+          "semantic": {
+            "type": "boolean",
+            "title": "Semantic",
+            "description": "Whether vector search contributed (false: full-text only)."
+          },
+          "passages": {
+            "items": {
+              "$ref": "#/components/schemas/PassageOut"
+            },
+            "type": "array",
+            "title": "Passages",
+            "description": "Set when kind is `sources`."
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItemHitOut"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "Set when kind is `items`."
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "query",
+          "semantic"
+        ],
+        "title": "SearchResults"
       },
       "SourceDetail": {
         "properties": {

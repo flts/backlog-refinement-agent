@@ -17,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backlog_api.db.models import Job
 
 INDEX_SOURCE = "index_source"
+INDEX_ITEM = "index_item"
+REINDEX_PROJECT = "reindex_project"
 DEFAULT_LEASE = timedelta(minutes=10)
 
 

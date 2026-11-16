@@ -6,9 +6,11 @@ import uuid
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Computed,
     DateTime,
     ForeignKey,
     Identity,
@@ -21,8 +23,10 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy import text as sql_text
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from backlog_api.db.embedding_dim import embedding_dimension
 
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -290,3 +294,63 @@ class Relationship(Base):
     source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
     target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
     type: Mapped[str] = mapped_column(Text)
+
+
+# --- indexing ---
+
+SEARCH_CONFIG = "simple"
+EMBEDDING_DIM = embedding_dimension()
+
+
+class SourceChunk(Base):
+    """A heading/page-aware slice of a source's text for retrieval (full-text always, vector when embedded)."""
+
+    __tablename__ = "source_chunks"
+    __table_args__ = (
+        UniqueConstraint("source_id", "ordinal"),
+        Index("ix_source_chunks_project_id", "project_id"),
+        Index("ix_source_chunks_tsv", "tsv", postgresql_using="gin"),
+        Index(
+            "ix_source_chunks_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"))
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    heading_path: Mapped[str | None] = mapped_column(Text, nullable=True)
+    page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    char_start: Mapped[int] = mapped_column(Integer)
+    char_end: Mapped[int] = mapped_column(Integer)
+    tsv: Mapped[Any] = mapped_column(
+        TSVECTOR, Computed(f"to_tsvector('{SEARCH_CONFIG}', text)", persisted=True), nullable=False
+    )
+    embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIM), nullable=True)
+
+
+class ItemEmbedding(Base):
+    """The embedding of an item's title and document as of ``document_hash``."""
+
+    __tablename__ = "item_embeddings"
+    __table_args__ = (
+        Index("ix_item_embeddings_project_id", "project_id"),
+        Index(
+            "ix_item_embeddings_embedding",
+            "embedding",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        ),
+    )
+
+    item_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"), primary_key=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    embedding: Mapped[Any] = mapped_column(Vector(EMBEDDING_DIM))
+    document_hash: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

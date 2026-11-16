@@ -88,6 +88,7 @@ def settings(database_url: str) -> Settings:
         env="test",
         database_url=database_url,
         auto_migrate=False,
+        worker_enabled=False,
         auth_mode="jwt",
         oidc_issuer=TEST_ISSUER,
         oidc_audience=TEST_AUDIENCE,

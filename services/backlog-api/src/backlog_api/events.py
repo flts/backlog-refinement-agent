@@ -26,6 +26,9 @@ MEMBER_UPDATED = "member.updated"
 MEMBER_REMOVED = "member.removed"
 GUIDANCE_UPDATED = "guidance.updated"
 
+# --- indexing ---
+SOURCE_INDEXED = "source.indexed"
+
 
 @dataclass(frozen=True, slots=True)
 class DomainEvent:
