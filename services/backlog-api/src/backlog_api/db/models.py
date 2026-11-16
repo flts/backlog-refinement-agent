@@ -11,12 +11,15 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Text,
     func,
 )
+from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -131,3 +134,74 @@ class ProjectGuidance(Base):
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     updated_by: Mapped[str] = mapped_column(CITEXT)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# --- sources ---
+
+SOURCE_KINDS = ("file", "url", "text")
+SOURCE_MODES = ("pinned", "searchable", "excluded")
+INDEX_STATUSES = ("pending", "indexing", "indexed", "failed", "skipped")
+JOB_STATUSES = ("queued", "running", "done", "failed")
+
+
+class Source(Base):
+    """A reference document of a project. ``text`` is the extracted text (pages separated by a form feed)."""
+
+    __tablename__ = "sources"
+    __table_args__ = (
+        CheckConstraint("kind IN ('file', 'url', 'text')", name="kind"),
+        CheckConstraint("mode IN ('pinned', 'searchable', 'excluded')", name="mode"),
+        CheckConstraint("index_status IN ('pending', 'indexing', 'indexed', 'failed', 'skipped')", name="index_status"),
+        Index("ix_sources_project_id_created_at", "project_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(Text)
+    mode: Mapped[str] = mapped_column(Text, default="searchable", server_default="searchable")
+    url: Mapped[str | None] = mapped_column(Text)
+    text: Mapped[str] = mapped_column(Text)
+    char_count: Mapped[int] = mapped_column(Integer)
+    page_count: Mapped[int | None] = mapped_column(Integer)
+    media_type: Mapped[str | None] = mapped_column(Text)
+    index_status: Mapped[str] = mapped_column(Text, default="pending", server_default="pending")
+    index_error: Mapped[str | None] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    added_by: Mapped[str] = mapped_column(CITEXT)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SourceFile(Base):
+    """The original uploaded bytes of a file source (``PostgresFileStore``)."""
+
+    __tablename__ = "source_files"
+
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("sources.id", ondelete="CASCADE"), primary_key=True
+    )
+    content: Mapped[bytes] = mapped_column(LargeBinary)
+    media_type: Mapped[str] = mapped_column(Text)
+    size: Mapped[int] = mapped_column(BigInteger)
+    sha256: Mapped[str] = mapped_column(Text)
+
+
+class Job(Base):
+    """Background job queue, claimed with ``FOR UPDATE SKIP LOCKED`` (see :mod:`backlog_api.jobs`)."""
+
+    __tablename__ = "jobs"
+    __table_args__ = (
+        CheckConstraint("status IN ('queued', 'running', 'done', 'failed')", name="status"),
+        Index("ix_jobs_claim", "run_after", "id", postgresql_where=sql_text("status = 'queued'")),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    kind: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
+    status: Mapped[str] = mapped_column(Text, default="queued", server_default="queued")
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    run_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

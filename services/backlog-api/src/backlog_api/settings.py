@@ -88,6 +88,18 @@ class Settings(BaseSettings):
     guidance_max_chars: int = Field(
         default=50_000, ge=1_000, description="Maximum length of one guidance override in characters."
     )
+    source_max_bytes: int = Field(default=10 * MiB, ge=1024, description="Maximum size of an uploaded source file.")
+    source_max_pdf_pages: int = Field(default=200, ge=1, description="Maximum number of pages of a PDF source.")
+    source_max_text_chars: int = Field(default=1_000_000, ge=1000, description="Maximum extracted text per source.")
+    source_pinned_budget_chars: int = Field(
+        default=100_000, ge=1, description="Maximum total characters of pinned sources per project."
+    )
+    url_fetch_allow_http: bool = Field(
+        default=False, description="Also allow plain http:// source URLs. Only honoured when BACKLOG_ENV=development."
+    )
+    url_fetch_timeout_seconds: float = Field(default=10.0, gt=0, description="Total time budget of a URL fetch.")
+    url_fetch_max_bytes: int = Field(default=2 * MiB, ge=1024, description="Maximum response size of a URL fetch.")
+    url_fetch_max_redirects: int = Field(default=3, ge=0, le=10, description="Maximum redirects followed per fetch.")
 
     _database_url: URL | None = PrivateAttr(default=None)
 
@@ -106,6 +118,10 @@ class Settings(BaseSettings):
         if self._database_url is None and self.database_url:
             self._database_url = to_async_database_url(self.database_url)
         return self._database_url
+
+    @property
+    def fetch_allows_http(self) -> bool:
+        return self.url_fetch_allow_http and self.env == "development"
 
     @property
     def should_auto_migrate(self) -> bool:

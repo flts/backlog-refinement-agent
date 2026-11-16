@@ -19,6 +19,10 @@ _VALID_REQUEST_ID = re.compile(r"^[A-Za-z0-9._:\-]{1,128}$")
 
 logger = logging.getLogger("backlog_api.request")
 
+# Source uploads (POST .../projects/{id}/sources) may carry a file up to the source size limit plus multipart framing.
+SOURCES_PATH = re.compile(r"^/api/backlog/projects/[^/]+/sources/?$")
+MULTIPART_OVERHEAD_BYTES = 1024 * 1024
+
 
 class RequestContextMiddleware:
     """Propagates or generates ``X-Request-ID``, logs one line per request (method, path, status, duration) and turns
@@ -80,15 +84,26 @@ class BodySizeLimitError(ProblemError):
 class BodySizeLimitMiddleware:
     """Rejects request bodies larger than ``max_body_bytes`` (``Content-Length`` and streamed bodies) with 413.
 
-    ``overrides`` maps path prefixes to a different limit (for example file uploads, added by later todos).
+    ``overrides`` maps path prefixes to a different limit; ``route_limits`` lists ``(method, path regex, limit)``
+    entries for routes that need more (for example source uploads) and wins over prefix overrides.
     """
 
-    def __init__(self, app: ASGIApp, max_body_bytes: int, overrides: dict[str, int] | None = None) -> None:
+    def __init__(
+        self,
+        app: ASGIApp,
+        max_body_bytes: int,
+        overrides: dict[str, int] | None = None,
+        route_limits: list[tuple[str, re.Pattern[str], int]] | None = None,
+    ) -> None:
         self.app = app
         self.max_body_bytes = max_body_bytes
         self.overrides = sorted((overrides or {}).items(), key=lambda item: len(item[0]), reverse=True)
+        self.route_limits = route_limits or []
 
-    def _limit_for(self, path: str) -> int:
+    def _limit_for(self, path: str, method: str = "") -> int:
+        for route_method, pattern, limit in self.route_limits:
+            if route_method == method and pattern.match(path):
+                return limit
         for prefix, limit in self.overrides:
             if path.startswith(prefix):
                 return limit
@@ -98,7 +113,7 @@ class BodySizeLimitMiddleware:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        limit = self._limit_for(scope.get("path", ""))
+        limit = self._limit_for(scope.get("path", ""), scope.get("method", ""))
         content_length = Headers(scope=scope).get("content-length")
         if content_length is not None:
             try:

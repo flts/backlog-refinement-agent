@@ -14,13 +14,19 @@ from fastapi.routing import APIRoute
 
 from backlog_api import __version__
 from backlog_api.api import guidance, health, me, projects
+from backlog_api.api import sources as sources_api
 from backlog_api.auth.dependencies import Authenticator, DevHeaderAuthenticator, JwtAuthenticator
 from backlog_api.auth.directory import UserDirectory
 from backlog_api.auth.tokens import JwksKeySource, KeySource, TokenVerifier
 from backlog_api.db.migrate import upgrade_database
 from backlog_api.db.session import Database
 from backlog_api.events import EventPublisher, InProcessEventPublisher
-from backlog_api.middleware import BodySizeLimitMiddleware, RequestContextMiddleware
+from backlog_api.middleware import (
+    MULTIPART_OVERHEAD_BYTES,
+    SOURCES_PATH,
+    BodySizeLimitMiddleware,
+    RequestContextMiddleware,
+)
 from backlog_api.observability import configure_logging
 from backlog_api.problems import PROBLEM_CONTENT_TYPE, Problem, install_problem_handlers
 from backlog_api.settings import API_PREFIX, Settings
@@ -102,7 +108,11 @@ def create_app(
 
     install_problem_handlers(app)
     # Starlette runs the last added middleware first: request context wraps the body limit.
-    app.add_middleware(BodySizeLimitMiddleware, max_body_bytes=settings.max_body_bytes)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_body_bytes=settings.max_body_bytes,
+        route_limits=[("POST", SOURCES_PATH, settings.source_max_bytes + MULTIPART_OVERHEAD_BYTES)],
+    )
     app.add_middleware(RequestContextMiddleware)
 
     app.include_router(health.router, include_in_schema=False)
@@ -110,6 +120,7 @@ def create_app(
     app.include_router(me.router, prefix=API_PREFIX)
     app.include_router(projects.router, prefix=API_PREFIX)
     app.include_router(guidance.router, prefix=API_PREFIX)
+    app.include_router(sources_api.router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
