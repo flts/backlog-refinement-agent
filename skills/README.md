@@ -27,7 +27,7 @@ metadata:
 
 The Markdown body follows the frontmatter. Templates (`assets/template.md`) are placeholder-free Markdown (no `{{…}}`); their `##` headings define the sections of an item document, and HTML comments are hints for the agent. Symbolic links are not allowed.
 
-Until the web app is switched to the backend, the same texts also live in `apps/web/src/defaults/`; the `backlog_skills` tests check that the two stay identical, so change both together.
+The SPA no longer keeps its own copy of these texts: the skills are the single source of defaults (served through the backlog-api guidance endpoints).
 
 ## Versioning
 

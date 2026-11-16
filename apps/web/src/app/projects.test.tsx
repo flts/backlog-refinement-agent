@@ -1,166 +1,201 @@
-import 'fake-indexeddb/auto';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Projects } from './Projects';
-import { TestAuth } from '../test/auth';
-import { backlogDatabase } from '../infrastructure/storage/database';
-import { serializeProjectBackup } from '../application/project-backup';
-import { defaultUserSettings } from '../infrastructure/storage/SettingsRepository';
-import { serializeConfig } from './config-io';
+import { createFakeBacklogApi, makeItem, makeProject, makeSource } from '../test/fakeBacklogApi';
+import { renderWithApi } from '../test/render';
+import { expectNoAxeViolations } from '../test/axe';
 
-beforeEach(async () => { await backlogDatabase.open(); });
-afterEach(async () => {
-  cleanup();
-  localStorage.clear();
-  vi.unstubAllGlobals();
-  vi.restoreAllMocks();
-  backlogDatabase.close();
-  await backlogDatabase.delete();
-});
+afterEach(() => { localStorage.clear(); vi.restoreAllMocks(); });
 
-describe('project workspace', () => {
-  it('imports saved configuration from Settings and does not leave stale edits in the modal', async () => {
-    const time = '2026-01-01T00:00:00.000Z';
-    await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: time, updatedAt: time });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+describe('projects screen', () => {
+  it('lists the projects from the server and restores the selected one', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject({ id: 'alpha', name: 'Alpha' }), makeProject({ id: 'beta', name: 'Beta' })] });
+    localStorage.setItem('selected-project-id', 'beta');
+    renderWithApi(<Projects />, api);
+    expect(await screen.findByLabelText('Choose project')).toHaveValue('beta');
     const user = userEvent.setup();
-    const { container } = render(<TestAuth><Projects /></TestAuth>);
-    await user.click(await screen.findByRole('button', { name: 'Open settings' }));
-    expect(screen.queryByText('Agent & settings')).not.toBeInTheDocument();
-    await user.clear(screen.getByLabelText('Base refinement principles'));
-    await user.type(screen.getByLabelText('Base refinement principles'), 'Unsaved');
-    await user.click(screen.getByRole('tab', { name: 'Backup' }));
-    const invalid = new File(['invalid'], 'invalid.json', { type: 'application/json' });
-    Object.defineProperty(invalid, 'text', { value: async () => 'invalid' });
-    const input = container.querySelector<HTMLInputElement>('.settings-modal input[type="file"]')!;
-    fireEvent.change(input, { target: { files: [invalid] } });
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not import configuration');
-    expect(screen.getByRole('tab', { name: 'Backup' })).toBeVisible();
-    expect(screen.getByLabelText('Base refinement principles')).toHaveValue('Unsaved');
-    const json = serializeConfig({ ...defaultUserSettings, principles: 'Imported' });
-    const file = new File([json], 'backup.json', { type: 'application/json' });
-    Object.defineProperty(file, 'text', { value: async () => json });
-    fireEvent.change(input, { target: { files: [file] } });
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Backup' })).not.toBeInTheDocument());
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Open settings' }));
-    expect(screen.getByLabelText('Base refinement principles')).toHaveValue('Imported');
-    await user.click(screen.getByRole('button', { name: 'Save customization' }));
-    await waitFor(() => expect(screen.queryByRole('tab', { name: 'Backup' })).not.toBeInTheDocument());
-    await user.click(screen.getByRole('button', { name: 'Open settings' }));
-    expect(screen.getByLabelText('Base refinement principles')).toHaveValue('Imported');
+    await user.selectOptions(screen.getByLabelText('Choose project'), 'alpha');
+    await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
   });
 
-  it('restores the selected project and falls back when it has been deleted', async () => {
-    const time = '2026-01-01T00:00:00.000Z';
-    await backlogDatabase.projects.bulkAdd([
-      { id: 'alpha', name: 'Alpha', createdAt: time, updatedAt: time },
-      { id: 'beta', name: 'Beta', createdAt: time, updatedAt: time },
-    ]);
-    const user = userEvent.setup();
-    const { unmount } = render(<TestAuth><Projects /></TestAuth>);
-    const selector = await screen.findByLabelText('Choose project');
-    await user.selectOptions(selector, 'beta');
-    await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('beta'));
-    unmount();
-    const reopened = render(<TestAuth><Projects /></TestAuth>);
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('beta');
-    reopened.unmount();
-    await backlogDatabase.projects.delete('beta');
-    render(<TestAuth><Projects /></TestAuth>);
+  it('falls back to the first project when the remembered one is gone', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject({ id: 'alpha', name: 'Alpha' })] });
+    localStorage.setItem('selected-project-id', 'deleted');
+    renderWithApi(<Projects />, api);
     expect(await screen.findByLabelText('Choose project')).toHaveValue('alpha');
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
   });
 
-  it('reports when the project preference cannot be saved', async () => {
-    const time = '2026-01-01T00:00:00.000Z';
-    await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: time, updatedAt: time });
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage unavailable'); });
-    render(<TestAuth><Projects /></TestAuth>);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not remember the selected project: Storage unavailable');
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('p');
-  });
-
-  it('imports a project and imports an existing project as a separate copy', async () => {
-    const time = '2026-01-01T00:00:00.000Z';
-    const json = await serializeProjectBackup({
-      project: { id: 'imported', name: 'Imported', createdAt: time, updatedAt: time },
-      items: [], sources: [], relationships: [], sessions: [],
-    });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    vi.spyOn(window, 'prompt').mockReturnValue('copy');
-    const { container } = render(<TestAuth><Projects /></TestAuth>);
-    await screen.findByRole('button', { name: 'Import project' });
-    const upload = () => {
-      const input = container.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')!;
-      const file = new File([json], 'project.json', { type: 'application/json' });
-      Object.defineProperty(file, 'text', { value: async () => json });
-      fireEvent.change(input, { target: { files: [file] } });
-    };
-    upload();
-    await screen.findByRole('button', { name: 'Export project' });
-    expect(await backlogDatabase.projects.count()).toBe(1);
-    upload();
-    await waitFor(async () => expect(await backlogDatabase.projects.count()).toBe(2));
-    expect((await backlogDatabase.projects.toArray()).map((entry) => entry.name).sort()).toEqual(['Imported', 'Imported (copy)']);
-  });
-
-  it('creates isolated projects and switches and deletes refinement sessions', async () => {
+  it('creates a project on the server and switches to it', async () => {
     const user = userEvent.setup();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    render(<TestAuth><Projects /></TestAuth>);
-    const name = await screen.findByLabelText('New project name');
-    await user.type(name, 'Alpha');
+    const api = createFakeBacklogApi();
+    renderWithApi(<Projects />, api);
+    expect(await screen.findByText('Create or import a project to start a backlog.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('New project name'), 'Alpha');
     await user.click(screen.getByRole('button', { name: 'Create project' }));
-    await screen.findByRole('button', { name: 'Create first item' });
-    await user.click(screen.getByText('Project sources (0)'));
-    await user.type(screen.getByLabelText('Reference name'), 'Specification');
-    await user.type(screen.getByLabelText('Reference URL'), 'https://example.com/spec');
-    await user.type(screen.getByLabelText('Reference text'), 'Source content');
+    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Alpha'));
+    expect(api.callsTo('POST', /^\/projects$/)[0].body).toEqual({ name: 'Alpha' });
+    expect(await screen.findByText('Project created.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Create first item' })).toBeInTheDocument();
+  });
+
+  it('renames a project with If-Match and tells when someone else changed it first', async () => {
+    const user = userEvent.setup();
+    const api = createFakeBacklogApi({ projects: [makeProject({ version: 3 })] });
+    vi.spyOn(window, 'prompt').mockReturnValue('Renamed');
+    renderWithApi(<Projects />, api);
+    await user.click(await screen.findByRole('button', { name: 'Rename project' }));
+    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Renamed'));
+    expect(api.callsTo('PATCH', /^\/projects\/p1$/)[0].headers.get('If-Match')).toBe('"3"');
+
+    api.state.projects[0].version = 9;
+    vi.mocked(window.prompt).mockReturnValue('Again');
+    await user.click(screen.getByRole('button', { name: 'Rename project' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Someone else changed this project; reload to see their changes.');
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument();
+  });
+
+  it('deletes a project after confirmation', async () => {
+    const user = userEvent.setup();
+    const api = createFakeBacklogApi({ projects: [makeProject({ id: 'a', name: 'Alpha' }), makeProject({ id: 'b', name: 'Beta' })] });
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderWithApi(<Projects />, api);
+    await screen.findByLabelText('Choose project');
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    expect(api.callsTo('DELETE', /^\/projects\//)).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Beta'));
+    expect(api.callsTo('DELETE', /^\/projects\/a$/)).toHaveLength(1);
+    expect(confirm).toHaveBeenCalledTimes(2);
+  });
+
+  it('hides owner actions from contributors', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject({ role: 'contributor' })] });
+    renderWithApi(<Projects />, api);
+    await screen.findByLabelText('Choose project');
+    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.queryByRole('button', { name })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Import project' })).toBeInTheDocument();
+  });
+
+  it('exports through the backup endpoint and imports a file as a new project', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject()] });
+    const download = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(download);
+    URL.createObjectURL = vi.fn(() => 'blob:x');
+    URL.revokeObjectURL = vi.fn();
+    const user = userEvent.setup();
+    const { container } = renderWithApi(<Projects />, api);
+    await user.click(await screen.findByRole('button', { name: 'Export project' }));
+    await waitFor(() => expect(download).toHaveBeenCalled());
+    expect(api.callsTo('GET', /^\/projects\/p1\/backup$/)).toHaveLength(1);
+
+    const input = container.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')!;
+    fireEvent.change(input, { target: { files: [new File(['{}'], 'backup.json', { type: 'application/json' })] } });
+    await waitFor(() => expect(screen.getByLabelText('Choose project')).toHaveDisplayValue('Imported'));
+    expect(api.callsTo('POST', /^\/projects\/import$/)).toHaveLength(1);
+  });
+
+  it('manages sources through the API: add a reference, change the mode, remove', async () => {
+    const user = userEvent.setup();
+    const api = createFakeBacklogApi({ projects: [makeProject()], sources: [makeSource()] });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithApi(<Projects />, api);
+    await user.click(await screen.findByText('Project sources (1)'));
+    await user.selectOptions(screen.getByLabelText('Mode of Spec'), 'pinned');
+    await waitFor(() => expect(api.state.sources[0].mode).toBe('pinned'));
+    expect(api.callsTo('PATCH', /sources\/s1$/)[0].headers.get('If-Match')).toBe('"1"');
+
+    await user.type(screen.getByLabelText('Reference name'), 'Brief');
+    await user.type(screen.getByLabelText('Reference URL'), 'https://example.com/brief');
     await user.click(screen.getByRole('button', { name: 'Add reference' }));
-    const source = await screen.findByRole('checkbox', { name: 'Specification' });
-    expect(source).not.toBeChecked();
-    await user.click(source);
-    await waitFor(() => expect(source).toBeChecked());
-    await user.click(screen.getByRole('button', { name: 'Create first item' }));
+    await waitFor(() => expect(api.state.sources.map((source) => source.name)).toContain('Brief'));
+    expect(api.callsTo('POST', /sources$/)[0].body).toMatchObject({ url: 'https://example.com/brief', name: 'Brief' });
+
+    await user.click(screen.getByRole('button', { name: 'Remove Spec' }));
+    await waitFor(() => expect(api.state.sources.map((source) => source.name)).toEqual(['Brief']));
+  });
+
+  it('shows the old-data notice only when legacy data exists, and has no axe violations', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject()], items: [makeItem()] });
+    const { container } = renderWithApi(<Projects />, api);
+    await screen.findByDisplayValue('Export');
+    expect(screen.queryByRole('heading', { name: 'Old local data found' })).toBeNull();
+    await expectNoAxeViolations(container);
+  });
+});
+
+describe('backlog items', () => {
+  const setup = (itemOverrides = {}) => createFakeBacklogApi({ projects: [makeProject()], items: [makeItem(itemOverrides)] });
+
+  it('creates an item on the server without any client-side template', async () => {
+    const user = userEvent.setup();
+    const api = createFakeBacklogApi({ projects: [makeProject()] });
+    renderWithApi(<Projects />, api);
+    await user.click(await screen.findByRole('button', { name: 'Create first item' }));
     await user.type(screen.getByLabelText(/Working title/), 'Alpha work');
     await user.click(screen.getByRole('button', { name: /Create and refine/ }));
-    const sessionSelect = await screen.findByRole('combobox', { name: 'Choose refinement session' });
-    await waitFor(() => expect(sessionSelect).toBeEnabled());
-    const firstSessionId = (sessionSelect as HTMLSelectElement).value;
-    await user.click(screen.getByRole('button', { name: 'Start a new refinement session' }));
-    await waitFor(() => expect(sessionSelect.querySelectorAll('option')).toHaveLength(2));
-    const secondSessionId = (sessionSelect as HTMLSelectElement).value;
-    expect(secondSessionId).not.toBe(firstSessionId);
-    await user.selectOptions(sessionSelect, firstSessionId);
-    await waitFor(() => expect(sessionSelect).toHaveValue(firstSessionId));
-    await user.click(screen.getByRole('button', { current: 'page' }));
-    expect(sessionSelect).toHaveValue(firstSessionId);
-    await user.selectOptions(sessionSelect, secondSessionId);
-    await waitFor(() => expect(sessionSelect).toHaveValue(secondSessionId));
-    const deleteSession = await screen.findByRole('button', { name: 'Delete refinement session' });
-    await waitFor(() => expect(deleteSession).toBeEnabled());
-    await user.click(deleteSession);
-    await waitFor(async () => {
-      const sessions = await backlogDatabase.sessions.toArray();
-      expect(sessions).toHaveLength(1);
-      expect(sessions[0].id).toBe(firstSessionId);
-    });
-    await user.click(deleteSession);
-    await waitFor(async () => {
-      const sessions = await backlogDatabase.sessions.toArray();
-      expect(sessions).toHaveLength(1);
-      expect(sessions[0].id).not.toBe(firstSessionId);
-    });
-    await user.type(screen.getByLabelText('New project name'), 'Beta');
-    await user.click(screen.getByRole('button', { name: 'Create project' }));
-    await waitFor(() => expect(screen.queryByDisplayValue('Alpha work')).not.toBeInTheDocument());
-    const select = await screen.findByLabelText('Choose project');
-    const alpha = (await backlogDatabase.projects.toArray()).find((project) => project.name === 'Alpha')!;
-    await user.selectOptions(select, alpha.id);
-    await screen.findByDisplayValue('Alpha work');
-    await user.click(screen.getByText('Project sources (1)'));
-    expect(await screen.findByRole('checkbox', { name: 'Specification' })).toBeChecked();
+    expect(await screen.findByDisplayValue('Alpha work')).toBeInTheDocument();
+    expect(api.callsTo('POST', /items$/)[0].body).toEqual({ type: 'capability', title: 'Alpha work' });
+    expect(screen.getByLabelText('Document (Markdown)')).toHaveValue('# capability template');
+  });
+
+  it('autosaves edits with If-Match from the version the user saw', async () => {
+    const user = userEvent.setup();
+    const api = setup({ version: 4 });
+    renderWithApi(<Projects />, api);
+    const title = await screen.findByLabelText('Title');
+    await user.clear(title);
+    await user.type(title, 'Renamed item');
+    await waitFor(() => expect(api.callsTo('PATCH', /items\/i1$/)).toHaveLength(1), { timeout: 3000 });
+    const call = api.callsTo('PATCH', /items\/i1$/)[0];
+    expect(call.headers.get('If-Match')).toBe('"4"');
+    expect(call.body).toEqual({ title: 'Renamed item' });
+    expect(api.state.items[0]).toMatchObject({ title: 'Renamed item', version: 5 });
+  });
+
+  it('shows "Someone else changed this item; reload" on a 409 and reloads their version', async () => {
+    const user = userEvent.setup();
+    const api = setup({ version: 4, document: 'mine-base' });
+    renderWithApi(<Projects />, api);
+    const document = await screen.findByLabelText('Document (Markdown)');
+    api.state.conflictOnNextItemPatch = { item: makeItem({ version: 5, document: 'theirs' }), changedSections: ['Summary'] };
+    await user.type(document, '!');
+    const alert = await screen.findByRole('alert', undefined, { timeout: 3000 });
+    expect(alert).toHaveTextContent('Someone else changed this item; reload to see their changes.');
+    await user.click(screen.getByRole('button', { name: 'Reload' }));
+    await waitFor(() => expect(screen.getByLabelText('Document (Markdown)')).toHaveValue('theirs'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('changes the status through the server (draft → refining → ready)', async () => {
+    const user = userEvent.setup();
+    const api = setup();
+    renderWithApi(<Projects />, api);
+    await user.click(await screen.findByRole('button', { name: 'Mark ready' }));
+    await waitFor(() => expect(api.state.items[0].status).toBe('ready'));
+    const patches = api.callsTo('PATCH', /items\/i1$/);
+    expect(patches.map((call) => call.body)).toEqual([{ status: 'refining' }, { status: 'ready' }]);
+    expect(patches.map((call) => call.headers.get('If-Match'))).toEqual(['"1"', '"2"']);
+  });
+
+  it('renders the backlog tree from parent ids', async () => {
+    const api = createFakeBacklogApi({ projects: [makeProject()], items: [makeItem({ id: 'cap', type: 'capability', title: 'Parent' }), makeItem({ id: 'feat', type: 'feature', title: 'Child', parentId: 'cap' })] });
+    renderWithApi(<Projects />, api);
+    expect(await screen.findByText('Parent')).toBeInTheDocument();
+    expect(screen.getByText('Child')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Collapse Parent' })).toBeEnabled();
+  });
+
+  it('deletes the item with its version after confirmation', async () => {
+    const user = userEvent.setup();
+    const api = setup({ version: 6 });
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithApi(<Projects />, api);
+    await screen.findByDisplayValue('Export');
+    await user.click(screen.getByRole('button', { name: 'More actions' }));
+    await user.click(screen.getByRole('menuitem', { name: /Delete item/ }));
+    await waitFor(() => expect(api.state.items).toHaveLength(0));
+    expect(api.callsTo('DELETE', /items\/i1$/)[0].headers.get('If-Match')).toBe('"6"');
   });
 });

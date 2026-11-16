@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { BacklogItem } from '../domain/backlog-item';
+import type { Item, ItemSummary } from '../api';
 import type { AssessmentProposal, DecompositionProposal } from '../domain/proposal';
 import type { RefinementSession } from '../domain/refinement-session';
 import { Composer } from './Composer';
@@ -9,8 +9,8 @@ import { formatTime, itemTypeLabel } from './labels';
 
 export type ChatPanelProps = {
   className: string;
-  item?: BacklogItem;
-  parentItem?: BacklogItem;
+  item?: Item;
+  parentItem?: ItemSummary;
   session?: RefinementSession;
   sessions: RefinementSession[];
   busy: boolean;
@@ -83,7 +83,7 @@ export function ChatPanel(props: ChatPanelProps) {
           {messages.length === 0 && <div className="welcome-card"><div className="agent-icon" aria-hidden="true">✳</div><div><strong>Let’s make this item clear and useful.</strong><p>Share what you know. I’ll help identify what’s missing, keep assumptions visible, and shape the work without inventing requirements.</p><div className="welcome-prompt"><span aria-hidden="true">↳</span> What outcome should this work make possible?</div></div></div>}
           {messages.map((entry) => <div key={entry.id} className={`message-row ${entry.role === 'user' ? 'message-user' : ''}`}><div className={entry.role === 'user' ? 'user-avatar' : 'agent-icon'} aria-hidden="true">{entry.role === 'user' ? 'F' : '✳'}</div><div className="message-content"><span className="message-author">{entry.role === 'user' ? 'You' : 'Refinement agent'} <time>{formatTime(entry.createdAt)}</time></span><p>{entry.content}</p></div></div>)}
           {busy && <div className="message-row"><div className="agent-icon" aria-hidden="true">✳</div><div className="message-content"><span className="message-author">Refinement agent</span><p className="typing"><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" /><span>Thinking through the details</span></p></div></div>}
-          {pending && pending.sessionId === session?.id && <ReviewPanel currentDescription={item.description} proposal={pending.proposal} busy={busy} onApply={onApplyPending} onDiscard={onDiscardPending} />}
+          {pending && pending.sessionId === session?.id && <ReviewPanel currentDescription={item.document} proposal={pending.proposal} busy={busy} onApply={onApplyPending} onDiscard={onDiscardPending} />}
           {proposal && <ProposalPanel proposal={proposal} selected={selectedProposals} busy={busy} onChange={onProposalChange} onSelectedChange={onSelectedProposalsChange} onAccept={onAcceptProposals} onDismiss={onDismissProposal} />}
         </div>
         <div className="composer-wrap">

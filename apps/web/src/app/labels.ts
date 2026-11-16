@@ -1,14 +1,14 @@
-import type { BacklogItem, BacklogItemType } from '../domain/backlog-item';
+import type { ItemStatus, ItemType } from '../api';
 
-export const itemTypeLabel: Record<BacklogItemType, string> = {
+export const itemTypeLabel: Record<ItemType, string> = {
   capability: 'Capability', feature: 'Feature', 'user-story': 'User story', enabler: 'Enabler',
 };
-export const itemTypes = Object.keys(itemTypeLabel) as BacklogItemType[];
-export const typeShort: Record<BacklogItemType, string> = {
+export const itemTypes = Object.keys(itemTypeLabel) as ItemType[];
+export const typeShort: Record<ItemType, string> = {
   capability: 'Cap', feature: 'Feat', 'user-story': 'Story', enabler: 'Enabler',
 };
 
-export function statusText(status: BacklogItem['status']): string {
+export function statusText(status: ItemStatus): string {
   return ({ draft: 'Draft', refining: 'Refining', ready: 'Ready', 'ready-with-open-questions': 'Ready · questions', complete: 'Complete' })[status];
 }
 

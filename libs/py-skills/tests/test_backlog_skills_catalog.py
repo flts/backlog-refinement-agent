@@ -20,7 +20,6 @@ from backlog_skills import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SKILLS_ROOT = REPO_ROOT / "skills"
-SPA_DEFAULTS = REPO_ROOT / "apps" / "web" / "src" / "defaults"
 EXPECTED_SKILLS = {CORE_SKILL, *(type_skill_name(item_type) for item_type in ITEM_TYPES)}
 
 
@@ -66,29 +65,17 @@ def test_missing_env_directory_is_a_clear_error(tmp_path: Path, monkeypatch: pyt
         load_skills()
 
 
-@pytest.mark.parametrize("item_type", ITEM_TYPES)
-def test_templates_are_byte_identical_to_spa_defaults(item_type: str) -> None:
-    template = SKILLS_ROOT / f"backlog-{item_type}" / "assets" / "template.md"
-
-    assert template.read_bytes() == (SPA_DEFAULTS / "templates" / f"{item_type}.md").read_bytes()
-
-
-@pytest.mark.parametrize(("skill", "source"), [(CORE_SKILL, "principles"), *((f"backlog-{t}", t) for t in ITEM_TYPES)])
-def test_skill_bodies_equal_spa_instructions(skill: str, source: str) -> None:
+def test_default_guidance_is_trimmed_skill_content() -> None:
     catalog = load_skills(SKILLS_ROOT)
+    guidance = catalog.default_guidance()
 
-    assert catalog[skill].body == (SPA_DEFAULTS / "instructions" / f"{source}.md").read_text(encoding="utf-8")
-
-
-def test_default_guidance_matches_trimmed_spa_defaults() -> None:
-    guidance = load_skills(SKILLS_ROOT).default_guidance()
-
-    assert guidance.principles == (SPA_DEFAULTS / "instructions" / "principles.md").read_text(encoding="utf-8").strip()
+    assert guidance.principles == catalog[CORE_SKILL].body.strip()
     assert "Child items" in guidance.document_format
     assert set(guidance.versions) == EXPECTED_SKILLS
     for item_type in ITEM_TYPES:
-        spa = SPA_DEFAULTS / "templates" / f"{item_type}.md"
-        assert guidance.templates[item_type] == spa.read_text(encoding="utf-8").strip()
+        template = SKILLS_ROOT / f"backlog-{item_type}" / "assets" / "template.md"
+        assert guidance.templates[item_type] == template.read_text(encoding="utf-8").strip()
+        assert guidance.type_instructions[item_type] == catalog[type_skill_name(item_type)].body.strip()
         assert guidance.type_instructions[item_type].startswith("# ")
         assert validate_template(guidance.templates[item_type]) == []
         assert {"Assumptions", "Open questions"} <= set(template_headings(guidance.templates[item_type]))
