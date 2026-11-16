@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface MenuAction { id: string; label: ReactNode; danger?: boolean; onSelect: () => void }
 
-export function ItemMenu({ actions }: { actions: MenuAction[] }) {
+export function ItemMenu({ actions, label = 'More actions' }: { actions: MenuAction[]; label?: string }) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -27,7 +27,7 @@ export function ItemMenu({ actions }: { actions: MenuAction[] }) {
   return (
     <div className="menu-wrap" ref={wrapRef} onKeyDown={onKeyDown}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-      <button ref={buttonRef} type="button" className="more-button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>···</button>
+      <button ref={buttonRef} type="button" className="more-button" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((value) => !value)}>···</button>
       {open && <div className="menu-popover" role="menu">
         {actions.map((action) => (
           <button key={action.id} type="button" role="menuitem" className={`menu-item ${action.danger ? 'menu-danger' : ''}`}

@@ -2523,3 +2523,219 @@ dialog.modal-dialog:has(.project-settings) { width: min(960px, calc(100% - 36px)
     .project-settings .settings-nav .settings-tab { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap }
     .project-settings .settings-nav .settings-tab.active { border-bottom-color: var(--accent-border) }
 }
+
+/* --- fe-sources --- */
+dialog.sources-drawer {
+    position: fixed;
+    inset: 0 0 0 auto;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    width: min(32rem, 100%);
+    max-width: 100%;
+    height: 100dvh;
+    max-height: 100dvh;
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: -12px 0 40px #17291d33;
+    overflow: auto
+}
+
+dialog.sources-drawer::backdrop {
+    background: var(--backdrop)
+}
+
+.sources-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px 20px 28px;
+    font-size: 0.8125rem
+}
+
+.sources-panel h2, .sources-panel h3, .sources-panel h4 {
+    margin: 0;
+    font-family: var(--font-display)
+}
+
+.sources-panel h2 { font-size: 1.25rem }
+.sources-panel h3 { font-size: 0.9375rem }
+.sources-panel h4 { font-size: 0.8125rem }
+
+.sources-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px
+}
+
+.sources-hint {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 0.75rem
+}
+
+.sources-error {
+    margin: 6px 0 0;
+    padding: 7px 9px;
+    border: 1px solid var(--danger-border);
+    border-radius: 7px;
+    background: var(--danger-soft);
+    color: var(--danger);
+    overflow-wrap: anywhere
+}
+
+.budget-meter-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    font-weight: 600;
+    margin-bottom: 5px
+}
+
+.budget-meter-track {
+    height: 0.625rem;
+    border-radius: 99px;
+    background: var(--track);
+    overflow: hidden
+}
+
+.budget-meter-fill {
+    height: 100%;
+    background: var(--green)
+}
+
+.budget-near .budget-meter-fill { background: var(--warning-text) }
+.budget-full .budget-meter-fill { background: var(--danger) }
+
+.sources-disclosure summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--green)
+}
+
+.sources-disclosure ul {
+    margin: 8px 0 0;
+    padding-left: 1.1rem;
+    color: var(--muted);
+    line-height: 1.55
+}
+
+.sources-add {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start
+}
+
+.sources-add form, .sources-add .sources-dropzone, .sources-feedback { width: 100% }
+
+.sources-dropzone {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px;
+    border: 2px dashed var(--border-control);
+    border-radius: 10px;
+    background: var(--panel-subtle);
+    text-align: center
+}
+
+.sources-dropzone p { margin: 0 }
+.sources-dropzone.is-dragging { border-color: var(--green); background: var(--green-soft) }
+
+.sources-url-form, .sources-fallback, .sources-text-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start
+}
+
+.sources-fallback, .sources-text-form {
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel-subtle)
+}
+
+.sources-panel label {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-weight: 600;
+    width: 100%
+}
+
+.sources-panel input[type="text"], .sources-panel input:not([type]), .sources-panel textarea {
+    width: 100%;
+    border: 1px solid var(--border-control);
+    border-radius: 7px;
+    background: var(--panel);
+    color: var(--ink);
+    padding: 7px 9px;
+    font: inherit;
+    font-weight: 400
+}
+
+.sources-actions { display: flex; flex-wrap: wrap; gap: 8px }
+
+.source-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px }
+
+.source-item {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: var(--panel)
+}
+
+.source-head { display: flex; align-items: flex-start; gap: 10px }
+.source-kind { font-size: 1.125rem; line-height: 1.3; color: var(--violet-text) }
+.source-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
+.source-name, .source-url { overflow-wrap: anywhere }
+.source-meta { color: var(--muted); font-size: 0.75rem }
+.source-rename { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
+.source-rename input { flex: 1; min-width: 8rem }
+.source-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px }
+
+.segmented {
+    display: inline-flex;
+    border: 1px solid var(--border-control);
+    border-radius: 8px;
+    overflow: hidden
+}
+
+.sources-panel .segmented label {
+    position: relative;
+    width: auto;
+    flex-direction: row;
+    padding: 5px 10px;
+    min-height: 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    background: var(--panel);
+    cursor: pointer
+}
+
+.segmented label + label { border-left: 1px solid var(--border-control) }
+.segmented label.is-selected { background: var(--green); color: var(--on-accent) }
+.segmented input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer }
+.segmented label:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: -3px }
+.segmented label.is-selected:has(input:focus-visible) { outline-color: var(--on-accent) }
+.segmented label:has(input:disabled) { opacity: .7; cursor: default }
+
+.source-status { font-size: 0.75rem; font-weight: 600; color: var(--muted) }
+.status-indexed { color: var(--accent-text) }
+.status-failed { color: var(--danger) }
+.status-pending, .status-indexing { color: var(--warning-text) }
+
+.source-index-error { margin: 6px 0 0; color: var(--danger); overflow-wrap: anywhere }
+.source-confirm { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--danger-border); border-radius: 8px; background: var(--danger-soft) }
+.source-confirm p { margin: 0 0 8px }
+.source-notice:empty { display: none }
+.source-notice { margin: 6px 0 0; color: var(--muted); font-size: 0.75rem }
+
+.button-danger { background: var(--danger); border-color: var(--danger); color: var(--panel) }
+.button-danger:hover { filter: brightness(.92) }

@@ -126,6 +126,16 @@ export function createFakeBacklogApi(seed: { projects?: Project[]; items?: Item[
         return json(source, 201);
       }
     }
+    if ((m = /^\/projects\/([^/]+)\/sources\/([^/]+)\/file$/.exec(path)) && method === 'GET') {
+      const source = state.sources.find((entry) => entry.id === m![2]);
+      return source?.hasFile ? new Response(`original of ${source.name}`, { headers: { 'Content-Type': 'application/octet-stream' } }) : problem(404, 'not-found');
+    }
+    if ((m = /^\/projects\/([^/]+)\/sources\/([^/]+)\/reindex$/.exec(path)) && method === 'POST') {
+      const source = state.sources.find((entry) => entry.id === m![2]);
+      if (!source) return problem(404, 'not-found');
+      source.indexStatus = 'pending'; source.indexError = null;
+      return json({}, 202);
+    }
     if ((m = /^\/projects\/([^/]+)\/sources\/([^/]+)$/.exec(path))) {
       const source = state.sources.find((entry) => entry.id === m![2]);
       if (!source) return problem(404, 'not-found');

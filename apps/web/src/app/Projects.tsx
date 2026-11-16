@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
-  isVersionConflict, useCreateProject, useCreateSource, useDeleteProject, useDeleteSource, useExportProject, useImportProject, useProjects,
-  useRenameProject, useSources, useUpdateSource,
-  type Source, type SourceMode,
+  isVersionConflict, useCreateProject, useDeleteProject, useExportProject, useImportProject, useProjects,
+  useRenameProject, useSources,
 } from '../api';
 import App from './App';
 import { LegacyDataNotice } from './LegacyDataNotice';
@@ -31,10 +30,7 @@ export function Projects() {
   const deleteProject = useDeleteProject();
   const exportProject = useExportProject();
   const importProject = useImportProject();
-  const createSource = useCreateSource(projectId ?? '');
-  const updateSource = useUpdateSource(projectId ?? '');
-  const deleteSource = useDeleteSource(projectId ?? '');
-  const busy = [createProject, renameProject, deleteProject, exportProject, importProject, createSource, updateSource, deleteSource].some((mutation) => mutation.isPending);
+  const busy = [createProject, renameProject, deleteProject, exportProject, importProject].some((mutation) => mutation.isPending);
 
   useEffect(() => {
     if (!projectsQuery.isSuccess) return;
@@ -71,19 +67,6 @@ export function Projects() {
       onDelete={() => {
         if (!project || !window.confirm(`Delete “${project.name}” and all its sources, backlog items and relationships?`)) return;
         void run(async () => { await deleteProject.mutateAsync(project); setPickedId(undefined); setNotice('Project deleted.'); }, 'Could not delete the project');
-      }}
-      onAddFile={(file) => { void run(async () => { await createSource.mutateAsync({ kind: 'file', file }); setNotice('Source added; it is being indexed.'); }, 'Could not add the source', 'source'); }}
-      onAddUrl={(name, value, text) => run(async () => {
-        let url: URL;
-        try { url = new URL(value); } catch { throw new Error('Enter a complete HTTP or HTTPS URL.'); }
-        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) throw new Error('Enter an HTTP or HTTPS URL without credentials.');
-        await createSource.mutateAsync({ kind: 'url', url: url.href, pastedText: text || undefined, name: name.trim() });
-        setNotice('Reference added.');
-      }, 'Could not add the reference', 'source')}
-      onChangeMode={(source: Source, mode: SourceMode) => { void run(async () => { await updateSource.mutateAsync({ source, changes: { mode } }); }, 'Could not change the source', 'source'); }}
-      onRemove={(source) => {
-        if (!window.confirm(`Remove “${source.name}” from this project?`)) return;
-        void run(async () => { await deleteSource.mutateAsync(source); setNotice('Source removed.'); }, 'Could not remove the source', 'source');
       }}
       onExport={() => {
         if (!project) return;
