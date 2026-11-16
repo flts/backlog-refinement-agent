@@ -15,7 +15,9 @@ from sqlalchemy import (
     Integer,
     MetaData,
     Text,
+    UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -93,3 +95,87 @@ class AuditEvent(Base):
     action: Mapped[str] = mapped_column(Text)
     details: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, server_default="{}")
     at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# --- items ---
+
+ITEM_TYPES = ("capability", "feature", "user-story", "enabler")
+ITEM_STATUSES = ("draft", "refining", "ready", "ready-with-open-questions", "complete")
+REVISION_ORIGINS = ("manual", "agent", "restore")
+RELATIONSHIP_TYPES = ("parent-child", "supports", "depends-on", "related-to")
+
+
+def _in_list(column: str, values: tuple[str, ...]) -> str:
+    return f"{column} IN ({', '.join(repr(value) for value in values)})"
+
+
+class Item(Base):
+    """A backlog item. The parent is the (single) ``parent-child`` relationship that targets it."""
+
+    __tablename__ = "items"
+    __table_args__ = (
+        CheckConstraint(_in_list("type", ITEM_TYPES), name="type"),
+        CheckConstraint(_in_list("status", ITEM_STATUSES), name="status"),
+        Index("ix_items_project_id_created_at", "project_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    document: Mapped[str] = mapped_column(Text, default="", server_default="")
+    document_hash: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, default="draft", server_default="draft")
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    quality: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    quality_assessed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    quality_document_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[str] = mapped_column(CITEXT)
+    updated_by: Mapped[str] = mapped_column(CITEXT)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ItemRevision(Base):
+    """Snapshot of an item's title and document as of ``version`` (written on every title/document change)."""
+
+    __tablename__ = "item_revisions"
+    __table_args__ = (
+        CheckConstraint(_in_list("origin", REVISION_ORIGINS), name="origin"),
+        UniqueConstraint("item_id", "version"),
+        Index("ix_item_revisions_item_id_created_at", "item_id", "created_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    item_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(Text)
+    document: Mapped[str] = mapped_column(Text)
+    origin: Mapped[str] = mapped_column(Text)
+    label: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor: Mapped[str] = mapped_column(CITEXT)
+    run_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Relationship(Base):
+    __tablename__ = "relationships"
+    __table_args__ = (
+        CheckConstraint(_in_list("type", RELATIONSHIP_TYPES), name="type"),
+        CheckConstraint("source_id <> target_id", name="no_self_link"),
+        UniqueConstraint("source_id", "target_id", "type"),
+        Index("ix_relationships_project_id", "project_id"),
+        Index("ix_relationships_target_id", "target_id"),
+        Index(
+            "uq_relationships_single_parent",
+            "target_id",
+            unique=True,
+            postgresql_where=text("type = 'parent-child'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"))
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
+    target_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("items.id", ondelete="CASCADE"))
+    type: Mapped[str] = mapped_column(Text)

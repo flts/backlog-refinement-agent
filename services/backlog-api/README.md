@@ -33,6 +33,7 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
 | `BACKLOG_OIDC_JWKS_URL` | discovered | JWKS URL; default from `{issuer}/.well-known/openid-configuration` |
 | `BACKLOG_OIDC_LEEWAY_SECONDS` | `60` | Clock skew for `exp`/`nbf`/`iat` |
 | `BACKLOG_MAX_BODY_BYTES` | `1048576` | Request body limit (413 problem when exceeded) |
+| `BACKLOG_REVISIONS_KEEP` | `50` | Item revisions kept per item |
 | `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content) |
 
 ## Authentication and authorization

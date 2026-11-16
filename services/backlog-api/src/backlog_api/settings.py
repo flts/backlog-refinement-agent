@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     oidc_http_timeout_seconds: float = Field(default=5.0, gt=0)
 
     max_body_bytes: int = Field(default=1 * MiB, ge=1024)
+    revisions_keep: int = Field(default=50, ge=1, description="Item revisions kept per item (oldest are pruned).")
     user_directory_refresh_seconds: int = Field(default=300, ge=0)
 
     _database_url: URL | None = PrivateAttr(default=None)

@@ -12,7 +12,7 @@ from fastapi.openapi.utils import get_openapi
 from fastapi.routing import APIRoute
 
 from backlog_api import __version__
-from backlog_api.api import health, me, projects
+from backlog_api.api import health, items, me, projects
 from backlog_api.auth.dependencies import Authenticator, DevHeaderAuthenticator, JwtAuthenticator
 from backlog_api.auth.directory import UserDirectory
 from backlog_api.auth.tokens import JwksKeySource, KeySource, TokenVerifier
@@ -105,6 +105,7 @@ def create_app(
     app.include_router(health.router, prefix=API_PREFIX)
     app.include_router(me.router, prefix=API_PREFIX)
     app.include_router(projects.router, prefix=API_PREFIX)
+    app.include_router(items.router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:
