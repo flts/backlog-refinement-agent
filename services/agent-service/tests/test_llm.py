@@ -104,11 +104,11 @@ async def test_readyz_reports_llm(database_url: str, tokens: TokenFactory, requi
             response = await client.get("/readyz")
             assert response.status_code == status
             if not required:
-                assert response.json() == {"status": "ready", "llm": "unavailable"}
+                assert response.json() == {"status": "ready", "llm": "unavailable", "hooks": "disabled"}
             assert (await client.get("/healthz")).status_code == 200
 
 
 async def test_readyz_llm_ok(client: httpx.AsyncClient) -> None:
     response = await client.get("/readyz")
-    assert response.json() == {"status": "ready", "llm": "ok"}
+    assert response.json() == {"status": "ready", "llm": "ok", "hooks": "disabled"}
     assert (await client.get("/api/agent/readyz")).status_code == 200

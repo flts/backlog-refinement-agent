@@ -95,6 +95,30 @@ else
   fail "dave: expected a token with email_verified=false"
 fi
 
+echo "agent-service service account (client credentials)"
+sa_response="$(curl -s -d grant_type=client_credentials -d client_id=agent-service \
+  -d client_secret=dev-agent-service-secret "$REALM_URL/protocol/openid-connect/token")"
+sa_token="$(jq -r '.access_token // empty' <<<"$sa_response")"
+if [[ -z "$sa_token" ]]; then
+  fail "agent-service: no client-credentials token ($(jq -c . <<<"$sa_response"))"
+else
+  sa_claims="$(decode_jwt_payload "$sa_token")"
+  if jq -e '
+      (.aud | if type == "array" then . else [.] end) as $aud
+      | ($aud | index("backlog-api")) != null and .azp == "agent-service"' <<<"$sa_claims" >/dev/null; then
+    pass "agent-service: $(jq -c '{aud, azp, email}' <<<"$sa_claims")"
+  else
+    fail "agent-service: unexpected claims $(jq -c . <<<"$sa_claims")"
+  fi
+fi
+error="$(curl -s -d grant_type=client_credentials -d client_id=agent-service -d client_secret=wrong \
+  "$REALM_URL/protocol/openid-connect/token" | jq -r '.error // empty')"
+if [[ "$error" == "unauthorized_client" || "$error" == "invalid_client" ]]; then
+  pass "agent-service: wrong secret rejected ($error)"
+else
+  fail "agent-service: wrong secret was not rejected (error='$error')"
+fi
+
 echo "backlog-web must not allow the password grant"
 error="$(password_grant backlog-web alice@example.test | jq -r '.error // empty')"
 if [[ "$error" == "unauthorized_client" ]]; then

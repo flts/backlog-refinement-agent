@@ -116,6 +116,26 @@ class Settings(BaseSettings):
         description="Comma-separated browser origins allowed by CORS. Empty (default) = same-origin via the proxy.",
     )
 
+    # Event hooks: subscription to backlog-api's internal event stream (purges private threads).
+    event_hooks_enabled: bool = Field(
+        default=True, description="Subscribe to backlog-api's internal events (needs a service credential)."
+    )
+    service_client_id: str = Field(default="agent-service", description="Keycloak client id for client credentials.")
+    service_client_secret: SecretStr | None = Field(default=None, repr=False)
+    service_token_url: str | None = Field(
+        default=None, description="Token endpoint override; default is <issuer>/protocol/openid-connect/token."
+    )
+    internal_token: SecretStr | None = Field(
+        default=None,
+        repr=False,
+        description="Static X-Internal-Token for backlog-api's internal stream (development only).",
+    )
+    hooks_reconnect_min_seconds: float = Field(default=1.0, gt=0)
+    hooks_reconnect_max_seconds: float = Field(default=30.0, gt=0)
+    hooks_stream_read_timeout_seconds: float = Field(
+        default=75.0, gt=0, description="The stream is considered dead when nothing (not even a keepalive) arrives."
+    )
+
     _database_url: URL | None = PrivateAttr(default=None)
 
     @field_validator("cors_allow_origins", mode="before")
@@ -132,6 +152,29 @@ class Settings(BaseSettings):
                 "AGENT_AUTH_MODE=dev trusts the X-Dev-User-Email header and is only allowed when AGENT_ENV=development."
             )
         return self
+
+    @model_validator(mode="after")
+    def _check_internal_token(self) -> Settings:
+        if self.internal_token is not None and self.env == "production":
+            raise ValueError(
+                "AGENT_INTERNAL_TOKEN is a development shortcut and not allowed when AGENT_ENV=production."
+            )
+        return self
+
+    @property
+    def hooks_token_url(self) -> str | None:
+        if self.service_token_url:
+            return self.service_token_url
+        return f"{self.issuer}/protocol/openid-connect/token" if self.issuer else None
+
+    @property
+    def hooks_credential_mode(self) -> Literal["static-token", "client-credentials"] | None:
+        """Which credential the hook subscriber uses, or ``None`` when none is configured."""
+        if self.internal_token is not None:
+            return "static-token"
+        if self.service_client_secret is not None and self.hooks_token_url:
+            return "client-credentials"
+        return None
 
     @property
     def async_database_url(self) -> URL | None:

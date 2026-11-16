@@ -41,6 +41,9 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
 | `AGENT_SKILLS_DIR` | — | Default skills directory (used by the agent loader) |
 | `AGENT_MAX_BODY_BYTES` / `AGENT_AGUI_MAX_BODY_BYTES` | 1 MiB / 2 MiB | Body limits (AG-UI runs have their own) |
 | `AGENT_CORS_ALLOW_ORIGINS` | empty | Comma-separated origins; empty = same-origin through the proxy (MAF's `allow_origins` is a no-op) |
+| `AGENT_EVENT_HOOKS_ENABLED` | `true` | Subscribe to backlog-api's `/api/backlog/internal/events` and purge private threads on `project.deleted`, `member.removed`, `item.deleted` |
+| `AGENT_SERVICE_CLIENT_ID` / `AGENT_SERVICE_CLIENT_SECRET` | `agent-service` / — | Keycloak client-credentials for the hooks (token endpoint `<issuer>/protocol/openid-connect/token`, override `AGENT_SERVICE_TOKEN_URL`); secret |
+| `AGENT_INTERNAL_TOKEN` | — | Dev only (refused when `AGENT_ENV=production`): static `X-Internal-Token` instead of Keycloak |
 | `AGENT_LOG_LEVEL` | `INFO` | JSON logs (no content, no tokens) |
 
 ## Design notes
@@ -53,6 +56,11 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
   MAF runs; the dispatcher delegates to `AgentRegistry.get(agent_id)`, maintains `threads.status` and refreshes it
   after each run and on hydrate. `require_confirmation=False`; snapshots live in `PgThreadSnapshotStore`.
 - **Approval state** is process-local in MAF (single replica or sticky routing by thread).
+- **Event hooks:** `agent_service/hooks/` runs one background SSE subscriber (single replica). The last processed event
+  id lives in `hook_cursor` (migration `0002_hook_cursor`) and is sent as `Last-Event-ID` after a restart; `reset` continues
+  from the reset id (purges are idempotent). Reconnects use backoff with jitter; a 401/403 refreshes the token once.
+  Disabled (warning once) without a credential; `/readyz` reports `hooks`: `connected` / `disconnected` / `disabled`
+  and never fails because of it.
 - **Purge:** `agent_service.threads.purge_threads(session, project_id=, item_id=, owner_email=)` for the event hooks.
 
 ## Migrations, tests, image

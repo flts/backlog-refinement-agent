@@ -30,13 +30,25 @@ The services reject tokens without `email` or with `email_verified=false` (`403`
 | `backlog-web` | public | Authorization Code + **PKCE S256 required**. No password grant, no implicit flow | The SPA (`auth.mode = oidc`, oidc-client-ts) |
 | `backlog-dev-cli` | public | **Password grant only** (Resource Owner Password) | **DEV/TEST ONLY.** Scripts, e2e tests, curl |
 | `backlog-api` | bearer-only | none | Audience/resource of backlog-api |
-| `agent-service` | bearer-only | none | Audience/resource of agent-service |
+| `agent-service` | confidential, service account | **Client credentials** only (no standard, implicit or password flow) | Audience/resource of agent-service **and** the credential agent-service uses for backlog-api's internal event stream (`/api/backlog/internal/events`) |
 
 `backlog-web` and `backlog-dev-cli` each have two `oidc-audience-mapper`s. These add
 `backlog-api` and `agent-service` to `aud` of the access token. One SPA token therefore works
 for both services, and agent-service can forward the user's token to the backlog MCP server.
 The `profile` and `email` default scopes provide `name`, `given_name`, `family_name`,
 `preferred_username`, `email` and `email_verified`.
+
+The `agent-service` client has `serviceAccountsEnabled: true`, the **dev-only** secret
+`dev-agent-service-secret` and an `oidc-audience-mapper` for `backlog-api`. Its client-credentials
+tokens therefore have `aud` containing `backlog-api` and `azp = agent-service`; backlog-api accepts them on
+`/internal/*` when `BACKLOG_INTERNAL_CLIENT_IDS` contains `agent-service`. Replace the secret in any
+shared environment (`AGENT_SERVICE_CLIENT_SECRET`). The client stays usable as a resource audience
+for user tokens (the `backlog-web` / `backlog-dev-cli` audience mappers are unchanged).
+
+```bash
+curl -s -d grant_type=client_credentials -d client_id=agent-service -d client_secret=dev-agent-service-secret \
+  http://localhost:8080/realms/backlog/protocol/openid-connect/token | jq -r .access_token
+```
 
 Example access token payload (alice):
 
@@ -131,6 +143,10 @@ It verifies:
 - The OIDC discovery document (issuer) and JWKS (RS256 signing key) respond.
 - `alice`, `bob` and `carol` get tokens via `backlog-dev-cli` with `aud ⊇ {backlog-api,
   agent-service}`, the correct `email`, `email_verified=true`, `name` and `preferred_username`.
+- The `agent-service` client gets a client-credentials token with `aud ∋ backlog-api` and
+  `azp = agent-service`; a wrong secret is rejected.
+- The `agent-service` client gets a client-credentials token with `aud ∋ backlog-api` and
+  `azp = agent-service`; a wrong secret is rejected.
 - `dave` gets a token with `email_verified=false`.
 - `backlog-web` rejects the password grant (`unauthorized_client`).
 - `backlog-web` rejects an authorization request without `code_challenge`.

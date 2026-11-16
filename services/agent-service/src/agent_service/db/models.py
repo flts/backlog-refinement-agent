@@ -6,7 +6,18 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, MetaData, Text, UniqueConstraint, func, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    MetaData,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -84,3 +95,13 @@ class Feedback(Base):
     rating: Mapped[str] = mapped_column(Text)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class HookCursor(Base):
+    """Last processed id of an event stream (the backlog-api internal stream), so restarts resume with Last-Event-ID."""
+
+    __tablename__ = "hook_cursor"
+
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    last_event_id: Mapped[int] = mapped_column(BigInteger)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

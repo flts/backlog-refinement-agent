@@ -23,6 +23,7 @@ from agent_service.auth.tokens import JwksKeySource, KeySource, TokenVerifier
 from agent_service.backlog import BacklogClient
 from agent_service.db.migrate import upgrade_database
 from agent_service.db.session import Database
+from agent_service.hooks import DisabledHookSubscriber, HookSubscriber, create_subscriber
 from agent_service.llm import LlmReadiness
 from agent_service.middleware import BodySizeLimitMiddleware, RequestContextMiddleware
 from agent_service.observability import configure_logging
@@ -64,9 +65,11 @@ def create_app(
     backlog_transport: httpx.AsyncBaseTransport | None = None,
     llm_transport: httpx.AsyncBaseTransport | None = None,
     configure_logs: bool = True,
+    hooks_transport: httpx.AsyncBaseTransport | None = None,
 ) -> FastAPI:
     """Build the app.
 
+    ``hooks_transport`` carries the event-hook traffic (Keycloak token endpoint and backlog-api event stream).
     ``key_source`` (JWKS), ``registry_factory`` (builds the agents from the settings and the snapshot store; default:
     the placeholder echo agent) and the HTTP transports of the backlog-api / LLM readiness clients can be injected
     (tests, the later agent loader).
@@ -84,6 +87,7 @@ def create_app(
         database = Database(database_url, pool_size=settings.db_pool_size, max_overflow=settings.db_max_overflow)
         authenticator: Authenticator | None = None
         backlog: BacklogClient | None = None
+        hooks: HookSubscriber | DisabledHookSubscriber | None = None
         try:
             if settings.should_auto_migrate:
                 logger.info("Applying database migrations")
@@ -101,9 +105,14 @@ def create_app(
             app.state.authenticator = authenticator
             app.state.backlog = backlog
             app.state.llm_readiness = LlmReadiness(settings, transport=llm_transport)
+            hooks = create_subscriber(settings, database.sessionmaker, transport=hooks_transport)
+            app.state.hooks = hooks
+            await hooks.start()
             logger.info("agent-service started", extra={"auth_mode": settings.auth_mode, "env": settings.env})
             yield
         finally:
+            if hooks is not None:
+                await hooks.stop()
             if backlog is not None:
                 await backlog.aclose()
             if authenticator is not None:
