@@ -15,6 +15,7 @@ from fastapi.routing import APIRoute
 
 from backlog_api import __version__
 from backlog_api.api import backup as backup_api
+from backlog_api.api import events as events_api
 from backlog_api.api import guidance, health, items, me, projects
 from backlog_api.api import search as search_api
 from backlog_api.api import sources as sources_api
@@ -24,7 +25,8 @@ from backlog_api.auth.tokens import JwksKeySource, KeySource, TokenVerifier
 from backlog_api.db.migrate import upgrade_database
 from backlog_api.db.session import Database
 from backlog_api.embeddings import EmbeddingClient
-from backlog_api.events import EventPublisher, InProcessEventPublisher
+from backlog_api.event_bus import PostgresEventPublisher
+from backlog_api.events import EventPublisher
 from backlog_api.indexing import configure_item_debounce
 from backlog_api.middleware import (
     BACKUP_IMPORT_PATH,
@@ -36,6 +38,7 @@ from backlog_api.middleware import (
 from backlog_api.observability import configure_logging
 from backlog_api.problems import PROBLEM_CONTENT_TYPE, Problem, install_problem_handlers
 from backlog_api.settings import API_PREFIX, Settings
+from backlog_api.stream_tickets import TicketSigner
 from backlog_api.worker import IndexingWorker
 
 logger = logging.getLogger(__name__)
@@ -62,6 +65,17 @@ def _build_authenticator(settings: Settings, key_source: KeySource | None) -> Au
     return JwtAuthenticator(verifier)
 
 
+def _build_ticket_signer(settings: Settings) -> TicketSigner | None:
+    secret = settings.events_ticket_secret
+    if secret is not None:
+        return TicketSigner(secret.get_secret_value(), ttl_seconds=settings.events_ticket_ttl_seconds)
+    if settings.env == "production":
+        logger.warning("BACKLOG_EVENTS_TICKET_SECRET is not set: event stream tickets are disabled")
+        return None
+    # Development/tests: a per-process secret (tickets would not work across replicas).
+    return TicketSigner(ttl_seconds=settings.events_ticket_ttl_seconds)
+
+
 def create_app(
     settings: Settings | None = None,
     *,
@@ -69,7 +83,8 @@ def create_app(
     event_publisher: EventPublisher | None = None,
     configure_logs: bool = True,
 ) -> FastAPI:
-    """Build the app. ``key_source`` and ``event_publisher`` can be injected (tests, later fan-out publishers)."""
+    """Build the app. ``key_source`` and ``event_publisher`` can be injected (tests). The default publisher is the
+    :class:`PostgresEventPublisher` (event log + LISTEN/NOTIFY), started and stopped with the app."""
     settings = settings or Settings()
     if configure_logs:
         configure_logging(settings.log_level)
@@ -81,6 +96,7 @@ def create_app(
         authenticator: Authenticator | None = None
         worker_stop: asyncio.Event | None = None
         worker_task: asyncio.Task[None] | None = None
+        event_bus = publisher if isinstance(publisher, PostgresEventPublisher) else None
         skills = load_skills(settings.skills_dir)
         skills.default_guidance()  # fail fast when a required skill, version or template is missing or invalid
         try:
@@ -92,6 +108,9 @@ def create_app(
             app.state.skills = skills
             app.state.authenticator = authenticator
             app.state.user_directory = UserDirectory(database.sessionmaker, settings.user_directory_refresh_seconds)
+            if event_bus is not None:
+                await event_bus.start(database)
+                app.state.event_bus = event_bus
             # --- indexing ---
             app.state.embedder = EmbeddingClient.from_settings(settings)
             configure_item_debounce(settings.item_index_debounce_seconds)
@@ -111,6 +130,8 @@ def create_app(
             embedder: EmbeddingClient | None = getattr(app.state, "embedder", None)
             if embedder is not None:
                 await embedder.aclose()
+            if event_bus is not None:
+                await event_bus.stop()
             if authenticator is not None:
                 await authenticator.aclose()
             await database.dispose()
@@ -129,7 +150,9 @@ def create_app(
         redoc_url=None,
     )
     app.state.settings = settings
-    app.state.events = event_publisher or InProcessEventPublisher()
+    publisher: EventPublisher = event_publisher or PostgresEventPublisher(settings)
+    app.state.events = publisher
+    app.state.ticket_signer = _build_ticket_signer(settings)
 
     install_problem_handlers(app)
     # Starlette runs the last added middleware first: request context wraps the body limit.
@@ -152,6 +175,8 @@ def create_app(
     app.include_router(items.router, prefix=API_PREFIX)
     app.include_router(search_api.router, prefix=API_PREFIX)
     app.include_router(backup_api.router, prefix=API_PREFIX)
+    app.include_router(events_api.router, prefix=API_PREFIX)
+    app.include_router(events_api.internal_router, prefix=API_PREFIX)
 
     def openapi() -> dict[str, Any]:
         if app.openapi_schema is None:

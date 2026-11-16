@@ -6,10 +6,10 @@ Values are read from the process environment and, for local development, from ``
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AliasChoices, Field, PrivateAttr, SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import AliasChoices, Field, PrivateAttr, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from sqlalchemy.engine import URL
 
 from backlog_api.db.connection_strings import to_async_database_url
@@ -150,8 +150,55 @@ class Settings(BaseSettings):
     )
     chunk_overlap_ratio: float = Field(default=0.15, ge=0, lt=0.5, description="Overlap between consecutive chunks.")
     item_embedding_max_chars: int = Field(default=12_000, ge=200, description="Document characters embedded per item.")
+    events_heartbeat_seconds: float = Field(
+        default=15.0, gt=0, description="Interval of the SSE keepalive comment (keeps proxies from closing the stream)."
+    )
+    events_retention_seconds: int = Field(
+        default=24 * 3600, ge=1, description="Age after which events leave the resume window (Last-Event-ID)."
+    )
+    events_max_per_project: int = Field(
+        default=5000, ge=10, description="Maximum events kept per project in the log (oldest are pruned)."
+    )
+    events_prune_interval_seconds: float = Field(default=300.0, gt=0, description="How often old events are pruned.")
+    events_replay_limit: int = Field(
+        default=1000, ge=1, description="Maximum events replayed on resume; a larger gap makes the client reset."
+    )
+    events_subscriber_queue_size: int = Field(
+        default=256, ge=1, description="Buffered events per stream; a slower client is dropped and reconnects."
+    )
+    events_recheck_seconds: float = Field(
+        default=60.0, gt=0, description="How often an open project stream re-checks that the user is still a member."
+    )
+    events_max_stream_seconds: float = Field(
+        default=900.0, gt=0, description="Maximum lifetime of one SSE connection; clients reconnect with Last-Event-ID."
+    )
+    events_ticket_secret: SecretStr | None = Field(
+        default=None,
+        repr=False,
+        description="HMAC secret for stream tickets; must be shared by all replicas. A random per-process secret is "
+        "used outside production when unset; in production tickets are disabled without it.",
+    )
+    events_ticket_ttl_seconds: int = Field(default=60, ge=1, le=600, description="Lifetime of a stream ticket.")
+    presence_ttl_seconds: float = Field(default=45.0, gt=0, description="A presence heartbeat expires after this long.")
+    presence_sweep_seconds: float = Field(default=5.0, gt=0, description="How often expired presence is swept.")
+    internal_client_ids: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description="Comma-separated Keycloak client ids (azp/client_id claim) allowed on /internal endpoints.",
+    )
+    internal_token: SecretStr | None = Field(
+        default=None,
+        repr=False,
+        description="Static shared secret for /internal endpoints (X-Internal-Token); not allowed in production.",
+    )
 
     _database_url: URL | None = PrivateAttr(default=None)
+
+    @field_validator("internal_client_ids", mode="before")
+    @classmethod
+    def _split_client_ids(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return [part.strip() for part in value.split(",") if part.strip()]
+        return value
 
     @model_validator(mode="after")
     def _check_auth_mode(self) -> Settings:
@@ -160,6 +207,8 @@ class Settings(BaseSettings):
                 "BACKLOG_AUTH_MODE=dev trusts the X-Dev-User-Email header and is only allowed when "
                 "BACKLOG_ENV=development."
             )
+        if self.internal_token is not None and self.env == "production":
+            raise ValueError("BACKLOG_INTERNAL_TOKEN is a development shortcut and not allowed in production.")
         return self
 
     @property

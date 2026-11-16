@@ -36,6 +36,16 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
 | `BACKLOG_REVISIONS_KEEP` | `50` | Item revisions kept per item |
 | `BACKLOG_BACKUP_MAX_BYTES` | `52428800` | Maximum size of a project backup: export answers 413 `backup-too-large`, the import body limit is 413 `payload-too-large` |
 | `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content) |
+| `BACKLOG_EVENTS_HEARTBEAT_SECONDS` | `15` | SSE keepalive comment interval |
+| `BACKLOG_EVENTS_RETENTION_SECONDS` / `BACKLOG_EVENTS_MAX_PER_PROJECT` | `86400` / `5000` | Resume window of the event log (age / events per project) |
+| `BACKLOG_EVENTS_REPLAY_LIMIT` | `1000` | A larger gap makes the client `reset` instead of replaying |
+| `BACKLOG_EVENTS_SUBSCRIBER_QUEUE_SIZE` | `256` | Per-stream buffer; slower clients are dropped and reconnect |
+| `BACKLOG_EVENTS_RECHECK_SECONDS` / `BACKLOG_EVENTS_MAX_STREAM_SECONDS` | `60` / `900` | Membership re-check interval / maximum lifetime of one stream |
+| `BACKLOG_EVENTS_TICKET_SECRET` | — | HMAC secret for stream tickets, shared by all replicas (production: tickets are disabled without it) |
+| `BACKLOG_EVENTS_TICKET_TTL_SECONDS` | `60` | Stream ticket lifetime |
+| `BACKLOG_PRESENCE_TTL_SECONDS` / `BACKLOG_PRESENCE_SWEEP_SECONDS` | `45` / `5` | Presence expiry / sweep interval |
+| `BACKLOG_INTERNAL_CLIENT_IDS` | — | Comma-separated Keycloak client ids (`azp`/`client_id`) allowed on `/api/backlog/internal/*` |
+| `BACKLOG_INTERNAL_TOKEN` | — | Static `X-Internal-Token` secret for `/internal/*` (refused in production) |
 
 ## Authentication and authorization
 
@@ -57,6 +67,30 @@ base64 original files; no members, conversations, audit log or search indexes). 
 `issues`, 422 `unsupported-format`) and a **new** project owned by the importer is created in one transaction
 (" (imported)" is appended when the importer already has a project of that name). Source and item indexing jobs are
 queued. The SPA's v1 export (`backlog-refinement-project`) is accepted and mapped (see `backlog_api/backup.py`).
+
+## Events, presence and the internal stream
+
+- Routes publish domain events after commit. `PostgresEventPublisher` stores each event in `project_events` (its id is
+  the SSE event id; pruned by age and per-project count) and sends `NOTIFY backlog_events`; each replica holds one
+  `LISTEN` connection and fans out to bounded per-stream queues (a slow client is dropped and resumes with
+  `Last-Event-ID`). Canonical types: `events.PROJECT_EVENT_TYPES` plus the transient `presence`, `reset`, `closed`.
+- `GET /api/backlog/projects/{id}/events` (members): `text/event-stream`, blocks of
+  `id: <n>` / `event: <type>` / `data: {id,type,projectId,actor,actorName?,data,at}`; `: keepalive` comments every 15 s;
+  `Cache-Control: no-cache`, `X-Accel-Buffering: no`. Resume with `Last-Event-ID` or `?lastEventId=`; when the id is
+  outside the retained window the server sends `event: reset` (refetch everything). A first `presence` event carries the
+  current list. The stream ends with `event: closed` (`reason`: `member-removed`, `project-deleted`, `not-a-member`
+  are final; `max-lifetime` means reconnect).
+- Auth: `Authorization: Bearer` (fetch-based SSE client), or for `EventSource` a 60 s HMAC ticket from
+  `POST /projects/{id}/events/ticket` → `{ticket, expiresAt}` used as `?ticket=` (bound to user and project; only
+  accepted by the stream; the ticket is verified only when the stream opens).
+- Presence: `POST /projects/{id}/presence {itemId?, state?: viewing|editing}` every ~20 s (TTL 45 s) returns the list;
+  `GET` reads it; `DELETE` leaves. Changes (join, item/state change, leave, expiry) emit
+  `presence {users:[{email,name,itemId,state}]}` on every replica (unlogged `presence` table + `NOTIFY`).
+- `GET /api/backlog/internal/events` (not in OpenAPI) streams `project.deleted`, `member.removed`, `item.deleted` of all
+  projects for agent-service, with the same `Last-Event-ID`/`reset` semantics. Auth: a client-credentials token whose
+  `azp`/`client_id` is in `BACKLOG_INTERNAL_CLIENT_IDS`, or in development the `X-Internal-Token` header.
+- Behind proxies disable buffering for these routes (Caddy `flush_interval -1`) and keep idle timeouts above the
+  heartbeat.
 
 ## Database migrations
 

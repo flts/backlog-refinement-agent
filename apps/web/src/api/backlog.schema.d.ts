@@ -520,6 +520,82 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{project_id}/events/ticket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Get a short-lived ticket for opening the event stream without an Authorization header */
+        post: operations["create_stream_ticket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live project events (server-sent events)
+         * @description Server-sent events: the project stream, stream tickets, presence and the internal stream for agent-service.
+         *
+         *     Wire format (``text/event-stream``), one block per event::
+         *
+         *         id: 42
+         *         event: item.updated
+         *         data: {"id":42,"type":"item.updated","projectId":"…","actor":"alice@example.test","actorName":"Alice",
+         *                "data":{…},"at":"…"}
+         *
+         *     * ``id`` is the ``project_events`` id (resume with ``Last-Event-ID`` or ``?lastEventId=``). Transient events
+         *       (``presence``, ``reset``, ``closed``) have no ``id`` unless noted.
+         *     * A comment line (``: keepalive``) is sent every ``BACKLOG_EVENTS_HEARTBEAT_SECONDS``; the response is never buffered.
+         *     * ``reset``: the requested id is outside the resume window; the client must refetch everything. Its ``id`` is the
+         *       current end of the log so a later reconnect resumes from there.
+         *     * ``closed`` (``data.data.reason``): the server ends the stream. ``member-removed``, ``project-deleted`` and
+         *       ``not-a-member`` are final (do not reconnect); ``max-lifetime`` is routine (reconnect with ``Last-Event-ID``).
+         *
+         *     Authentication of the project stream: ``Authorization: Bearer <access token>`` (fetch-based clients) or ``?ticket=``,
+         *     a 60 s HMAC ticket from ``POST /projects/{id}/events/ticket`` for browsers' ``EventSource``, which cannot set headers.
+         *     Tickets are bound to one user and one project and are only accepted here. A ticket is only checked when the stream is
+         *     opened: after a connection drop, request a new ticket and pass ``lastEventId`` explicitly.
+         */
+        get: operations["stream_project_events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{project_id}/presence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who is currently active in the project */
+        get: operations["get_presence"];
+        put?: never;
+        /** Presence heartbeat (send every ~20 s; entries expire after 45 s) */
+        post: operations["put_presence"];
+        /** Leave: remove the caller's presence */
+        delete: operations["delete_presence"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -972,6 +1048,35 @@ export interface components {
              */
             limit: number;
         };
+        /** PresenceHeartbeat */
+        PresenceHeartbeat: {
+            /**
+             * Itemid
+             * @description The item being looked at, or null for the project.
+             */
+            itemId?: string | null;
+            /**
+             * State
+             * @default viewing
+             */
+            state: string;
+        };
+        /** PresenceList */
+        PresenceList: {
+            /** Users */
+            users: components["schemas"]["PresenceUserOut"][];
+        };
+        /** PresenceUserOut */
+        PresenceUserOut: {
+            /** Email */
+            email: string;
+            /** Name */
+            name?: string | null;
+            /** Itemid */
+            itemId?: string | null;
+            /** State */
+            state: string;
+        };
         /** ProjectCreate */
         ProjectCreate: {
             /**
@@ -1403,6 +1508,20 @@ export interface components {
             name?: string | null;
             /** Mode */
             mode?: ("pinned" | "searchable" | "excluded") | null;
+        };
+        /** StreamTicketOut */
+        StreamTicketOut: {
+            /**
+             * Ticket
+             * @description Pass as `?ticket=` to the event stream of the same project.
+             */
+            ticket: string;
+            /**
+             * Expiresat
+             * Format: date-time
+             * @description The ticket is only accepted until this time (about 60 seconds).
+             */
+            expiresAt: string;
         };
         /**
          * Problem
@@ -4424,6 +4543,302 @@ export interface operations {
                 };
             };
             /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    create_stream_ticket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id. */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamTicketOut"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    stream_project_events: {
+        parameters: {
+            query?: {
+                /** @description Stream ticket (alternative to the Authorization header). */
+                ticket?: string | null;
+                /** @description Same as Last-Event-ID, for clients that cannot set headers. */
+                lastEventId?: string | null;
+            };
+            header?: {
+                /** @description Resume after this event id (EventSource sets it). */
+                "Last-Event-ID"?: string | null;
+            };
+            path: {
+                /** @description Project id. */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A `text/event-stream`; see the module documentation for the wire format. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Service Unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    get_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id. */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    put_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id. */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PresenceHeartbeat"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PresenceList"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    delete_presence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project id. */
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation Error */
             422: {
                 headers: {
                     [name: string]: unknown;

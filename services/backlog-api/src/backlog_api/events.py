@@ -1,8 +1,10 @@
 """Domain events emitted after state changes (for the project SSE stream and internal hooks).
 
-Routes publish events *after* the transaction commits via the :data:`EventPublisherDep` dependency. The default
-:class:`InProcessEventPublisher` fans events out to in-process subscribers; the ``api-events`` work replaces or wraps it
-with a ``LISTEN/NOTIFY`` publisher for cross-replica fan-out without changing callers.
+Routes publish events *after* the transaction commits via the :data:`EventPublisherDep` dependency. The app uses
+:class:`backlog_api.event_bus.PostgresEventPublisher` (event log table + ``LISTEN/NOTIFY``, so every replica can serve
+the SSE streams); :class:`InProcessEventPublisher` is the lightweight stand-in that tests can inject.
+
+The canonical event types are listed below (:data:`PROJECT_EVENT_TYPES`, :data:`INTERNAL_EVENT_TYPES`).
 """
 
 from __future__ import annotations
@@ -25,6 +27,45 @@ MEMBER_ADDED = "member.added"
 MEMBER_UPDATED = "member.updated"
 MEMBER_REMOVED = "member.removed"
 GUIDANCE_UPDATED = "guidance.updated"
+ITEM_CREATED = "item.created"
+ITEM_UPDATED = "item.updated"
+ITEM_DELETED = "item.deleted"
+RELATIONSHIP_CREATED = "relationship.created"
+RELATIONSHIP_DELETED = "relationship.deleted"
+SOURCE_CREATED = "source.created"
+SOURCE_UPDATED = "source.updated"
+SOURCE_DELETED = "source.deleted"
+
+# Transient stream events: never stored in the event log and without an SSE id.
+PRESENCE = "presence"
+RESET = "reset"
+CLOSED = "closed"
+
+# Everything routes publish (stored in ``project_events``, delivered on the project stream with an SSE id).
+PROJECT_EVENT_TYPES: tuple[str, ...] = (
+    PROJECT_CREATED,
+    PROJECT_UPDATED,
+    PROJECT_DELETED,
+    MEMBER_ADDED,
+    MEMBER_UPDATED,
+    MEMBER_REMOVED,
+    GUIDANCE_UPDATED,
+    ITEM_CREATED,
+    ITEM_UPDATED,
+    ITEM_DELETED,
+    RELATIONSHIP_CREATED,
+    RELATIONSHIP_DELETED,
+    SOURCE_CREATED,
+    SOURCE_UPDATED,
+    SOURCE_DELETED,
+)
+# The cross-project stream for agent-service (thread cleanup).
+INTERNAL_EVENT_TYPES: frozenset[str] = frozenset({PROJECT_DELETED, MEMBER_REMOVED, ITEM_DELETED})
+# Types a project stream can carry: stored events plus the transient ones.
+STREAM_EVENT_TYPES: tuple[str, ...] = (*PROJECT_EVENT_TYPES, PRESENCE, RESET, CLOSED)
+
+EVENTS_CHANNEL = "backlog_events"
+PRESENCE_CHANNEL = "backlog_presence"
 
 # --- indexing ---
 SOURCE_INDEXED = "source.indexed"

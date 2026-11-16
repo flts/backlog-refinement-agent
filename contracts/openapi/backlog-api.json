@@ -4128,6 +4128,450 @@
           }
         ]
       }
+    },
+    "/api/backlog/projects/{project_id}/events/ticket": {
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Get a short-lived ticket for opening the event stream without an Authorization header",
+        "operationId": "create_stream_ticket",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamTicketOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/events": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Live project events (server-sent events)",
+        "description": "Server-sent events: the project stream, stream tickets, presence and the internal stream for agent-service.\n\nWire format (``text/event-stream``), one block per event::\n\n    id: 42\n    event: item.updated\n    data: {\"id\":42,\"type\":\"item.updated\",\"projectId\":\"…\",\"actor\":\"alice@example.test\",\"actorName\":\"Alice\",\n           \"data\":{…},\"at\":\"…\"}\n\n* ``id`` is the ``project_events`` id (resume with ``Last-Event-ID`` or ``?lastEventId=``). Transient events\n  (``presence``, ``reset``, ``closed``) have no ``id`` unless noted.\n* A comment line (``: keepalive``) is sent every ``BACKLOG_EVENTS_HEARTBEAT_SECONDS``; the response is never buffered.\n* ``reset``: the requested id is outside the resume window; the client must refetch everything. Its ``id`` is the\n  current end of the log so a later reconnect resumes from there.\n* ``closed`` (``data.data.reason``): the server ends the stream. ``member-removed``, ``project-deleted`` and\n  ``not-a-member`` are final (do not reconnect); ``max-lifetime`` is routine (reconnect with ``Last-Event-ID``).\n\nAuthentication of the project stream: ``Authorization: Bearer <access token>`` (fetch-based clients) or ``?ticket=``,\na 60 s HMAC ticket from ``POST /projects/{id}/events/ticket`` for browsers' ``EventSource``, which cannot set headers.\nTickets are bound to one user and one project and are only accepted here. A ticket is only checked when the stream is\nopened: after a connection drop, request a new ticket and pass ``lastEventId`` explicitly.",
+        "operationId": "stream_project_events",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          },
+          {
+            "name": "ticket",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Stream ticket (alternative to the Authorization header).",
+              "title": "Ticket"
+            },
+            "description": "Stream ticket (alternative to the Authorization header)."
+          },
+          {
+            "name": "lastEventId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Same as Last-Event-ID, for clients that cannot set headers.",
+              "title": "Lasteventid"
+            },
+            "description": "Same as Last-Event-ID, for clients that cannot set headers."
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Resume after this event id (EventSource sets it).",
+              "title": "Last-Event-Id"
+            },
+            "description": "Resume after this event id (EventSource sets it)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A `text/event-stream`; see the module documentation for the wire format.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/backlog/projects/{project_id}/presence": {
+      "get": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Who is currently active in the project",
+        "operationId": "get_presence",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Presence heartbeat (send every ~20 s; entries expire after 45 s)",
+        "operationId": "put_presence",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenceHeartbeat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresenceList"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "events"
+        ],
+        "summary": "Leave: remove the caller's presence",
+        "operationId": "delete_presence",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "project_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Project id.",
+              "title": "Project Id"
+            },
+            "description": "Project id."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5147,6 +5591,89 @@
           "limit"
         ],
         "title": "PinnedBudgetOut"
+      },
+      "PresenceHeartbeat": {
+        "properties": {
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid",
+            "description": "The item being looked at, or null for the project."
+          },
+          "state": {
+            "type": "string",
+            "pattern": "^(viewing|editing)$",
+            "title": "State",
+            "default": "viewing"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PresenceHeartbeat"
+      },
+      "PresenceList": {
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/PresenceUserOut"
+            },
+            "type": "array",
+            "title": "Users"
+          }
+        },
+        "type": "object",
+        "required": [
+          "users"
+        ],
+        "title": "PresenceList"
+      },
+      "PresenceUserOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "state": {
+            "type": "string",
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "state"
+        ],
+        "title": "PresenceUserOut"
       },
       "ProjectCreate": {
         "properties": {
@@ -6216,6 +6743,27 @@
         "additionalProperties": false,
         "type": "object",
         "title": "SourceUpdate"
+      },
+      "StreamTicketOut": {
+        "properties": {
+          "ticket": {
+            "type": "string",
+            "title": "Ticket",
+            "description": "Pass as `?ticket=` to the event stream of the same project."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expiresat",
+            "description": "The ticket is only accepted until this time (about 60 seconds)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket",
+          "expiresAt"
+        ],
+        "title": "StreamTicketOut"
       },
       "Problem": {
         "additionalProperties": true,
