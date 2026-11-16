@@ -1,7 +1,5 @@
-import { databaseName } from './storage/database';
-
 /** Browser data of the former local-only app (IndexedDB database and localStorage keys). */
-export const legacyDatabaseNames = [databaseName] as const;
+export const legacyDatabaseNames = ['backlog-refinement-agent'] as const;
 export const legacyStorageKeys = ['llm-connection-overrides', 'review-ai-changes'] as const;
 export const legacyNoticeDismissedKey = 'legacy-data-notice-dismissed';
 
@@ -11,7 +9,7 @@ export interface LegacyDataDeps {
 }
 
 /** True when an old local database exists. Browsers without `indexedDB.databases()` report false. */
-export async function legacyDataExists({ idb = indexedDB }: LegacyDataDeps = {}): Promise<boolean> {
+export async function legacyDataExists({ idb = globalThis.indexedDB }: LegacyDataDeps = {}): Promise<boolean> {
   if (typeof idb?.databases !== 'function') return false;
   try {
     const databases = await idb.databases();
@@ -39,7 +37,7 @@ function deleteDatabase(idb: Pick<IDBFactory, 'deleteDatabase'>, name: string): 
 }
 
 /** Deletes the old local database(s) and legacy keys. Nothing is migrated. */
-export async function removeLegacyData({ idb = indexedDB, storage = localStorage }: LegacyDataDeps = {}): Promise<void> {
-  for (const name of legacyDatabaseNames) await deleteDatabase(idb, name);
+export async function removeLegacyData({ idb = globalThis.indexedDB, storage = localStorage }: LegacyDataDeps = {}): Promise<void> {
+  if (idb) for (const name of legacyDatabaseNames) await deleteDatabase(idb, name);
   for (const key of legacyStorageKeys) storage.removeItem(key);
 }

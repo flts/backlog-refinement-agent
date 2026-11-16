@@ -1,13 +1,13 @@
 import React from 'react';
-import type { BacklogItem, BacklogItemType } from '../domain/backlog-item';
-import type { BacklogRelationship } from '../domain/relationship';
+import type { Item, ItemStatus, ItemSummary, ItemType } from '../api';
+import { QualityAssessmentSchema, type QualityAssessment } from '../domain/backlog-item';
 import type { RefinementSession } from '../domain/refinement-session';
-import { diffDocuments, parseChecklistSections } from '../domain/document';
+import { parseChecklistSections } from '../domain/document';
 import { canTransitionItemStatus } from '../domain/services';
 import { ItemMenu, type MenuAction } from './ItemMenu';
 import { itemTypeLabel, statusText, typeShort } from './labels';
 
-export function qualityDiagnostics(quality: NonNullable<BacklogItem['quality']>): string[] {
+export function qualityDiagnostics(quality: QualityAssessment): string[] {
   return [
     quality.excessiveTechnicalDetail && 'Contains excessive technical detail',
     quality.speculativeScope && 'Contains speculative scope',
@@ -19,35 +19,43 @@ export function qualityDiagnostics(quality: NonNullable<BacklogItem['quality']>)
   ].filter((entry): entry is string => Boolean(entry));
 }
 
-function childTypeOptions(type: BacklogItemType): BacklogItemType[] {
+function childTypeOptions(type: ItemType): ItemType[] {
   if (type === 'capability') return ['feature', 'enabler'];
   if (type === 'feature') return ['user-story', 'enabler'];
   return [];
 }
 
+/** The server stores assessments as JSON; absent optional fields may be `null`. */
+function stripNulls(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripNulls);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== null).map(([key, entry]) => [key, stripNulls(entry)]));
+  return value;
+}
+
 export type PreviewPanelProps = {
   className: string;
-  item?: BacklogItem;
-  items: BacklogItem[];
-  relationships: BacklogRelationship[];
-  parentItem?: BacklogItem;
+  item?: Item;
+  parentItem?: ItemSummary;
+  /** Number of server revisions of the item, newest (the current content) included. */
+  revisionCount?: number;
   session?: RefinementSession;
   busy: boolean;
   menuActions: MenuAction[];
   onSelectItem: (id: string) => void;
-  onCopy: () => void;
-  onUpdate: (changes: Partial<BacklogItem>) => void;
+  onUpdate: (changes: { title?: string; document?: string }) => void;
   onResolveChecklist: (line: number, action: 'check' | 'remove', message: string) => void;
   onUndo: () => void;
-  onChangeStatus: (status: BacklogItem['status']) => void;
+  onChangeStatus: (status: ItemStatus) => void;
   onAssessQuality: () => void;
-  onProposeChildren: (type: BacklogItemType) => void;
+  onProposeChildren: (type: ItemType) => void;
 };
 
-export function PreviewPanel({ className, item, items, relationships, parentItem, session, busy, menuActions, onSelectItem, onCopy, onUpdate, onResolveChecklist, onUndo, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
-  const checklist = React.useMemo(() => item ? parseChecklistSections(item.description) : [], [item]);
-  const lastRevision = item?.revisions[item.revisions.length - 1];
-  const lastChange = item && lastRevision ? diffDocuments(lastRevision.description, item.description) : undefined;
+export function PreviewPanel({ className, item, parentItem, revisionCount = 0, session, busy, menuActions, onSelectItem, onUpdate, onResolveChecklist, onUndo, onChangeStatus, onAssessQuality, onProposeChildren }: PreviewPanelProps) {
+  const checklist = React.useMemo(() => item ? parseChecklistSections(item.document) : [], [item?.document]);
+  const quality = React.useMemo(() => {
+    const parsed = QualityAssessmentSchema.safeParse(stripNulls(item?.quality?.assessment));
+    return parsed.success ? parsed.data : undefined;
+  }, [item?.quality]);
   return (
     <aside className={className}>
       {item ? <>
@@ -60,12 +68,12 @@ export function PreviewPanel({ className, item, items, relationships, parentItem
               <label className="field-label" htmlFor="item-title">Title</label><input id="item-title" className="preview-title-input" value={item.title} onChange={(event) => onUpdate({ title: event.target.value })} />
             </div>
             <div className="preview-scroll">
-              <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.description} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ description: event.target.value })} rows={14} />
+              <label className="field-label" htmlFor="item-description">Document (Markdown)</label><textarea id="item-description" className="preview-description" value={item.document} placeholder="What is this item about? Add a starting point or refine it with the agent." onChange={(event) => onUpdate({ document: event.target.value })} rows={14} />
               {checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Assumptions to confirm</h3><span className="count-badge amber">{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'assumption' && !entry.checked).map((entry) => <div className="uncertainty-card assumption-card" key={entry.line}><span aria-hidden="true">◇</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Confirm assumption" title="Confirm" onClick={() => onResolveChecklist(entry.line, 'check', 'Assumption confirmed.')}><span aria-hidden="true">✓</span></button><button className="uncertainty-action reject" aria-label="Reject assumption" title="Reject" onClick={() => onResolveChecklist(entry.line, 'remove', 'Assumption rejected.')}><span aria-hidden="true">×</span></button></div>)}</section>}
               {checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>Open questions</h3><span className="count-badge blue">{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).length}</span></div>{checklist.filter((entry) => entry.kind === 'question' && !entry.checked).map((entry) => <div className="uncertainty-card question-card" key={entry.line}><span aria-hidden="true">?</span><p>{entry.text}</p><button className="uncertainty-action" aria-label="Mark question resolved" title="Resolve" onClick={() => onResolveChecklist(entry.line, 'check', 'Question marked resolved.')}><span aria-hidden="true">✓</span></button></div>)}</section>}
-              {item.revisions.length > 0 && <section className="preview-section"><div className="preview-section-head"><h3>AI changes</h3><span className="subtle-label">{item.revisions.length} saved</span></div>{lastChange && <ul className="quality-list">{lastChange.removed.slice(0, 5).map((line) => <li key={`r-${line}`} className="quality-missing"><span>− {line}</span></li>)}{lastChange.added.slice(0, 5).map((line) => <li key={`a-${line}`} className="quality-clear"><span>+ {line}</span></li>)}</ul>}<button className="button button-secondary button-small" onClick={() => onUndo()}>Undo last AI change</button></section>}
-              {/* <section className="preview-section"><div className="preview-section-head"><h3>Structure</h3><span className="subtle-label">{relationships.filter((relationship) => relationship.sourceId === item.id || relationship.targetId === item.id).length} links</span></div>{parentItem ? <button className="related-item" onClick={() => void onSelectItem(parentItem.id)}><span className="type-icon tiny">{typeShort[parentItem.type]}</span>{parentItem.title}<span>↗</span></button> : <p className="muted-copy">No parent item linked.</p>}{items.filter((item) => relationships.some((relationship) => relationship.type === 'parent-child' && relationship.sourceId === item.id && relationship.targetId === item.id)).map((item) => <button className="related-item" key={item.id} onClick={() => void onSelectItem(item.id)}><span className="type-icon tiny">{typeShort[item.type]}</span>{item.title}<span>↗</span></button>)}</section> */}
-              {item.quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {item.quality.overall === 'ready' ? 'Ready' : item.quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{item.quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(item.quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(item.quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
+              {revisionCount > 1 && <section className="preview-section"><div className="preview-section-head"><h3>Version history</h3><span className="subtle-label">{revisionCount} saved</span></div><button className="button button-secondary button-small" disabled={busy} onClick={() => onUndo()}>Restore previous version</button></section>}
+              
+              {quality && <section className="preview-section quality-section" aria-label="Quality assessment"><div className="preview-section-head"><h3>Quality assessment</h3><span className="status-indicator"><i /> {item.quality?.stale ? 'Outdated · ' : ''}{quality.overall === 'ready' ? 'Ready' : quality.overall === 'ready-with-open-questions' ? 'Ready with open questions' : 'Needs clarification'}</span></div><ul className="quality-list">{quality.areas.map((entry) => <li key={entry.area} className={`quality-${entry.level}`}><strong>{entry.area.replaceAll('-', ' ')}</strong><span className="quality-level">{entry.level.replaceAll('-', ' ')}</span>{entry.note && <small>{entry.note}</small>}</li>)}</ul>{qualityDiagnostics(quality).length > 0 && <ul className="quality-list quality-diagnostics">{qualityDiagnostics(quality).map((text) => <li key={text} className="quality-unclear"><span>{text}</span></li>)}</ul>}</section>}
             </div>
             <div className="bottom-area">
               <section className="preview-section quality-section status-section">

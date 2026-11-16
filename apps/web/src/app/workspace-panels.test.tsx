@@ -7,22 +7,26 @@ import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { ChatPanel, type ChatPanelProps } from './ChatPanel';
 import { ProjectPanel } from './ProjectPanel';
-import type { BacklogItem } from '../domain/backlog-item';
+import type { Item, Project, Source } from '../api';
 import type { RefinementSession } from '../domain/refinement-session';
 
-const item = {
-  id: 'i1', projectId: 'project-1', type: 'feature', title: 'Export', status: 'draft', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-  description: '## Assumptions\n- [ ] Users are logged in\n\n## Open questions\n- [ ] Which format?', revisions: [],
-} as unknown as BacklogItem;
+const item: Item = {
+  id: 'i1', projectId: 'project-1', parentId: null, type: 'feature', title: 'Export', status: 'draft', version: 1, documentHash: 'h', quality: null,
+  createdBy: 'alice@example.test', updatedBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+  document: '## Assumptions\n- [ ] Users are logged in\n\n## Open questions\n- [ ] Which format?',
+};
+const project: Project = { id: 'p', name: 'Project', version: 1, role: 'owner', createdBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
+const source: Source = {
+  id: 's1', projectId: 'p', name: 'Spec', kind: 'url', mode: 'searchable', url: 'https://example.com/spec', charCount: 1200, pageCount: null, mediaType: null, hasFile: false,
+  indexStatus: 'indexed', indexError: null, version: 1, addedBy: 'alice@example.test', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+};
+const noop = { onSelect: vi.fn(), onCreate: vi.fn(), onRename: vi.fn(), onDelete: vi.fn(), onAddFile: vi.fn(), onAddUrl: vi.fn(), onChangeMode: vi.fn(), onRemove: vi.fn(), onExport: vi.fn(), onImport: vi.fn() };
 
 describe('ProjectPanel', () => {
   it('opens the styled file picker and passes the selected file to its handler', async () => {
     const user = userEvent.setup();
     const onAddFile = vi.fn();
-    const project = { id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z' };
-    const { container } = render(<ProjectPanel projects={[project]} project={project} sources={[]} busy={false}
-      onSelect={vi.fn()} onCreate={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onAddFile={onAddFile} onAddUrl={vi.fn()}
-      onEditText={vi.fn()} onFetch={vi.fn()} onToggle={vi.fn()} onRemove={vi.fn()} onExport={vi.fn()} onImport={vi.fn()} />);
+    const { container } = render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[]} busy={false} onAddFile={onAddFile} />);
     await user.click(screen.getByText('Project sources (0)'));
     const input = container.querySelector<HTMLInputElement>('input[accept^=".pdf"]')!;
     const click = vi.spyOn(input, 'click');
@@ -32,6 +36,23 @@ describe('ProjectPanel', () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(onAddFile).toHaveBeenCalledWith(file);
   });
+
+  it('changes the mode of a source and shows its index status', async () => {
+    const user = userEvent.setup();
+    const onChangeMode = vi.fn();
+    render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[source]} pinnedBudget={{ used: 0, limit: 100000 }} busy={false} onChangeMode={onChangeMode} />);
+    await user.click(screen.getByText('Project sources (1)'));
+    expect(screen.getByText('Indexed')).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Mode of Spec'), 'pinned');
+    expect(onChangeMode).toHaveBeenCalledWith(source, 'pinned');
+  });
+
+  it('offers rename, delete and export to owners only', () => {
+    const { rerender } = render(<ProjectPanel {...noop} projects={[project]} project={project} sources={[]} busy={false} />);
+    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.getByRole('button', { name })).toBeInTheDocument();
+    rerender(<ProjectPanel {...noop} projects={[{ ...project, role: 'contributor' }]} project={{ ...project, role: 'contributor' }} sources={[]} busy={false} />);
+    for (const name of ['Rename project', 'Delete project', 'Export project']) expect(screen.queryByRole('button', { name })).toBeNull();
+  });
 });
 
 describe('PreviewPanel', () => {
@@ -40,8 +61,8 @@ describe('PreviewPanel', () => {
     const onResolveChecklist = vi.fn();
     const onAssessQuality = vi.fn();
     const onProposeChildren = vi.fn();
-    render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist} onUndo={vi.fn()}
+    render(<PreviewPanel className="preview" item={item} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={onResolveChecklist} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={onAssessQuality} onProposeChildren={onProposeChildren} />);
     expect(screen.getByText('Users are logged in')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Confirm assumption' }));
@@ -53,7 +74,7 @@ describe('PreviewPanel', () => {
   });
 
   it('shows an empty state without an item', () => {
-    render(<PreviewPanel className="preview" items={[]} relationships={[]} busy={false} menuActions={[]} onSelectItem={vi.fn()} onCopy={vi.fn()}
+    render(<PreviewPanel className="preview" busy={false} menuActions={[]} onSelectItem={vi.fn()}
       onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()} onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByText('Your item preview')).toBeInTheDocument();
   });
@@ -68,8 +89,8 @@ describe('PreviewPanel', () => {
     const user = userEvent.setup();
     const onChangeStatus = vi.fn();
     const selected = { ...item, status };
-    render(<PreviewPanel className="preview" item={selected} items={[selected]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={onChangeStatus} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const [label, next] of actions) {
       await user.click(screen.getByRole('button', { name: label }));
@@ -79,8 +100,8 @@ describe('PreviewPanel', () => {
   });
 
   it('disables marking a draft ready until its session is available', () => {
-    render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+    render(<PreviewPanel className="preview" item={item} busy={false} menuActions={[]}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Mark ready' })).toBeDisabled();
   });
@@ -93,8 +114,8 @@ describe('PreviewPanel', () => {
     ['complete', ['Reopen item']],
   ] as const)('disables %s status actions during a request', (status, labels) => {
     const selected = { ...item, status };
-    render(<PreviewPanel className="preview" item={selected} items={[selected]} relationships={[]} session={{ id: 's' } as RefinementSession} busy menuActions={[]}
-      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+    render(<PreviewPanel className="preview" item={selected} session={{ id: 's' } as RefinementSession} busy menuActions={[]}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     for (const label of labels) expect(screen.getByRole('button', { name: label })).toBeDisabled();
   });
@@ -161,8 +182,8 @@ describe('accessibility', () => {
   });
 
   it('PreviewPanel has no axe violations', async () => {
-    const { container } = render(<PreviewPanel className="preview" item={item} items={[item]} relationships={[]} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
-      onSelectItem={vi.fn()} onCopy={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
+    const { container } = render(<PreviewPanel className="preview" item={item} session={{ id: 's' } as RefinementSession} busy={false} menuActions={[]}
+      onSelectItem={vi.fn()} onUpdate={vi.fn()} onResolveChecklist={vi.fn()} onUndo={vi.fn()}
       onChangeStatus={vi.fn()} onAssessQuality={vi.fn()} onProposeChildren={vi.fn()} />);
     await expectNoAxeViolations(container);
   });

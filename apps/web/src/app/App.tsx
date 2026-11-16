@@ -1,18 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "react-icons/md";
-import type { BacklogItemType } from '../domain/backlog-item';
+import type { ItemType, Project } from '../api';
+import { useAuth } from '../auth';
 import { ChatPanel } from './ChatPanel';
+import { NewItemModal } from './NewItemModal';
 import { PreviewPanel } from './PreviewPanel';
 import { SettingsModal } from './SettingsModal';
 import { SidebarPanel } from './SidebarPanel';
-import { NewItemModal } from './NewItemModal';
-import { downloadFile, markdownFilename, markdownFor } from './config-io';
-import { makeWorkspace } from './services';
-import type { Project } from '../domain/project';
-import { useAuth } from '../auth';
-import { useSettings } from './useSettings';
-import { errorText, useNotifications } from './useNotifications';
+import { Toast } from './Toast';
+import { downloadFile, markdownFilename, markdownFor } from './files';
 import { useBacklog } from './useBacklog';
+import { errorText, useNotifications } from './useNotifications';
 import { useRefinementFlow } from './useRefinementFlow';
 
 function initials(name: string): string {
@@ -23,13 +21,11 @@ function initials(name: string): string {
 export default function App({ project, projectBusy, renderProjectPanel }: { project: Project; projectBusy: boolean; renderProjectPanel: (busy: boolean) => ReactNode }) {
   const auth = useAuth();
   const notifications = useNotifications();
-  const { error, notice, setError, setNotice, clear } = notifications;
-  const workspace = useMemo(() => makeWorkspace(project.id), [project.id]);
-  const backlog = useBacklog(notifications, workspace);
+  const { setError, setNotice } = notifications;
+  const backlog = useBacklog(notifications, project.id);
   const { selectedItem } = backlog;
-  const config = useSettings(notifications);
-  const { settings } = config;
-  const [newItem, setNewItem] = useState<{ type: BacklogItemType; title: string; parentId?: string }>();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newItem, setNewItem] = useState<{ type: ItemType; title: string; parentId?: string }>();
   const [mobilePanel, setMobilePanel] = useState<'tree' | 'refine' | 'preview'>('refine');
 
   const flow = useRefinementFlow(backlog, notifications);
@@ -46,13 +42,13 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
     if (await backlog.createItem(newItem.type, newItem.title, newItem.parentId)) setNewItem(undefined);
   }
 
-  async function switchSession(id: string) {
-    if (await backlog.switchSession(id)) flow.reset();
+  function switchSession(id: string) {
+    if (backlog.switchSession(id)) flow.reset();
   }
 
-  async function deleteSession() {
+  function deleteSession() {
     if (flow.busy) return;
-    if (await backlog.deleteCurrentSession()) flow.reset();
+    if (backlog.deleteCurrentSession()) flow.reset();
   }
 
   async function deleteSelected() {
@@ -75,7 +71,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
     document.title = selectedItem ? `${selectedItem.title || 'Untitled item'} – ${project.name} – Backlog Studio` : `${project.name} – Backlog Studio`;
   }, [selectedItem, project.name]);
 
-  if (backlog.loading || !config.loaded) return <main className="loading-screen" aria-busy="true"><span className="brand-mark" aria-hidden="true">b.</span><p role="status">Opening your local backlog…</p></main>;
+  if (backlog.loading) return <main className="loading-screen" aria-busy="true"><span className="brand-mark" aria-hidden="true">b.</span><p role="status">Opening your backlog…</p></main>;
 
   return (
     <div className="app-shell">
@@ -84,7 +80,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
       <header className="topbar">
         <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
         <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
-        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
+        <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> {backlog.saving ? 'Saving…' : 'Saved'}</span><button className="icon-button" aria-label="Open settings" onClick={() => setSettingsOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" role="img" aria-label={`Signed in as ${auth.user.name}`} title={auth.user.email}>{initials(auth.user.name)}</span></div>
       </header>
 
       {renderProjectPanel(flow.busy)}
@@ -98,7 +94,7 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
       <main id="main" tabIndex={-1} className="workspace-grid" inert={projectBusy}>
         <SidebarPanel
           className={`sidebar panel-${mobilePanel}`}
-          items={backlog.items} relationships={backlog.relationships} selectedId={backlog.selectedId}
+          items={backlog.items} selectedId={backlog.selectedId}
           onSelect={selectItem}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
         />
@@ -108,8 +104,8 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
           item={selectedItem} parentItem={backlog.parentItem} session={backlog.session} sessions={backlog.sessions} busy={flow.busy}
           canRetry={flow.retryState?.sessionId === backlog.session?.id} message={flow.message} reviewChanges={flow.reviewChanges}
           pending={flow.pending} proposal={flow.proposal} selectedProposals={flow.selectedProposals}
-          onSelectItem={selectItem} onNewSession={() => { flow.reset(); void backlog.startNewSession(); }} onSwitchSession={(id) => void switchSession(id)}
-          onDeleteSession={() => void deleteSession()}
+          onSelectItem={selectItem} onNewSession={() => { flow.reset(); backlog.startNewSession(); }} onSwitchSession={switchSession}
+          onDeleteSession={deleteSession}
           onMessageChange={flow.setMessage} onSubmit={() => void flow.submitMessage()} onContinue={() => void flow.submitMessage(true)}
           onCancel={flow.cancelRequest} onRetry={() => void flow.retryAssessment()} onToggleReview={flow.toggleReview}
           onApplyPending={() => void flow.applyPending()} onDiscardPending={() => void flow.discardPending()}
@@ -120,25 +116,25 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
 
         <PreviewPanel
           className={`preview-column panel-${mobilePanel}`}
-          item={selectedItem} items={backlog.items} relationships={backlog.relationships} parentItem={backlog.parentItem} session={backlog.session} busy={flow.busy}
+          item={selectedItem} parentItem={backlog.parentItem} revisionCount={backlog.revisions.length} session={backlog.session} busy={flow.busy}
           menuActions={[
             { id: 'copy', label: <><MdContentCopy aria-hidden /> Copy Markdown</>, onSelect: () => void copyMarkdown() },
             { id: 'duplicate', label: <><MdControlPointDuplicate aria-hidden /> Duplicate item</>, onSelect: () => void backlog.duplicateSelected() },
             { id: 'download', label: <><MdDownload aria-hidden /> Download .md</>, onSelect: downloadMarkdown },
             { id: 'delete', label: <><MdDelete aria-hidden /> Delete item</>, danger: true, onSelect: () => void deleteSelected() },
           ]}
-          onSelectItem={selectItem} onCopy={() => void copyMarkdown()} onUpdate={(changes) => void backlog.updateSelected(changes)}
-          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={() => void flow.undoLastChange()}
+          onSelectItem={selectItem} onUpdate={backlog.editSelected}
+          onResolveChecklist={(line, action, text) => void backlog.resolveChecklist(line, action, text)} onUndo={flow.undoLastChange}
           onChangeStatus={(status) => void flow.changeSelectedStatus(status)} onAssessQuality={() => void flow.assessQuality()}
           onProposeChildren={(type) => void flow.proposeChildren(type)}
         />
       </main>
 
-      {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><span aria-hidden="true">{error ? '!' : '✓'}</span><p>{error || notice}</p><button onClick={clear} aria-label="Dismiss notification"><span aria-hidden="true">×</span></button></div>}
+      <Toast notifications={notifications} />
 
       {newItem && <NewItemModal type={newItem.type} title={newItem.title} onTypeChange={(type) => setNewItem({ ...newItem, type })} onTitleChange={(title) => setNewItem({ ...newItem, title })} onSubmit={() => void createItem()} onClose={() => setNewItem(undefined)} />}
 
-      {config.open && <SettingsModal settings={settings} onClose={() => config.setOpen(false)} onSave={(values) => void config.save(values)} onRestore={() => void config.restore()} onExport={config.exportConfig} onImport={config.importConfig} />}
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }

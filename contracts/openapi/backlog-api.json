@@ -6268,6 +6268,523 @@
         ],
         "title": "Problem",
         "type": "object"
+      },
+      "SourceCreateJson": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "description": "Display name of the source.",
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Page to fetch on the server (https only).",
+            "title": "Url"
+          },
+          "pastedText": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Text to store instead of fetching the URL (fallback after `url-fetch-failed`).",
+            "title": "Pastedtext"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Plain text source (requires `name`).",
+            "title": "Text"
+          },
+          "mode": {
+            "enum": [
+              "pinned",
+              "searchable",
+              "excluded"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "title": "SourceCreateJson",
+        "type": "object"
+      },
+      "BackupFile": {
+        "additionalProperties": false,
+        "properties": {
+          "mediaType": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Mediatype",
+            "type": "string"
+          },
+          "size": {
+            "description": "Size of the decoded file in bytes.",
+            "minimum": 0,
+            "title": "Size",
+            "type": "integer"
+          },
+          "sha256": {
+            "description": "SHA-256 (hex) of the decoded file.",
+            "pattern": "^[0-9A-Fa-f]{64}$",
+            "title": "Sha256",
+            "type": "string"
+          },
+          "contentBase64": {
+            "title": "Contentbase64",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mediaType",
+          "size",
+          "sha256",
+          "contentBase64"
+        ],
+        "title": "BackupFile",
+        "type": "object"
+      },
+      "BackupItem": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "capability",
+              "feature",
+              "user-story",
+              "enabler"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "document": {
+            "maxLength": 200000,
+            "title": "Document",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "refining",
+              "ready",
+              "ready-with-open-questions",
+              "complete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Item version; defaults to the newest revision version (or 1).",
+            "title": "Version"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Quality assessment (see the items API).",
+            "title": "Quality"
+          },
+          "qualityAssessedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualityassessedat"
+          },
+          "qualityDocumentHash": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Qualitydocumenthash"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/BackupRevision"
+            },
+            "title": "Revisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ref",
+          "type",
+          "title",
+          "document",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "BackupItem",
+        "type": "object"
+      },
+      "BackupProject": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "description": "Project name.",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "BackupProject",
+        "type": "object"
+      },
+      "BackupRelationship": {
+        "additionalProperties": false,
+        "properties": {
+          "sourceRef": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Sourceref",
+            "type": "string"
+          },
+          "targetRef": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Targetref",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "parent-child",
+              "supports",
+              "depends-on",
+              "related-to"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sourceRef",
+          "targetRef",
+          "type"
+        ],
+        "title": "BackupRelationship",
+        "type": "object"
+      },
+      "BackupRevision": {
+        "additionalProperties": false,
+        "properties": {
+          "version": {
+            "description": "The item version this snapshot was taken at.",
+            "minimum": 1,
+            "title": "Version",
+            "type": "integer"
+          },
+          "title": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "document": {
+            "maxLength": 200000,
+            "title": "Document",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "manual",
+              "agent",
+              "restore"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "actor": {
+            "maxLength": 320,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "title",
+          "document",
+          "origin",
+          "actor",
+          "createdAt"
+        ],
+        "title": "BackupRevision",
+        "type": "object"
+      },
+      "BackupSource": {
+        "additionalProperties": false,
+        "properties": {
+          "ref": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Ref",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "file",
+              "url",
+              "text"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "mode": {
+            "enum": [
+              "pinned",
+              "searchable",
+              "excluded"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "charCount": {
+            "minimum": 0,
+            "title": "Charcount",
+            "type": "integer"
+          },
+          "pageCount": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pagecount"
+          },
+          "mediaType": {
+            "anyOf": [
+              {
+                "maxLength": 255,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mediatype"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BackupFile"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The original file (file sources only)."
+          }
+        },
+        "required": [
+          "ref",
+          "name",
+          "kind",
+          "mode",
+          "text",
+          "charCount"
+        ],
+        "title": "BackupSource",
+        "type": "object"
+      },
+      "BackupDocument": {
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "const": "backlog-project-backup",
+            "title": "Format",
+            "type": "string"
+          },
+          "formatVersion": {
+            "const": 2,
+            "title": "Formatversion",
+            "type": "integer"
+          },
+          "exportedAt": {
+            "format": "date-time",
+            "title": "Exportedat",
+            "type": "string"
+          },
+          "exportedBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Email of the owner who exported the project.",
+            "title": "Exportedby"
+          },
+          "project": {
+            "$ref": "#/components/schemas/BackupProject"
+          },
+          "guidance": {
+            "$ref": "#/components/schemas/ExportGuidance"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BackupItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/BackupRelationship"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/BackupSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          }
+        },
+        "required": [
+          "exportedAt",
+          "project"
+        ],
+        "title": "BackupDocument",
+        "type": "object"
       }
     },
     "securitySchemes": {

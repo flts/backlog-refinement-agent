@@ -1,11 +1,8 @@
 import { useEffect, useState } from 'react';
 import { dismissLegacyNotice, isLegacyNoticeDismissed, legacyDataExists, removeLegacyData, type LegacyDataDeps } from '../infrastructure/legacy-data';
 
-/**
- * TODO(fe-api-client): set to true once the app no longer stores projects in IndexedDB. Until then the
- * old database is still the live data store and must not be offered for removal.
- */
-export const LEGACY_NOTICE_ENABLED = false;
+/** The app no longer uses IndexedDB, so an old database can be offered for removal. */
+export const LEGACY_NOTICE_ENABLED = true;
 
 export function LegacyDataNotice({ enabled = LEGACY_NOTICE_ENABLED, deps, confirm = (message: string) => window.confirm(message) }: {
   enabled?: boolean; deps?: LegacyDataDeps; confirm?: (message: string) => boolean;

@@ -177,6 +177,7 @@ def _build_openapi(app: FastAPI) -> dict[str, Any]:
     )
     components = schema.setdefault("components", {}).setdefault("schemas", {})
     components["Problem"] = Problem.model_json_schema(ref_template="#/components/schemas/{model}")
+    _add_request_body_components(components)
     problem_content = {PROBLEM_CONTENT_TYPE: {"schema": {"$ref": "#/components/schemas/Problem"}}}
     for path_item in schema.get("paths", {}).values():
         for operation in path_item.values():
@@ -188,6 +189,24 @@ def _build_openapi(app: FastAPI) -> dict[str, Any]:
     for unused in ("HTTPValidationError", "ValidationError"):
         components.pop(unused, None)
     return schema
+
+
+def _add_request_body_components(components: dict[str, Any]) -> None:
+    """Request bodies declared via ``openapi_extra`` (parsed manually, so FastAPI does not register their models)."""
+    from backlog_api.api.sources import SourceCreateJson
+    from backlog_api.backup import BackupDocument
+
+    def optional_defaults(schema: dict[str, Any]) -> dict[str, Any]:
+        # A request field with a default is optional; generators treat schema defaults as "always present".
+        for prop in schema.get("properties", {}).values():
+            prop.pop("default", None)
+        return schema
+
+    for model in (SourceCreateJson, BackupDocument):
+        schema = model.model_json_schema(ref_template="#/components/schemas/{model}", by_alias=True)
+        for name, definition in schema.pop("$defs", {}).items():
+            components.setdefault(name, optional_defaults(definition))
+        components[model.__name__] = optional_defaults(schema)
 
 
 _app: FastAPI | None = None
