@@ -12,6 +12,7 @@
     "typecheck": "pnpm -r --if-present typecheck",
     "build": "pnpm -r --if-present build",
     "test:py": "uv run --all-packages pytest services libs",
-    "lint:py": "uv run --all-packages ruff check services libs"
+    "lint:py": "uv run --all-packages ruff check services libs",
+    "e2e": "pnpm --filter @backlog/e2e test"
   }
 }

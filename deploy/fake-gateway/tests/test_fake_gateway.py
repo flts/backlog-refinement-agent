@@ -150,3 +150,54 @@ def test_invalid_script_is_rejected(tmp_path: Path) -> None:
     script.write_text(json.dumps([{"finish_reason": "stop"}]), encoding="utf-8")
     with pytest.raises(ValueError, match="content"):
         load_script(script)
+
+
+def chat(api: TestClient, text: str) -> dict:
+    request = {"model": "m", "messages": [{"role": "system", "content": "sys"}, {"role": "user", "content": text}]}
+    return api.post("/v1/chat/completions", json=request).json()["choices"][0]["message"]
+
+
+def test_control_endpoints_are_disabled_by_default() -> None:
+    api = client()
+    assert api.post("/fake/script", json={"responses": ["x"]}).status_code in (404, 405)
+
+
+def test_control_script_without_match_replaces_the_global_script() -> None:
+    api = client(control=True, script=parse_script(["old"]))
+    assert chat(api, "hi")["content"] == "old"
+
+    assert api.post("/fake/script", json={"responses": ["new one", "new two"]}).json() == {
+        "responses": 2,
+        "match": None,
+    }
+    assert [chat(api, "hi")["content"] for _ in range(3)] == ["new one", "new two", "new one"]
+
+    api.delete("/fake/script")
+    assert chat(api, "hi")["content"] == "old"
+
+
+def test_control_script_with_match_is_keyed_by_message_marker() -> None:
+    api = client(control=True)
+    api.post(
+        "/fake/script", json={"match": "[t1]", "responses": ["one-a", {"tool_calls": [{"name": "t", "arguments": {}}]}]}
+    )
+    api.post("/fake/script", json={"match": "[t2]", "responses": ["two-a"]})
+
+    assert chat(api, "hello [t1]")["content"] == "one-a"
+    assert chat(api, "hello [t2]")["content"] == "two-a"
+    assert chat(api, "hello [t1]")["tool_calls"][0]["function"]["name"] == "t"
+    # Exhausted keyed scripts fall back to the echo instead of cycling; unmatched requests use the global script/echo.
+    assert chat(api, "again [t1]")["content"].startswith(ECHO_PREFIX)
+    assert chat(api, "no marker")["content"].startswith(ECHO_PREFIX)
+
+    # Registering the marker again replaces its script; reset rewinds it.
+    api.post("/fake/script", json={"match": "[t1]", "responses": ["fresh"]})
+    assert chat(api, "[t1]")["content"] == "fresh"
+    api.post("/fake/reset")
+    assert chat(api, "[t1]")["content"] == "fresh"
+
+
+def test_control_script_validation() -> None:
+    api = client(control=True)
+    assert api.post("/fake/script", json={"responses": []}).status_code == 400
+    assert api.post("/fake/script", json={"match": "", "responses": ["x"]}).status_code == 400
