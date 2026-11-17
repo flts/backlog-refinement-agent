@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useModalDialog } from './useModalDialog';
 import type { Project, ProjectSource } from '../domain/project';
 
 type Props = {
@@ -29,11 +30,21 @@ export function ProjectPanel(props: Props) {
   const [referenceText, setReferenceText] = useState('');
   const [editing, setEditing] = useState<string>();
   const [editedText, setEditedText] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
+  const switcher = useRef<HTMLDivElement>(null);
   const importInput = useRef<HTMLInputElement>(null);
   const sourceInput = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (event: MouseEvent) => { if (!switcher.current?.contains(event.target as Node)) setMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
+
   async function createProject() {
-    if (await props.onCreate(name)) setName('');
+    if (await props.onCreate(name)) { setName(''); setMenuOpen(false); }
   }
 
   async function addReference() {
@@ -44,8 +55,14 @@ export function ProjectPanel(props: Props) {
     }
   }
 
-  return <section className="project-panel" aria-label="Projects and sources">
-    <div className="project-toolbar">
+  const selected = sources.filter((source) => source.selected).length;
+  return <div className="project-controls" aria-label="Projects and sources">
+    <div className="project-switcher" ref={switcher} onKeyDown={(event) => { if (event.key === 'Escape') setMenuOpen(false); }}>
+      <button type="button" className="switcher-button" aria-haspopup="true" aria-expanded={menuOpen} aria-label={`Project: ${project?.name ?? 'none selected'}`} onClick={() => setMenuOpen(!menuOpen)}>
+        <span className="workspace-dot" aria-hidden="true" /><strong>{project?.name ?? 'Choose a project'}</strong><span aria-hidden="true">▾</span>
+      </button>
+      {menuOpen && <div className="project-popover">
+    <div className="project-menu" role="group" aria-label="Project actions">
       <label>Project
         <select aria-label="Choose project" value={project?.id ?? ''} disabled={busy} onChange={(event) => props.onSelect(event.target.value)}>
           <option value="" disabled>Choose a project</option>
@@ -58,7 +75,6 @@ export function ProjectPanel(props: Props) {
         <button className="button button-secondary button-small" disabled={busy}>Create project</button>
       </form>
       <button className="button button-secondary button-small" disabled={busy} onClick={() => importInput.current?.click()}>Import project</button>
-      <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onImport(file); }} />
       {project && <>
         <button className="button button-secondary button-small" disabled={busy} onClick={props.onExport}>Export project</button>
         <button className="button button-secondary button-small" disabled={busy} onClick={() => {
@@ -68,10 +84,19 @@ export function ProjectPanel(props: Props) {
         <button className="button button-secondary button-small" disabled={busy} onClick={props.onDelete}>Delete project</button>
       </>}
     </div>
-    {project && <p className="composer-hint">AI context: {sources.filter((source) => source.selected).length} selected sources sent to {props.endpoint || 'the configured endpoint (not set)'}.</p>}
-    {project && <details>
-      <summary>Project sources ({sources.length})</summary>
-      <p>Only selected sources are sent to the AI endpoint {props.endpoint || '(not configured)'} when refining, decomposing, or assessing an item. Sources begin unselected.</p>
+      </div>}
+    </div>
+    <input ref={importInput} type="file" accept=".json,application/json" hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) { setMenuOpen(false); props.onImport(file); } }} />
+    {project && <button type="button" className="chip-button" aria-haspopup="dialog" onClick={() => setSourcesOpen(true)}>
+      <span aria-hidden="true">📎</span> Sources <strong>{sources.length}</strong><span className="chip-meta">{selected} selected</span>
+    </button>}
+    {project && sourcesOpen && <SourcesDrawer onClose={() => setSourcesOpen(false)}>
+      <header className="drawer-head"><div><span className="eyebrow">{project.name}</span><h2 id="sources-title">Project sources ({sources.length})</h2></div>
+        <button type="button" className="close-button" aria-label="Close sources" onClick={() => setSourcesOpen(false)}><span aria-hidden="true">×</span></button></header>
+      <div className="drawer-body">
+      <p className="composer-hint">AI context: {sources.filter((source) => source.selected).length} selected sources sent to {props.endpoint || 'the configured endpoint (not set)'}.</p>
+    
+            <p>Only selected sources are sent to the AI endpoint {props.endpoint || '(not configured)'} when refining, decomposing, or assessing an item. Sources begin unselected.</p>
       <div className="project-file-upload">
         <button type="button" className="button button-secondary button-small" disabled={busy} onClick={() => sourceInput.current?.click()}>Add PDF or text file</button>
         <span>PDF, TXT or Markdown</span>
@@ -99,6 +124,12 @@ export function ProjectPanel(props: Props) {
           </div>}
         </li>)}
       </ul>
-    </details>}
-  </section>;
+      </div>
+    </SourcesDrawer>}
+  </div>;
+}
+
+function SourcesDrawer({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const dialog = useModalDialog(onClose);
+  return <dialog className="drawer-dialog" aria-labelledby="sources-title" {...dialog}><div className="project-panel">{children}</div></dialog>;
 }

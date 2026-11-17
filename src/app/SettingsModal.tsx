@@ -14,10 +14,10 @@ const themeOptions: { value: ThemePreference; label: string }[] = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
-const tabs: { id: Tab; label: string }[] = [
-  { id: 'general', label: 'General' },
-  ...itemTypes.map((type) => ({ id: type, label: itemTypeLabel[type] })),
-  { id: 'backup', label: 'Backup' },
+const tabs: { id: Tab; label: string; group: string }[] = [
+  { id: 'general', label: 'General', group: 'Workspace' },
+  ...itemTypes.map((type) => ({ id: type, label: itemTypeLabel[type], group: 'Item types' })),
+  { id: 'backup', label: 'Backup', group: 'Data' },
 ];
 
 export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClearLlm, onSave, onRestore, onClose, onExport, onImport }: {
@@ -81,8 +81,8 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
   }
 
   function moveTab(event: React.KeyboardEvent, index: number) {
-    const next = event.key === 'ArrowRight' ? index + 1
-      : event.key === 'ArrowLeft' ? index - 1
+    const next = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? index + 1
+      : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? index - 1
         : event.key === 'Home' ? 0
           : event.key === 'End' ? tabs.length - 1
             : undefined;
@@ -98,11 +98,15 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
       <form className="modal settings-modal" aria-busy={importing} onSubmit={submit} noValidate>
         <button type="button" className="close-button modal-close" onClick={onClose} disabled={importing} aria-label="Close settings"><span aria-hidden="true">×</span></button>
         <span className="eyebrow">Personalize your agent</span><h2 id="settings-title">Instructions & templates</h2>
-        <div className="settings-tabs" role="tablist" aria-label="Settings sections" inert={importing}>
+        <div className="settings-layout">
+        <div className="settings-tabs" role="tablist" aria-label="Settings sections" aria-orientation="vertical" inert={importing}>
           {tabs.map((entry, index) => (
-            <button key={entry.id} type="button" role="tab" id={`settings-tab-${entry.id}`} aria-selected={tab === entry.id} aria-controls={`settings-panel-${entry.id}`}
+            <React.Fragment key={entry.id}>
+            {tabs[index - 1]?.group !== entry.group && <span className="settings-group" role="presentation">{entry.group}</span>}
+            <button type="button" role="tab" id={`settings-tab-${entry.id}`} aria-selected={tab === entry.id} aria-controls={`settings-panel-${entry.id}`}
               tabIndex={tab === entry.id ? 0 : -1} className={`settings-tab ${tab === entry.id ? 'active' : ''}`}
               onClick={() => setTab(entry.id)} onKeyDown={(event) => moveTab(event, index)}>{entry.label}</button>
+            </React.Fragment>
           ))}
         </div>
         <div className="settings-body" inert={importing}>
@@ -169,6 +173,7 @@ export function SettingsModal({ settings, llmReady, llm, llmEnvironment, onClear
               finally { setImporting(false); }
             }} />
           </div>
+        </div>
         </div>
         {importing && <p className="settings-help" role="status">Importing configuration…</p>}
         <div className="modal-actions"><button type="button" className="button button-secondary" disabled={importing} onClick={restore}>Restore source defaults</button><button className="button button-primary" type="submit" disabled={importing}>Save customization</button></div>

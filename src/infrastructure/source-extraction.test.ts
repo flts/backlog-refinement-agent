@@ -8,6 +8,25 @@ function file(name: string, value: string | Uint8Array, type = ''): File {
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe('source proxy fallback', () => {
+  it('reports upstream relay errors instead of a generic CORS message', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('CORS')).mockResolvedValue(new Response('Source proxy upstream error: SELF_SIGNED_CERT_IN_CHAIN', { status: 502 })));
+    await expect(extractUrlText('https://www.nu.nl/a')).rejects.toMatchObject({ message: expect.stringContaining('SELF_SIGNED_CERT_IN_CHAIN') });
+  });
+
+  it('detects a server without the relay (SPA fallback)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('CORS')).mockResolvedValue(new Response('<div id="root"></div>', { headers: { 'content-type': 'text/html' } })));
+    await expect(extractUrlText('https://www.nu.nl/a')).rejects.toMatchObject({ message: expect.stringContaining('not available') });
+  });
+
+  it('retries through the same-origin relay when CORS blocks the direct request', async () => {
+    const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('CORS')).mockResolvedValueOnce(new Response('Relayed', { headers: { 'content-type': 'text/plain' } }));
+    vi.stubGlobal('fetch', fetcher);
+    await expect(extractUrlText('https://wiki.corp.example:8443/a/b?x=1')).resolves.toBe('Relayed');
+    expect(fetcher.mock.calls[1][0]).toMatch(/source-proxy\/https\/wiki\.corp\.example:8443\/a\/b\?x=1$/);
+  });
+});
+
 describe('local source extraction', () => {
   it('reads UTF-8 Markdown and reports unsupported or invalid files', async () => {
     await expect(extractFileText(file('notes.md', '# Hello\nWorld'))).resolves.toBe('# Hello\nWorld');
@@ -53,6 +72,8 @@ describe('URL source extraction', () => {
     await expect(extractUrlText('https://user:pass@example.test')).rejects.toMatchObject({ code: 'invalid-url' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
     await expect(extractUrlText('https://example.test')).rejects.toMatchObject({ code: 'fetch-failed', message: expect.stringContaining('CORS') });
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValueOnce(new TypeError('CORS')).mockResolvedValue(new Response('Denied SOURCE_PROXY_HOSTS', { status: 403 })));
+    await expect(extractUrlText('https://example.test')).rejects.toMatchObject({ code: 'fetch-failed', message: expect.stringContaining('SOURCE_PROXY_HOSTS') });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('failure', { status: 403 })));
     await expect(extractUrlText('https://example.test')).rejects.toMatchObject({ code: 'http-error' });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('data', { headers: { 'content-type': 'application/pdf' } })));

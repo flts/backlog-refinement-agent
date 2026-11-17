@@ -172,7 +172,7 @@ export function Projects() {
   return <>
     {project
       ? <App key={`${project.id}:${workspaceRevision}`} project={project} projectBusy={busy} renderProjectPanel={panel} />
-      : <main>{panel(false, '')}<p>Create or import a project to start a backlog.</p></main>}
+      : <main><header className="topbar"><span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>{panel(false, '')}</header><p>Create or import a project to start a backlog.</p></main>}
     {(error || notice) && <div className={`toast ${error ? 'toast-error' : ''}`} role={error ? 'alert' : 'status'}><p>{error || notice}</p><button aria-label="Dismiss notification" onClick={() => { setError(''); setNotice(''); }}><span aria-hidden="true">×</span></button></div>}
   </>;
 }
