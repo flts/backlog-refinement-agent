@@ -23,10 +23,6 @@ export const agentErrorKeys = [
 ] as const;
 export type AgentErrorKey = (typeof agentErrorKeys)[number];
 
-/** Heading and reason of the recovery card for a proposal the server can no longer resume (APPROVAL_RESUME_NOT_FOUND). */
-export const proposalExpiredTitle = 'This proposal can no longer be applied';
-export const proposalExpiredReason = 'The assistant no longer has it, for example after a service restart or because it was kept too long. Nothing was changed.';
-
 export const agentErrorMessages: Record<AgentErrorKey, string> = {
   unauthenticated: 'Your session has expired. Please sign in again.',
   forbidden: 'You do not have access to this project or conversation.',
@@ -37,7 +33,7 @@ export const agentErrorMessages: Record<AgentErrorKey, string> = {
   serviceUnavailable: 'The assistant service is temporarily unavailable. Please try again shortly.',
   network: 'The connection to the assistant was lost. Check your network and try again.',
   streamInterrupted: 'The response was interrupted before it finished. Please try again.',
-  approvalExpired: `${proposalExpiredTitle}. ${proposalExpiredReason}`,
+  approvalExpired: 'This proposal has expired, for example after a service restart. Ask the assistant to propose it again.',
   approvalRequired: 'There is a pending proposal that needs your decision before you can continue.',
   approvalInvalid: 'Your decision on the proposal could not be processed. Review it and try again.',
   runTimeout: 'The assistant took too long to respond. Please try again.',
@@ -63,7 +59,7 @@ export interface AgentError {
   retryAfterSeconds?: number;
   /** Worth offering a Retry button. */
   retryable: boolean;
-  /** APPROVAL_RESUME_NOT_FOUND: the proposal is gone (restart); the SPA shows the recovery card (keeps the user's edits, offers re-propose / start over). */
+  /** APPROVAL_RESUME_NOT_FOUND: the proposal is gone (restart); show "proposal expired" and a retry chip. */
   proposalExpired: boolean;
   /** APPROVAL_RESUME_REQUIRED: a pending interrupt must be resumed first. */
   approvalRequired: boolean;

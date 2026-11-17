@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import type { ResumeDecision } from '../agent';
 import type { ProposeChildItemsArgs, ProposeDocumentChangesArgs } from '../contracts';
-import { buildRepromposeMessage, initialRunState, REPROPOSE_MAX_CHARS, type ReviewInterrupt, type RunState, type TranscriptEntry } from '../run';
+import { initialRunState, type ReviewInterrupt, type RunState, type TranscriptEntry } from '../run';
 import { expectNoAxeViolations } from '../test/axe';
 import {
   ApplyResultCard, ChildProposalCard, PredictivePreview, ReviewCard, ReviewPanel, documentResultSummary, parsePartialProposal, proposalForPreview, similarItemsFrom,
@@ -178,38 +178,12 @@ describe('ReviewCard', () => {
     expect(similarItemsFrom(messages, 'self')).toEqual([{ id: 'a', title: 'A', score: 0.85 }]);
   });
 
-  it('shows the expired state without a draft and offers re-propose and start over', async () => {
+  it('shows the expired state and retries', async () => {
     const onRetry = vi.fn();
-    const onRepropose = vi.fn();
-    renderCard({ interrupt: interrupt({ expired: true }), onRetry, onRepropose });
-    expect(screen.getByRole('heading', { name: 'This proposal can no longer be applied' })).toHaveFocus();
-    expect(screen.queryByText(/Changes you had accepted/)).toBeNull();
-    await click(screen.getByRole('button', { name: 'Ask the agent to re-propose' }));
-    expect(onRepropose).toHaveBeenCalledOnce();
-    await click(screen.getByRole('button', { name: 'Start over' }));
+    renderCard({ interrupt: interrupt({ expired: true }), onRetry });
+    expect(screen.getByText('This proposal expired — ask again')).toBeInTheDocument();
+    await click(screen.getByRole('button', { name: 'Ask again' }));
     expect(onRetry).toHaveBeenCalledOnce();
-  });
-
-  it('keeps what the user had accepted or edited visible, read-only, with a diff', async () => {
-    const draft = { approved: true, editedArgs: { ...args, suggestedTitle: 'Export docs', sections: [args.sections[0], { ...args.sections[1], markdown: '- [ ] My own AC' }] } };
-    const onRepropose = vi.fn();
-    const { container } = renderCard({ interrupt: interrupt({ expired: true, args: { ...args, suggestedTitle: 'Export docs' }, draft }), onRepropose });
-    expect(screen.getByText(/Changes you had accepted: 2 of 3/)).toBeInTheDocument();
-    expect(screen.getByText(/Rename the item to/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /^Accept|^Reject|^Edit/ })).toBeNull();
-    expect(screen.getByText('Accepted')).toBeInTheDocument();
-    expect(screen.getByText('Edited by you')).toBeInTheDocument();
-    await click(screen.getByText('Acceptance criteria'));
-    expect(screen.getByText('- [ ] My own AC').closest('.diff-line')).toHaveTextContent('Added:');
-    await expectNoAxeViolations(container);
-    await click(screen.getByRole('button', { name: 'Ask the agent to re-propose with my edits' }));
-    expect(onRepropose).toHaveBeenCalledOnce();
-  });
-
-  it('a rejected draft keeps nothing to summarise', () => {
-    renderCard({ interrupt: interrupt({ expired: true, draft: { approved: false } }) });
-    expect(screen.queryByText(/Changes you had accepted/)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Ask the agent to re-propose' })).toBeInTheDocument();
   });
 
   it('moves focus into the card, returns it after editing, announces decisions and is keyboard operable', async () => {
@@ -277,24 +251,6 @@ describe('ChildProposalCard', () => {
     });
   });
 
-  it('shows the expired variant with the accepted and edited children', async () => {
-    const onRepropose = vi.fn();
-    const onRetry = vi.fn();
-    const draft = { approved: true, editedArgs: { ...childArgs, children: [{ ...childArgs.children[0], title: 'Export to PDF' }, childArgs.children[1]] } };
-    const { container } = render(<ChildProposalCard interrupt={{ ...childInterrupt(), expired: true, draft }} onDecide={vi.fn()} onRepropose={onRepropose} onRetry={onRetry} />);
-    expect(screen.getByRole('heading', { name: 'This proposal can no longer be applied' })).toHaveFocus();
-    expect(screen.getByText(/User story items you had accepted: 2 of 3/)).toBeInTheDocument();
-    expect(screen.getByText('Export to PDF')).toBeInTheDocument();
-    expect(screen.queryByText('Schedule export')).toBeNull();
-    await click(screen.getByText('Export to PDF'));
-    expect(screen.getByText('I export').tagName).toBe('STRONG');
-    await expectNoAxeViolations(container);
-    await click(screen.getByRole('button', { name: 'Ask the agent to re-propose with my edits' }));
-    await click(screen.getByRole('button', { name: 'Start over' }));
-    expect(onRepropose).toHaveBeenCalledOnce();
-    expect(onRetry).toHaveBeenCalledOnce();
-  });
-
   it('rejects everything with approved:false and has no axe violations', async () => {
     const onDecide = vi.fn();
     const { container } = render(<ChildProposalCard interrupt={childInterrupt()} parentItemId="item-1" onDecide={onDecide} />);
@@ -319,69 +275,6 @@ describe('ReviewPanel', () => {
     await click(within(regions[1]).getByRole('button', { name: 'Create 1 item' }));
     expect(onDecide).toHaveBeenCalledOnce();
     expect((onDecide.mock.calls[0][0] as ResumeDecision[]).map((d) => d.interruptId)).toEqual(['af-call-1', 'af-call-2']);
-  });
-});
-
-describe('ReviewPanel (expired)', () => {
-  it('shows ONE recovery card for all expired interrupts and wires both actions', async () => {
-    const onRetry = vi.fn();
-    const onRepropose = vi.fn();
-    const draft = { approved: true, editedArgs: { ...args, sections: [args.sections[0]] } };
-    const run: Pick<RunState, 'phase' | 'interrupts' | 'messages'> = { phase: 'error', interrupts: [interrupt({ expired: true, draft }), { ...interrupt({ expired: true, id: 'af-call-9', draft: { approved: false } }) }], messages: [] };
-    render(<ReviewPanel run={run} document={doc} onDecide={vi.fn()} onRetry={onRetry} onRepropose={onRepropose} />);
-    expect(screen.getAllByRole('region')).toHaveLength(1);
-    await click(screen.getByRole('button', { name: 'Ask the agent to re-propose with my edits' }));
-    await click(screen.getByRole('button', { name: 'Start over' }));
-    expect(onRepropose).toHaveBeenCalledOnce();
-    expect(onRetry).toHaveBeenCalledOnce();
-  });
-});
-
-describe('buildRepromposeMessage', () => {
-  const draft = { approved: true, editedArgs: { ...args, suggestedTitle: 'Export docs', suggestedStatus: 'ready', sections: [args.sections[0], { ...args.sections[1], markdown: '- [ ] AC1\n- [ ] mine' }] } };
-  const expired = (overrides: Partial<ReviewInterrupt> = {}) => interrupt({ expired: true, args: { ...args, suggestedTitle: 'Export docs', suggestedStatus: 'ready' }, draft, ...overrides });
-
-  it('lists the accepted/edited sections, title and status in a fenced Markdown block', () => {
-    const message = buildRepromposeMessage([expired()])!;
-    expect(message.truncated).toBe(false);
-    expect(message.text.startsWith('Please re-propose these changes, keeping my edits:\n\n```markdown\n')).toBe(true);
-    expect(message.text).toContain('- Rename the item to "Export docs"');
-    expect(message.text).toContain('- Set the status to Ready');
-    expect(message.text).toContain('- Section "Summary" (replace)\n  New summary');
-    expect(message.text).toContain('- Section "Acceptance criteria" (append, edited by me)\n  - [ ] AC1\n  - [ ] mine');
-    expect(message.text.endsWith('```')).toBe(true);
-  });
-
-  it('lists children and treats a plain approval as everything accepted', () => {
-    const children = { rationale: 'Split', childType: 'user-story', children: [{ proposalId: 'c1', title: 'A', markdown: 'one' }, { proposalId: 'c2', title: 'B', markdown: 'two' }] };
-    const message = buildRepromposeMessage([{ id: 'x', toolCallId: 'k', toolName: 'propose_child_items', args: children, expired: true, draft: { approved: true } }])!;
-    expect(message.text).toContain('- user-story item "A"\n  one');
-    expect(message.text).toContain('- user-story item "B"\n  two');
-    expect(message.text).not.toContain('edited by me');
-  });
-
-  it('returns null without a draft or when everything was rejected', () => {
-    expect(buildRepromposeMessage([interrupt({ expired: true })])).toBeNull();
-    expect(buildRepromposeMessage([expired({ draft: { approved: false } })])).toBeNull();
-  });
-
-  it('bounds the list, cuts the last entry, says so after the fence and keeps the fence valid', () => {
-    const big = { ...args, sections: [{ id: 's1', heading: 'Big', mode: 'replace' as const, markdown: `${'word '.repeat(4000)}\n\`\`\`js\ncode\n\`\`\`` }, { id: 's2', heading: 'Later', mode: 'replace' as const, markdown: 'x' }] };
-    const message = buildRepromposeMessage([interrupt({ expired: true, args: big, draft: { approved: true } })], 500)!;
-    expect(message.truncated).toBe(true);
-    const fenced = message.text.split('\n\n')[1];
-    expect(fenced.length).toBeLessThanOrEqual(500 + 20);
-    expect(message.text).toMatch(/Note: the list was shortened to 500 characters/);
-    expect(message.text).not.toContain('Later');
-    const fence = message.text.match(/\n(`{3,})markdown/)![1];
-    expect(message.text).toContain(`\n${fence}\n\nNote`);
-  });
-
-  it('is bounded by default at 8000 characters', () => {
-    const big = { ...args, sections: Array.from({ length: 10 }, (_, index) => ({ id: `s${index}`, heading: `H${index}`, mode: 'replace' as const, markdown: 'y'.repeat(2000) })) };
-    const message = buildRepromposeMessage([interrupt({ expired: true, args: big, draft: { approved: true } })])!;
-    expect(message.truncated).toBe(true);
-    expect(message.text.length).toBeLessThan(REPROPOSE_MAX_CHARS + 400);
   });
 });
 
@@ -425,7 +318,7 @@ describe('ApplyResultCard', () => {
 describe('light and dark themes', () => {
   it.each(['light', 'dark'])('has no axe violations in the %s theme', async (theme) => {
     document.documentElement.dataset.theme = theme;
-    const { container } = render(<><ReviewCard interrupt={interrupt()} document={doc} onDecide={vi.fn()} /><ReviewCard interrupt={interrupt({ expired: true, draft: { approved: true } })} document={doc} onDecide={vi.fn()} /><PredictivePreview document={doc} proposal={args} status="review" /><ApplyResultCard result={{ applied: ['a'], edited: [], rejected: [], conflicted: [], newVersion: 2 }} messages={[]} /></>);
+    const { container } = render(<><ReviewCard interrupt={interrupt()} document={doc} onDecide={vi.fn()} /><PredictivePreview document={doc} proposal={args} status="review" /><ApplyResultCard result={{ applied: ['a'], edited: [], rejected: [], conflicted: [], newVersion: 2 }} messages={[]} /></>);
     await expectNoAxeViolations(container);
     delete document.documentElement.dataset.theme;
   });

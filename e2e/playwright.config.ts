@@ -18,9 +18,5 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  projects: [
-    { name: 'chromium', testIgnore: /restart\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } } },
-    // Restarts agent-service, so it must not overlap with the other specs.
-    { name: 'restart', testMatch: /restart\.spec\.ts/, dependencies: ['chromium'], use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } } },
-  ],
+  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1600, height: 1000 } } }],
 });

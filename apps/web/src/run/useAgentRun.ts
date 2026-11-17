@@ -74,7 +74,6 @@ export function useAgentRun(threadId: string | undefined, options: UseAgentRunOp
     decide: (decisions: readonly ResumeDecision[]): Promise<RunResult> => service?.decide(decisions) ?? Promise.resolve(busyResult),
     decideAll: (approved: boolean, replacements?: Record<string, Record<string, unknown>>): Promise<RunResult> => service?.decideAll(approved, replacements) ?? Promise.resolve(busyResult),
     stop: () => service?.stop(),
-    repropose: (): Promise<RunResult> => service?.repropose() ?? Promise.resolve(busyResult),
     retry: (): Promise<RunResult> => service?.retry() ?? Promise.resolve(busyResult),
     acknowledgeCancelled: () => service?.acknowledgeCancelled(),
   };

@@ -47,6 +47,5 @@ pinned token issuer), `E2E_FAKE_GATEWAY_URL` (`http://localhost:8090`), `E2E_WOR
 | `share.spec.ts` | alice shares via the Share dialog; bob sees it, project settings (templates) are read-only for him; carol sees nothing |
 | `collaboration.spec.ts` | presence avatars + live update ("Updated by Alice Owner"); concurrent edit → conflict dialog → "Both" |
 | `agent.spec.ts` | `ask_user` (keyboard + click) → review → partial accept → History "Via agent"; breakdown accept 1 of 2; pending `ask_user` survives reload; bob cannot see alice's session |
-| `restart.spec.ts` | agent-service restart during review (`docker compose restart agent-service`, Compose stack only): the recovery card keeps the edited section and re-proposes it. With `E2E_DURABLE_APPROVALS=1` (stack with durable server-side approvals) the same approval must instead succeed after the restart. Runs in its own Playwright project after the other specs (a restart would break their runs) |
 
 Failures keep a screenshot and trace in `e2e/test-results/` (`pnpm exec playwright show-trace <trace.zip>`).

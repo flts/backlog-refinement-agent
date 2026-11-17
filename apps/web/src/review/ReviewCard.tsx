@@ -4,7 +4,6 @@ import { editedArgsFor } from '../agent';
 import { ProposeDocumentChangesArgsSchema, type ProposeDocumentChangesArgs, type SectionChange } from '../contracts';
 import type { ReviewInterrupt } from '../run';
 import { readDocumentProposal, type SimilarItem } from './proposal';
-import { ExpiredProposal } from './ExpiredProposal';
 import { SectionDiff } from './SectionDiff';
 import { useReviewState, type Decision } from './useReviewState';
 
@@ -18,16 +17,24 @@ export interface ReviewCardProps {
   similar?: readonly SimilarItem[];
   onSelectItem?: (id: string) => void;
   onDecide: (decision: ResumeDecision) => void;
-  /** Expired proposals: "Start over" (`run.retry()`). */
+  /** Expired proposals: ask the agent again (`run.retry()`). */
   onRetry?: () => void;
-  /** Expired proposals: re-propose keeping the user's edits (`run.repropose()`). */
-  onRepropose?: () => void;
   /** Move focus into the card when it appears. */
   autoFocus?: boolean;
 }
 
 const statusLabel: Record<Decision, string> = { pending: 'Undecided', accepted: 'Accepted', rejected: 'Rejected' };
 const modeLabel = { replace: 'Replace', append: 'Append' } as const;
+
+export function ExpiredProposal({ onRetry, disabled }: { onRetry?: () => void; disabled?: boolean }) {
+  return (
+    <div className="proposal-panel review-card review-expired" role="region" aria-label="Expired proposal">
+      <p className="review-expired-text"><strong>This proposal expired — ask again</strong></p>
+      <p className="proposal-rationale">The agent service restarted before you decided, so the proposal can no longer be applied.</p>
+      <div className="proposal-actions"><span /><button type="button" className="button button-primary button-small" disabled={disabled || !onRetry} onClick={onRetry}>Ask again</button></div>
+    </div>
+  );
+}
 
 export function OverlapWarning({ similar, onSelectItem }: { similar: readonly SimilarItem[]; onSelectItem?: (id: string) => void }) {
   if (similar.length === 0) return null;
@@ -60,9 +67,9 @@ export function buildEditedDocumentArgs(
   return ProposeDocumentChangesArgsSchema.safeParse(candidate).success ? edited : null;
 }
 
-export function ReviewCard({ interrupt, document, disabled = false, locked = false, similar = [], onSelectItem, onDecide, onRetry, onRepropose, autoFocus = true }: ReviewCardProps) {
+export function ReviewCard({ interrupt, document, disabled = false, locked = false, similar = [], onSelectItem, onDecide, onRetry, autoFocus = true }: ReviewCardProps) {
   const proposal = readDocumentProposal(interrupt.args);
-  if (interrupt.expired) return <ExpiredProposal interrupts={[interrupt]} document={document} onRetry={onRetry} onRepropose={onRepropose} disabled={disabled} autoFocus={autoFocus} />;
+  if (interrupt.expired) return <ExpiredProposal onRetry={onRetry} disabled={disabled} />;
   if (!proposal) {
     return (
       <div className="proposal-panel review-card" role="region" aria-label="Proposal cannot be shown">

@@ -168,7 +168,7 @@ export default function App({ project, projectBusy, projectControls, onOpenShare
           run={run.state} busy={agentBusy} canRetry={run.canRetry} message={message}
           onSelectItem={selectItem} onNewThread={() => void newThread()} onSelectThread={threads.selectThread} onRenameThread={threads.rename} onDeleteThread={deleteThread}
           onMessageChange={setMessage} onSubmit={sendMessage} onContinue={() => void submit(() => run.continue('continue'))}
-          onStop={run.stop} onRetry={() => void submit(() => run.retry())} onRepropose={() => void submit(() => run.repropose())}
+          onStop={run.stop} onRetry={() => void submit(() => run.retry())}
           onAnswer={(result) => void submit(() => run.answer(result))} onDecideAll={(approved) => void submit(() => run.decideAll(approved))}
           onDecide={(decisions) => void submit(() => run.decide(decisions))} onSend={(text) => void submit(() => run.send(text))}
           onCreateItem={() => setNewItem({ type: 'capability', title: '' })}

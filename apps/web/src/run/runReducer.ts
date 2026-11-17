@@ -1,6 +1,6 @@
 import type { Message } from '@ag-ui/core';
 import {
-  AgentStateSchema, ASK_USER_TOOL_NAME, LastApplySchema, NextActionSchema, PROPOSE_CHILD_ITEMS_TOOL_NAME, PROPOSE_DOCUMENT_CHANGES_TOOL_NAME, StateQualitySchema,
+  AgentStateSchema, ASK_USER_TOOL_NAME, LastApplySchema, NextActionSchema, StateQualitySchema,
   type ChildPreview, type DocumentPreview, type LastApply, type NextAction, type StateQuality,
 } from '../contracts';
 import type { AgentError, HydrateResult, Interrupt, PendingAskUser, RunEvent, RunRequest } from '../agent';
@@ -24,14 +24,8 @@ export type ActivityEntry =
   | { kind: 'step'; id: string; runId: string; name: string; status: 'running' | 'done' }
   | { kind: 'tool'; id: string; runId: string; toolName: string; status: ToolStatus; args?: unknown; citations: Citation[] };
 
-/** What the user had decided on a proposal: the resume payload (`editedArgs` = the accepted/edited parts, FULL replacement). */
-export interface ProposalDraft { approved: boolean; editedArgs?: Record<string, unknown> }
-
-/**
- * An approval the user must decide on. `expired`: the server lost it (restart, retention) and answered APPROVAL_RESUME_NOT_FOUND,
- * or the thread shows a proposal nothing waits for. `draft`: the decision that failed, kept so the edits are not lost.
- */
-export type ReviewInterrupt = Interrupt & { expired?: boolean; draft?: ProposalDraft };
+/** An approval the user must decide on. `expired`: the server lost it (restart) and answered APPROVAL_RESUME_NOT_FOUND. */
+export type ReviewInterrupt = Interrupt & { expired?: boolean };
 
 /** The validated parts of the shared AG-UI state the UI uses. Invalid parts are dropped, never half-trusted. */
 export interface AgentStateView {
@@ -235,31 +229,9 @@ function reduceHydrated(state: RunState, result: HydrateResult): RunState {
   switch (result.status) {
     case 'awaitingInput': return { ...base, phase: 'awaitingInput' };
     case 'awaitingReview': return { ...base, phase: 'awaitingReview' };
-    case 'idle': {
-      const orphan = orphanedProposal(base.messages);
-      return { ...base, phase: 'idle', interrupts: orphan ? [orphan] : [] };
-    }
     case 'error': return { ...base, phase: 'error', lastError: result.error, messages: [...base.messages, { kind: 'error', id: `error:${state.seq}`, error: result.error }], seq: state.seq + 1 };
     default: return { ...base, phase: 'idle' };
   }
-}
-
-/** A proposal the transcript ends with while the server holds nothing for it (its approval is gone): shown as expired, without a draft. */
-function orphanedProposal(messages: readonly TranscriptEntry[]): ReviewInterrupt | null {
-  const last = messages[messages.length - 1];
-  if (!last || last.kind !== 'tool' || last.status !== 'pending') return null;
-  if (last.toolName !== PROPOSE_DOCUMENT_CHANGES_TOOL_NAME && last.toolName !== PROPOSE_CHILD_ITEMS_TOOL_NAME) return null;
-  const args = last.args && typeof last.args === 'object' && !Array.isArray(last.args) ? (last.args as Record<string, unknown>) : {};
-  return { id: `expired:${last.id}`, toolCallId: last.id, toolName: last.toolName, args, expired: true };
-}
-
-/** The decisions of the failed resume, by interrupt id. */
-function draftsOf(request: RunRequest | undefined): Map<string, ProposalDraft> {
-  const drafts = new Map<string, ProposalDraft>();
-  for (const entry of request?.resume ?? []) {
-    if (entry.status === 'resolved' && entry.payload) drafts.set(entry.interruptId, { approved: entry.payload.approved, ...(entry.payload.editedArgs ? { editedArgs: entry.payload.editedArgs } : {}) });
-  }
-  return drafts;
 }
 
 function reduceFinished(state: RunState, event: Extract<RunEvent, { type: 'runFinished' }>): RunState {
@@ -278,12 +250,11 @@ function reduceError(state: RunState, event: Extract<RunEvent, { type: 'runError
   const settled = settle(state, () => 'error');
   const error = event.error;
   const expire = error.proposalExpired;
-  const drafts = expire ? draftsOf(state.lastRunRequest) : new Map<string, ProposalDraft>();
   return {
     ...settled,
     phase: 'error',
     lastError: error,
-    interrupts: expire ? settled.interrupts.map((interrupt) => ({ ...interrupt, expired: true, ...(drafts.has(interrupt.id) ? { draft: drafts.get(interrupt.id) } : {}) })) : settled.interrupts,
+    interrupts: expire ? settled.interrupts.map((interrupt) => ({ ...interrupt, expired: true })) : settled.interrupts,
     agentState: expire ? { ...settled.agentState, preview: null, childPreview: null } : settled.agentState,
     messages: [...settled.messages, { kind: 'error', id: `error:${state.seq}`, error }],
     seq: state.seq + 1,

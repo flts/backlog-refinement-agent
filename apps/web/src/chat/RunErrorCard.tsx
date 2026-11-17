@@ -39,8 +39,7 @@ export function RunErrorCard({ error, canRetry = false, busy = false, onRetry }:
   const countdown = useCountdown(error.key === 'rateLimited' ? error.retryAfterSeconds : undefined);
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
   const expired = error.proposalExpired;
-  // The recovery card (review/ExpiredProposal) shows the heading, the reason and the actions; this row keeps the code and run ID.
-  const message = expired ? 'Your decision on the proposal could not be applied.' : agentErrorMessages[error.key];
+  const message = expired ? 'This proposal expired — ask again.' : agentErrorMessages[error.key];
 
   async function copyDetails() {
     try {
@@ -54,6 +53,7 @@ export function RunErrorCard({ error, canRetry = false, busy = false, onRetry }:
   return (
     <div className="run-error" role="group" aria-label="Run error" data-variant={expired ? 'expired' : error.key}>
       <p className="run-error-message"><span aria-hidden="true">⚠ </span>{message}</p>
+      {expired && <p className="run-error-hint">{agentErrorMessages.approvalExpired}</p>}
       {countdown > 0 && <p className="run-error-hint">You can try again in {countdown} s.</p>}
       <p className="run-error-meta">
         <span>Code <code>{error.code}</code></span>
@@ -63,9 +63,9 @@ export function RunErrorCard({ error, canRetry = false, busy = false, onRetry }:
         <button type="button" className="button button-secondary button-small" onClick={() => void copyDetails()}>
           {copy === 'copied' ? 'Copied' : copy === 'failed' ? 'Copy failed' : 'Copy details'}
         </button>
-        {onRetry && !expired && (
+        {onRetry && (
           <button type="button" className="button button-primary button-small" disabled={!canRetry || busy || countdown > 0} onClick={onRetry}>
-            <span aria-hidden="true">↻</span> Retry
+            <span aria-hidden="true">↻</span> {expired ? 'Ask again' : 'Retry'}
           </button>
         )}
       </div>

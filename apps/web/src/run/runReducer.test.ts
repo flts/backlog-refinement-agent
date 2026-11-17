@@ -193,37 +193,6 @@ describe('runReducer: errors, cancel, retry', () => {
     expect(canRetry(failed)).toBe(true);
   });
 
-  it('APPROVAL_RESUME_NOT_FOUND keeps the decision of the failed resume (draft) per interrupt', async () => {
-    const proposed = await play(idle(), builder().userMessage('improve'), approvalPropose);
-    const id = proposed.interrupts[0].id;
-    const editedArgs = { summary: 'S', baseVersion: 7, sections: [{ id: 's1', heading: 'Summary', mode: 'replace', markdown: 'My text' }] };
-    const failed = await play(proposed, builder().resume([{ interruptId: id, approved: true, editedArgs }]), errNotFound);
-    expect(failed.interrupts[0]).toMatchObject({ expired: true, draft: { approved: true, editedArgs } });
-    const rejected = await play(proposed, builder().resume([{ interruptId: id, approved: false }]), errNotFound);
-    expect(rejected.interrupts[0].draft).toEqual({ approved: false });
-    const cancelled = await play(proposed, builder().resume([{ interruptId: id, cancelled: true }]), errNotFound);
-    expect(cancelled.interrupts[0].draft).toBeUndefined();
-    // A new run drops the expired card together with its draft.
-    const next = runReducer(failed, { type: 'runRequested', request: builder().userMessage('again') });
-    expect(next.interrupts).toEqual([]);
-  });
-
-  it('hydrating an idle thread whose transcript ends with a proposal nothing waits for shows an expired interrupt without a draft', () => {
-    const messages = [
-      { id: 'u1', role: 'user', content: 'improve' },
-      { id: 'a1', role: 'assistant', content: 'Here is my proposal.' },
-      { id: 'a2', role: 'assistant', toolCalls: [{ id: 'call_prop', type: 'function', function: { name: 'propose_document_changes', arguments: JSON.stringify({ summary: 'S', baseVersion: 1, sections: [] }) } }] },
-    ];
-    const state = runReducer(initialRunState('thr-1'), { type: 'hydrated', result: hydrated('idle', undefined, messages) });
-    expect(state.phase).toBe('idle');
-    expect(state.interrupts).toHaveLength(1);
-    expect(state.interrupts[0]).toMatchObject({ expired: true, toolCallId: 'call_prop', toolName: 'propose_document_changes' });
-    expect(state.interrupts[0].draft).toBeUndefined();
-    // An answered proposal (tool message present) is not an orphan.
-    const answered = [...messages, { id: 't1', role: 'tool', toolCallId: 'call_prop', content: '{}' }];
-    expect(runReducer(initialRunState('thr-1'), { type: 'hydrated', result: hydrated('idle', undefined, answered) }).interrupts).toEqual([]);
-  });
-
   it('stopped: Running → Cancelled → Idle, and open tools become cancelled', () => {
     let state = runReducer(idle(), { type: 'runStarted', threadId: 'thr-1', runId: 'r' });
     state = runReducer(state, { type: 'toolCallStart', toolCallId: 'c', toolName: 'search_sources' });

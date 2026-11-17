@@ -9,7 +9,6 @@ import {
   type AgentIntent, type AskUserResult, type ItemType,
 } from '../contracts';
 import { agentKeys } from './keys';
-import { buildRepromposeMessage, REPROPOSE_PLAIN } from './reproposal';
 import { initialRunState, runReducer, type RunAction, type RunState } from './runReducer';
 
 /** Tool results that mean the server changed the backlog (apply or quality write). */
@@ -130,13 +129,8 @@ export class AgentRunService {
       let outcome: RunOutcome;
       if (live.length > 0) {
         const sent = await sendMessageCancellingPending(this.instrumented, this.builder, { text, interrupts: live, intent, childType }, { onEvent: this.onEvent }, signal);
-        if (sent.status === 'cancelFailed') {
-          // The server no longer holds the approval (restart): nothing is left to cancel, so the message goes out as a plain run.
-          if (sent.cancelOutcome.status !== 'error' || !sent.cancelOutcome.error.proposalExpired) return sent;
-          outcome = await this.runOne(this.builder.userMessage(text, intent, childType), signal);
-        } else {
-          outcome = sent.outcome;
-        }
+        if (sent.status === 'cancelFailed') return sent;
+        outcome = sent.outcome;
       } else if (pendingAskUser && phase === 'awaitingInput') {
         const ids = pendingAskUser.args?.questions.map((question) => question.id) ?? [];
         outcome = await this.runOne(this.builder.askUserDismissedWithMessage(text, ids, intent), signal);
@@ -191,23 +185,14 @@ export class AgentRunService {
 
   /**
    * Retries after an error with a NEW runId. The request keeps its message ids, so the transcript never shows the user
-   * message twice. An expired proposal cannot be resumed: "Start over" asks the agent to refine again instead.
+   * message twice. An expired proposal cannot be resumed: the retry asks the agent to refine again instead.
    */
   retry(): Promise<RunResult> {
     const { lastError, lastRunRequest } = this.state;
-    if (lastError?.proposalExpired || this.state.interrupts.some((interrupt) => interrupt.expired)) return this.continue('refine');
+    if (lastError?.proposalExpired) return this.continue('refine');
     if (!lastRunRequest) return this.hydrate().then(() => ({ status: 'invalid', reason: 'Nothing to retry; the thread was reloaded.' }) as const);
     const request: RunRequest = { ...lastRunRequest, runId: this.newId() };
     return this.exclusive(async (signal) => this.afterRun(await this.runOne(request, signal), signal));
-  }
-
-  /**
-   * After an expired proposal: asks the agent to propose again and keeps what the user had accepted/edited by sending it
-   * as a bounded, fenced Markdown list (the decisions were kept in the run state, see `ReviewInterrupt.draft`).
-   */
-  repropose(): Promise<RunResult> {
-    const text = buildRepromposeMessage(this.state.interrupts.filter((interrupt) => interrupt.expired))?.text ?? REPROPOSE_PLAIN;
-    return this.send(text, 'refine');
   }
 
   /** Cancelled → Idle (the composer is usable in both; this only clears the banner). */

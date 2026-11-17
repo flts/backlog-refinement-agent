@@ -381,7 +381,7 @@ UX (`askuser/`): a stepper, one question at a time; the recommended option first
 
 ### 7.4 Interrupts and ids
 
-`propose_*` end the run with `RUN_FINISHED outcome=interrupt`. The SPA must use **`interrupt.id` (`af-call-…`) as `resume[].interruptId`** (not the `toolCallId`; map via `interrupt.toolCallId`); the original arguments are read from the interrupt. A user message while a proposal is pending first sends `resume:[{interruptId, status:"cancelled"}]` and then the message in a separate run. Approval state is **process-local in MAF**; after an agent-service restart a resume fails with `APPROVAL_RESUME_NOT_FOUND`. The SPA then keeps the decision of the failed resume in the run state (`ReviewInterrupt.draft`, memory only) and shows the recovery card "This proposal can no longer be applied": a read-only summary of what the user had accepted/edited, "Ask the agent to re-propose with my edits" (a user message with a fenced Markdown list, at most 8000 characters, `run/reproposal.ts`) and "Start over" (`continue('refine')`). A thread that hydrates idle while its transcript ends with an unanswered `propose_*` call shows the same card without a summary.
+`propose_*` end the run with `RUN_FINISHED outcome=interrupt`. The SPA must use **`interrupt.id` (`af-call-…`) as `resume[].interruptId`** (not the `toolCallId`; map via `interrupt.toolCallId`); the original arguments are read from the interrupt. A user message while a proposal is pending first sends `resume:[{interruptId, status:"cancelled"}]` and then the message in a separate run. Approval state is **process-local in MAF**; after an agent-service restart a resume fails with `APPROVAL_RESUME_NOT_FOUND` and the SPA shows "proposal expired" with a retry chip.
 
 ### 7.5 State
 

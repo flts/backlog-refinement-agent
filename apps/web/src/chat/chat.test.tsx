@@ -130,10 +130,8 @@ describe('RunErrorCard', () => {
 
   it('has an expired-proposal variant', () => {
     render(<RunErrorCard error={error('APPROVAL_RESUME_NOT_FOUND')} canRetry onRetry={vi.fn()} />);
-    expect(screen.getByText('Your decision on the proposal could not be applied.')).toBeInTheDocument();
-    expect(screen.getByText('APPROVAL_RESUME_NOT_FOUND')).toBeInTheDocument();
-    // The recovery card (review/) owns the actions; the error row does not repeat them.
-    expect(screen.queryByRole('button', { name: /Retry|Ask again/ })).toBeNull();
+    expect(screen.getByText('This proposal expired — ask again.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Ask again/ })).toBeEnabled();
   });
 
   it('counts down the rate-limit Retry-After and enables Retry afterwards', () => {
@@ -328,14 +326,6 @@ describe('ChatPanel', () => {
     expect(screen.getAllByRole('status').every((node) => node.textContent !== 'Review proposed changes')).toBe(true);
     rerender(<ChatPanel {...props(runOf({ phase: 'error', lastError: error('INTERNAL') }))} />);
     expect(screen.getByRole('alert')).toHaveTextContent(/Something went wrong/);
-  });
-
-  it('does not announce an expired proposal assertively: its recovery card takes focus and announces itself', () => {
-    const lastError = error('APPROVAL_RESUME_NOT_FOUND');
-    const expired = { id: 'af-1', toolCallId: 'c', toolName: 'propose_document_changes', args: {}, expired: true };
-    render(<ChatPanel {...props(runOf({ phase: 'error', lastError, interrupts: [expired], messages: [{ kind: 'error', id: 'e', error: lastError }] }))} />);
-    expect(screen.getByRole('alert')).toHaveTextContent('');
-    expect(screen.getByRole('heading', { name: 'This proposal can no longer be applied' })).toHaveFocus();
   });
 
   it('shows the hydration skeleton and then the restored transcript', () => {
