@@ -7,6 +7,8 @@ export {
   agentErrorMessages,
   AgentApiError,
   parseRetryAfter,
+  proposalExpiredReason,
+  proposalExpiredTitle,
   type AgentError,
   type AgentErrorKey,
   type AgentErrorSource,

@@ -6,7 +6,7 @@ export interface Announcements { polite: string; assertive: string }
 
 /**
  * Screen-reader messages for run phase changes, so streamed tokens are not read aloud (plan §6.6):
- * polite for working/replied/stopped, assertive for errors; the ask_user and review cards announce themselves. Nothing is announced for a thread that opens idle.
+ * polite for working/replied/stopped, assertive for errors; the ask_user, review and expired-proposal cards announce themselves. Nothing is announced for a thread that opens idle.
  */
 export function useRunAnnouncements(run: Pick<RunState, 'phase' | 'threadId' | 'lastError'>): Announcements {
   const [announcements, setAnnouncements] = useState<Announcements>({ polite: '', assertive: '' });
@@ -27,7 +27,8 @@ export function useRunAnnouncements(run: Pick<RunState, 'phase' | 'threadId' | '
       case 'awaitingInput':
       case 'awaitingReview': setAnnouncements({ polite: '', assertive: '' }); break;
       case 'cancelled': setAnnouncements({ polite: 'Agent stopped', assertive: '' }); break;
-      case 'error': setAnnouncements({ polite: '', assertive: `Error: ${lastError ? agentErrorMessages[lastError.key] : 'The agent could not finish.'}` }); break;
+      // An expired proposal is announced by its recovery card (it takes focus), like the other review cards.
+      case 'error': if (lastError?.proposalExpired) { setAnnouncements({ polite: '', assertive: '' }); break; } setAnnouncements({ polite: '', assertive: `Error: ${lastError ? agentErrorMessages[lastError.key] : 'The agent could not finish.'}` }); break;
       default: break;
     }
   }, [phase, threadId, lastError]);

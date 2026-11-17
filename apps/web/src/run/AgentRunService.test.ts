@@ -167,6 +167,68 @@ describe('AgentRunService', () => {
     expect(service.getState().interrupts).toEqual([]);
   });
 
+  it('repropose after an expired proposal sends the kept edits as a fenced list, then the run continues', async () => {
+    const { service, body } = setup([sseResponse(approvalPropose), sseResponse(errNotFound), sseResponse(askAnswer)]);
+    await service.send('improve');
+    const [interrupt] = service.getState().interrupts;
+    const editedArgs = { ...interrupt.args, sections: [{ id: 's2', heading: 'Acceptance criteria', mode: 'replace', markdown: '- [ ] my own AC' }] };
+    await service.decide([{ interruptId: interrupt.id, approved: true, editedArgs }]);
+    expect(service.getState().interrupts[0]).toMatchObject({ expired: true, draft: { approved: true } });
+    await service.repropose();
+    expect(body(2).resume).toBeUndefined();
+    const sent = body(2).messages[0];
+    expect(sent.role).toBe('user');
+    expect(sent.content).toMatch(/^Please re-propose these changes, keeping my edits:\n\n```markdown\n- Section "Acceptance criteria" \(replace, edited by me\)\n  - \[ \] my own AC\n```$/);
+    expect(service.getState().interrupts).toEqual([]);
+    expect(service.getState().messages.filter((entry) => entry.kind === 'user').map((entry) => entry.kind === 'user' && entry.text.split('\n')[0])).toEqual(['improve', 'Please re-propose these changes, keeping my edits:']);
+  });
+
+  it('repropose bounds a huge edit and works without a draft (plain request)', async () => {
+    const huge = setup([sseResponse(approvalPropose), sseResponse(errNotFound), sseResponse(askAnswer)]);
+    await huge.service.send('improve');
+    const [interrupt] = huge.service.getState().interrupts;
+    const editedArgs = { ...interrupt.args, sections: [{ id: 's1', heading: 'Summary', mode: 'replace', markdown: 'x'.repeat(50_000) }] };
+    await huge.service.decide([{ interruptId: interrupt.id, approved: true, editedArgs }]);
+    await huge.service.repropose();
+    const text = huge.body(2).messages[0].content;
+    expect(text.length).toBeLessThan(8_500);
+    expect(text).toContain('Note: the list was shortened to 8000 characters');
+
+    const orphan = setup([sseResponse([
+      { type: 'RUN_STARTED', threadId: 'thr-1', runId: 'h' },
+      { type: 'MESSAGES_SNAPSHOT', messages: [{ id: 'u1', role: 'user', content: 'improve' }, { id: 'a2', role: 'assistant', toolCalls: [{ id: 'call_prop', type: 'function', function: { name: 'propose_document_changes', arguments: '{}' } }] }] },
+      { type: 'RUN_FINISHED', threadId: 'thr-1', runId: 'h' },
+    ]), sseResponse(askAnswer)]);
+    await orphan.service.hydrate();
+    expect(orphan.service.getState().interrupts[0]).toMatchObject({ expired: true });
+    await orphan.service.repropose();
+    expect(orphan.body(1).messages[0].content).toBe('Please re-propose these changes.');
+    expect(orphan.body(1).resume).toBeUndefined();
+  });
+
+  it('start over on a hydrated expired proposal asks to refine again', async () => {
+    const { service, body } = setup([sseResponse([
+      { type: 'RUN_STARTED', threadId: 'thr-1', runId: 'h' },
+      { type: 'MESSAGES_SNAPSHOT', messages: [{ id: 'u1', role: 'user', content: 'improve' }, { id: 'a2', role: 'assistant', toolCalls: [{ id: 'call_prop', type: 'function', function: { name: 'propose_child_items', arguments: '{}' } }] }] },
+      { type: 'RUN_FINISHED', threadId: 'thr-1', runId: 'h' },
+    ]), sseResponse(askAnswer)]);
+    await service.hydrate();
+    await service.retry();
+    expect(body(1).messages[0]).toMatchObject({ role: 'user', content: 'Refine this item.' });
+    expect(service.getState().interrupts).toEqual([]);
+  });
+
+  it('a message typed while the shown approval was lost still goes out (the failed cancel is not a blocker)', async () => {
+    const { service, body } = setup([sseResponse(approvalHydrate), sseResponse(errNotFound), sseResponse(askAnswer)]);
+    await service.hydrate();
+    const result = await service.send('never mind, do X');
+    expect(result.status).toBe('success');
+    expect(body(1).resume).toEqual([{ interruptId: INTERRUPT_ID, status: 'cancelled' }]);
+    expect(body(2).resume).toBeUndefined();
+    expect(body(2).messages[0]).toMatchObject({ role: 'user', content: 'never mind, do X' });
+    expect(service.getState().interrupts).toEqual([]);
+  });
+
   it('retry re-sends the last request with a NEW runId and does not duplicate the user message', async () => {
     const { service, body } = setup([sseResponse(errRaw), sseResponse(askAnswer)]);
     await service.send('hello');

@@ -36,6 +36,8 @@ export type ChatPanelProps = {
   onContinue: () => void;
   onStop: () => void;
   onRetry: () => void;
+  /** Expired proposal: re-propose keeping the user's edits (`run.repropose()`). */
+  onRepropose?: () => void;
   /** The validated answer of the `ask_user` card (`useAgentRun().answer`). */
   onAnswer: (result: AskUserResult) => void;
   /** Placeholder for the ReviewCard (fe-review-ui): approves or rejects every pending proposal. */
@@ -62,17 +64,17 @@ export type ChatPanelProps = {
  * When the ask_user / review card is answered it unmounts together with the focused control, which would drop focus on
  * <body>. Hand focus on to the composer (or the conversation log while the composer is disabled).
  */
-function useRestoreFocusAfterCard(phase: RunState['phase'], root: React.RefObject<HTMLElement | null>) {
-  const previous = useRef(phase);
+function useRestoreFocusAfterCard(hasCard: boolean, root: React.RefObject<HTMLElement | null>) {
+  const previous = useRef(hasCard);
   useEffect(() => {
     const before = previous.current;
-    previous.current = phase;
-    if ((before !== 'awaitingInput' && before !== 'awaitingReview') || before === phase) return;
+    previous.current = hasCard;
+    if (!before || hasCard) return;
     const active = document.activeElement;
     if (active && active !== document.body) return;
     const target = root.current?.querySelector<HTMLElement>('textarea:not(:disabled)') ?? root.current?.querySelector<HTMLElement>('.conversation-scroll');
     target?.focus({ preventScroll: true });
-  }, [phase, root]);
+  }, [hasCard, root]);
 }
 
 export function ChatPanel(props: ChatPanelProps) {
@@ -86,7 +88,8 @@ export function ChatPanel(props: ChatPanelProps) {
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
   const section = useRef<HTMLElement>(null);
-  useRestoreFocusAfterCard(run.phase, section);
+  const expiredShown = run.interrupts.some((interrupt) => interrupt.expired);
+  useRestoreFocusAfterCard(run.phase === 'awaitingInput' || run.phase === 'awaitingReview' || expiredShown, section);
   const activeThread = threads.find((thread) => thread.id === activeThreadId);
   const asking = run.phase === 'awaitingInput' && Boolean(run.pendingAskUser?.args);
   const reason = running ? 'The agent is working. Press Esc to stop it.' : hydrating ? 'Loading the conversation…' : undefined;
@@ -112,9 +115,9 @@ export function ChatPanel(props: ChatPanelProps) {
           {run.phase === 'awaitingInput' && run.pendingAskUser?.args && <AskUserCard key={run.pendingAskUser.toolCallId} args={run.pendingAskUser.args} disabled={busy} onAnswer={onAnswer} />}
           {run.phase === 'awaitingInput' && run.pendingAskUser && !run.pendingAskUser.args && <AskUserInvalidNotice />}
           {run.phase === 'idle' && onSuggestion && <SuggestionChips actions={run.agentState.nextActions} disabled={busy} onSelect={onSuggestion} />}
-          {(reviewing || run.interrupts.some((interrupt) => interrupt.expired)) && (
+          {(reviewing || expiredShown) && (
             <ReviewPanel run={run} document={item.document} itemId={item.id} disabled={busy} onSelectItem={props.onSelectItem}
-              onDecide={onDecide ?? ((decisions) => onDecideAll(decisions.every((decision) => 'approved' in decision && decision.approved)))} onRetry={onRetry} />
+              onDecide={onDecide ?? ((decisions) => onDecideAll(decisions.every((decision) => 'approved' in decision && decision.approved)))} onRetry={onRetry} onRepropose={props.onRepropose} />
           )}
           {showResult && lastApply && <ApplyResultCard result={lastApply} messages={run.messages} disabled={busy} onSend={onSend} onSelectItem={props.onSelectItem} />}
         </MessageList>
