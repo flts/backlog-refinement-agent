@@ -1,0 +1,8 @@
+# Override for the end-to-end tests: enables the fake gateway's runtime scripting endpoint (POST /fake/script).
+#   docker compose -f docker-compose.yml -f e2e/docker-compose.e2e.yml --profile fake up -d --build --wait
+services:
+  fake-gateway:
+    environment:
+      FAKE_GATEWAY_CONTROL: "true"
+    ports:
+      - "127.0.0.1:8090:8090"

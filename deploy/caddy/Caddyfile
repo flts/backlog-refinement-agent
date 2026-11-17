@@ -8,7 +8,7 @@
 
 	# Origin of the OIDC authority (scheme://host[:port]) for the Content-Security-Policy; empty in platform mode.
 	map "{$OIDC_AUTHORITY:}" {oidc_origin} {
-		~^(https?://[^/]+) {1}
+		~^(https?://[^/]+) "${1}"
 		default ""
 	}
 

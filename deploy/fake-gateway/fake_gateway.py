@@ -10,6 +10,12 @@ Endpoints (served with and without the ``/v1`` prefix, so clients may include it
   user message. With ``FAKE_GATEWAY_SCRIPT`` (path to a JSON file) it replays the scripted responses in order,
   cycling when the end is reached.
 * ``POST /fake/reset`` rewinds the script to the first response (test helper).
+* ``FAKE_GATEWAY_CONTROL=true`` enables runtime scripting for end-to-end tests: ``POST /fake/script`` registers a
+  script ``{"responses": [...], "match"?: "marker"}``. A script with ``match`` is served to requests whose message
+  text contains the marker (so parallel tests with unique markers stay independent; registering the same marker again
+  replaces it and rewinds its cursor). A script without ``match`` replaces the global script. Keyed scripts win over
+  the global script; a keyed script that is exhausted falls back to the echo reply instead of cycling.
+  ``DELETE /fake/script`` removes all runtime scripts and ``POST /fake/reset`` also rewinds them.
 * ``GET /healthz`` is the liveness probe.
 
 Script format: a JSON list (or ``{"responses": [...]}``) of objects with ``content`` (string) and/or ``tool_calls``
@@ -65,6 +71,7 @@ class GatewaySettings:
     embedding_dim: int = DEFAULT_EMBEDDING_DIM
     api_key: str | None = None
     script: tuple[ScriptedResponse, ...] = ()
+    control: bool = False
 
     @classmethod
     def from_env(cls) -> GatewaySettings:
@@ -75,6 +82,7 @@ class GatewaySettings:
             embedding_dim=_positive_int(os.environ.get("FAKE_EMBEDDING_DIM"), DEFAULT_EMBEDDING_DIM),
             api_key=os.environ.get("FAKE_GATEWAY_API_KEY", "").strip() or None,
             script=load_script(Path(script_path)) if script_path else (),
+            control=os.environ.get("FAKE_GATEWAY_CONTROL", "").strip().lower() in ("1", "true", "yes"),
         )
 
 
@@ -92,9 +100,22 @@ class ScriptCursor:
             self._position += 1
             return response
 
+    def next_once(self) -> ScriptedResponse | None:
+        """Like :meth:`next`, but returns ``None`` once the script is exhausted instead of cycling."""
+        with self._lock:
+            if self._position >= len(self.responses):
+                return None
+            response = self.responses[self._position]
+            self._position += 1
+            return response
+
     def reset(self) -> None:
         with self._lock:
             self._position = 0
+
+
+def _request_text(messages: Sequence[dict[str, Any]]) -> str:
+    return "\n".join(_message_text(message.get("content")) for message in messages)
 
 
 def _positive_int(raw: str | None, default: int) -> int:
@@ -276,6 +297,21 @@ def _error(status: int, message: str, error_type: str = "invalid_request_error")
 def create_app(settings: GatewaySettings | None = None) -> FastAPI:
     settings = settings or GatewaySettings.from_env()
     cursor = ScriptCursor(settings.script)
+    keyed: dict[str, ScriptCursor] = {}
+    keyed_lock = threading.Lock()
+
+    def next_response(messages: Sequence[dict[str, Any]]) -> ScriptedResponse:
+        if keyed:
+            text = _request_text(messages)
+            with keyed_lock:
+                candidates = [cursor_ for marker, cursor_ in keyed.items() if marker in text]
+            for candidate in candidates:
+                response = candidate.next_once()
+                if response is not None:
+                    return response
+            if candidates:
+                return _echo(messages)
+        return cursor.next() or _echo(messages)
 
     async def authorize(request: Request) -> None:
         if settings.api_key is None:
@@ -297,7 +333,38 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
     @app.post("/fake/reset")
     async def reset() -> dict[str, int]:
         cursor.reset()
+        with keyed_lock:
+            for candidate in keyed.values():
+                candidate.reset()
         return {"responses": len(settings.script)}
+
+    if settings.control:
+
+        @app.post("/fake/script")
+        async def set_script(request: Request) -> dict[str, Any]:
+            nonlocal cursor
+            body = await request.json()
+            try:
+                responses = parse_script(body)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            marker = body.get("match") if isinstance(body, dict) else None
+            if marker is None:
+                cursor = ScriptCursor(responses)
+            elif isinstance(marker, str) and marker:
+                with keyed_lock:
+                    keyed[marker] = ScriptCursor(responses)
+            else:
+                raise HTTPException(status_code=400, detail="'match' must be a non-empty string.")
+            return {"responses": len(responses), "match": marker}
+
+        @app.delete("/fake/script")
+        async def clear_scripts() -> dict[str, int]:
+            nonlocal cursor
+            cursor = ScriptCursor(settings.script)
+            with keyed_lock:
+                keyed.clear()
+            return {"responses": len(settings.script)}
 
     @api.get("/models")
     async def list_models() -> dict[str, Any]:
@@ -344,7 +411,7 @@ def create_app(settings: GatewaySettings | None = None) -> FastAPI:
         if not isinstance(messages, list) or not messages:
             return _error(400, "'messages' must be a non-empty list.")
         model = body.get("model") or settings.models[0]
-        response = cursor.next() or _echo(messages)
+        response = next_response(messages)
         if body.get("stream"):
             include_usage = bool((body.get("stream_options") or {}).get("include_usage"))
             return StreamingResponse(
