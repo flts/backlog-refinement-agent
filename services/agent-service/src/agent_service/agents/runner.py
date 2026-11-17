@@ -15,6 +15,34 @@ from agent_service.mcp_client import RunMcpScope, bind_run_scope
 logger = logging.getLogger(__name__)
 
 
+PREVIEW_STATE_KEYS = ("preview", "childPreview")
+
+
+def clear_previews_of_rejected_proposals(input_data: dict[str, Any]) -> dict[str, Any]:
+    """Return ``input_data`` with the previews cleared when the resume rejects a proposal.
+
+    MAF answers a rejected approval with ``Error: Tool call invocation was rejected by user.`` without running the
+    tool and never clears the predictive ``preview``. The request state overlays the stored state (spike #6), so
+    clearing it here persists the cleared preview before the model sees the rejection. Approved proposals clear their
+    own preview in the tool (``state_update``).
+    """
+    resume = input_data.get("resume")
+    if not isinstance(resume, list):
+        return input_data
+    rejected = any(
+        isinstance(entry, dict)
+        and entry.get("status") == "resolved"
+        and isinstance(entry.get("payload"), dict)
+        and entry["payload"].get("approved") is False
+        for entry in resume
+    )
+    if not rejected:
+        return input_data
+    state = input_data.get("state")
+    cleared = {**(state if isinstance(state, dict) else {}), **dict.fromkeys(PREVIEW_STATE_KEYS)}
+    return {**input_data, "state": cleared}
+
+
 class StepEmittingRunner(AgentFrameworkAgent):
     """Wraps an :class:`AgentFrameworkAgent`: opens the run's :class:`RunMcpScope` and injects ``STEP_*`` events.
 
@@ -33,6 +61,7 @@ class StepEmittingRunner(AgentFrameworkAgent):
     async def run(
         self, input_data: dict[str, Any], *, function_invocation_kwargs: Mapping[str, Any] | None = None
     ) -> AsyncGenerator[BaseEvent, None]:
+        input_data = clear_previews_of_rejected_proposals(input_data)
         scope = RunMcpScope()
         bind_run_scope(scope)
         hydrate = not input_data.get("messages") and not input_data.get("resume")

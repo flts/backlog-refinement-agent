@@ -188,3 +188,31 @@ async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
 @pytest.fixture
 def sessionmaker(app: FastAPI) -> async_sessionmaker[AsyncSession]:
     return app.state.db.sessionmaker
+
+
+@pytest.fixture
+async def refiner_app(
+    settings: Settings,
+    tokens: TokenFactory,
+    database_url: str,
+    backlog: BacklogMock,
+    mcp_url: str,
+    mcp: httpx.AsyncClient,
+) -> AsyncIterator[FastAPI]:
+    await truncate_all(database_url)
+    configured = settings.model_copy(update={"backlog_api_url": mcp_url})
+    application = create_app(
+        configured,
+        key_source=StaticKeySource(tokens.jwks),
+        backlog_transport=httpx.MockTransport(backlog.handler),
+        configure_logs=False,
+    )
+    async with LifespanManager(application, startup_timeout=30):
+        yield application
+
+
+@pytest.fixture
+async def rclient(refiner_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+    transport = httpx.ASGITransport(app=refiner_app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://agent-service.test", timeout=30) as http:
+        yield http

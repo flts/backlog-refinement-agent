@@ -34,6 +34,7 @@ from agent_service.problems import ProblemError
 from agent_service.settings import API_PREFIX, Settings
 from agent_service.threads.repository import get_owned_thread
 from agent_service.threads.status import mark_running, refresh_thread_status
+from agent_service.tools.services import ToolServices, bind_tool_services
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +135,7 @@ class AgentDispatcher(AgentFrameworkAgent):
         scope = user_scope(principal.email)
         sessionmaker: async_sessionmaker[AsyncSession] = self._sessionmaker()
         hydrate = not input_data.get("messages") and not input_data.get("resume")
+        bind_tool_services(ToolServices(self._store, sessionmaker))
         try:
             if not hydrate:
                 await mark_running(sessionmaker, thread_id=thread_id)
