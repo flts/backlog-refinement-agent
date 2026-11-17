@@ -37,6 +37,11 @@ READ_TOOLS = {"get_item_context", "get_project_guidance", "get_pinned_sources", 
 WRITE_TOOLS = {"apply_document_changes", "create_child_items", "set_item_quality"}
 
 
+def bearer_header(token: str) -> dict[str, str]:
+    """Sends exactly this token (tokens issued in different seconds differ, so the assertions need the sent one)."""
+    return {"Authorization": f"Bearer {token}"}
+
+
 async def llm_requests(gateway: httpx.AsyncClient) -> list[dict[str, Any]]:
     return [entry["body"] for entry in (await gateway.get("/_requests")).json()]
 
@@ -124,8 +129,8 @@ async def test_mcp_receives_each_users_token_without_leakage(
     bob_thread = await create_thread(rclient, tokens, BOB)
 
     results = await asyncio.gather(
-        run_agui(rclient, tokens, alice_thread["id"], [USER], email="alice@example.test"),
-        run_agui(rclient, tokens, bob_thread["id"], [USER], email=BOB),
+        run_agui(rclient, tokens, alice_thread["id"], [USER], email="alice@example.test", headers=bearer_header(alice)),
+        run_agui(rclient, tokens, bob_thread["id"], [USER], email=BOB, headers=bearer_header(bob)),
     )
     assert all(status == 200 for status, _ in results)
     assert all(event_types(events)[-1] == "RUN_FINISHED" for _, events in results)

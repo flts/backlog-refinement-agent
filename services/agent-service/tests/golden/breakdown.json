@@ -1,0 +1,56 @@
+{
+  "scenario": "breakdown",
+  "runs": [
+    {
+      "run": "propose",
+      "request": {"forwardedProps": {"childType": "user-story", "intent": "breakdown"}, "messages": ["user: Break this item down into child items."]},
+      "status": 200,
+      "threadStatus": "awaiting_review",
+      "modelRequests": 1,
+      "mcpCalls": [],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"stepName": "Reading item", "type": "STEP_STARTED"},
+        {"name": "PredictState", "stateKeys": ["childPreview", "preview"], "type": "CUSTOM"},
+        {"stepName": "Reading item", "type": "STEP_FINISHED"},
+        {"messageId": "<id-1>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-1>", "text": "Here is a breakdown.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"parentMessageId": "<id-2>", "toolCallId": "call_1", "toolCallName": "propose_child_items", "type": "TOOL_CALL_START"},
+        {"stepName": "Drafting breakdown", "type": "STEP_STARTED"},
+        {"args": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two"}, {"markdown": "## Summary\n\nThree", "proposalId": "c3", "title": "Story three"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}, {"sourceRef": "c3", "targetRef": "c1", "type": "related-to"}]}, "toolCallId": "call_1", "type": "TOOL_CALL_ARGS"},
+        {"delta": [{"op": "replace", "path": "/childPreview", "value": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two"}, {"markdown": "## Summary\n\nThree", "proposalId": "c3", "title": "Story three"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}, {"sourceRef": "c3", "targetRef": "c1", "type": "related-to"}]}}], "type": "STATE_DELTA"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"snapshot": {"childPreview": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two"}, {"markdown": "## Summary\n\nThree", "proposalId": "c3", "title": "Story three"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}, {"sourceRef": "c3", "targetRef": "c1", "type": "related-to"}]}, "itemId": "<item>", "preview": null, "projectId": "<project>", "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"toolCallId": "call_1", "type": "TOOL_CALL_END"},
+        {"stepName": "Drafting breakdown", "type": "STEP_FINISHED"},
+        {"name": "function_approval_request", "toolCallId": "call_1", "toolName": "propose_child_items", "type": "CUSTOM"},
+        {"messageId": "<id-1>", "type": "TEXT_MESSAGE_END"},
+        {"messages": [{"content": "Break this item down into child items.", "id": "m1", "role": "user"}, {"content": "Here is a breakdown.", "id": "<id-1>", "role": "assistant"}, {"id": "<id-2>", "role": "assistant", "toolCalls": [{"arguments": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two"}, {"markdown": "## Summary\n\nThree", "proposalId": "c3", "title": "Story three"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}, {"sourceRef": "c3", "targetRef": "c1", "type": "related-to"}]}, "id": "call_1", "name": "propose_child_items"}]}], "type": "MESSAGES_SNAPSHOT"},
+        {"interrupts": [{"argumentKeys": ["childType", "children", "rationale", "relationships"], "id": "<interrupt-1>", "message": "Approve running propose_child_items?", "reason": "tool_call", "responseKeys": ["accepted", "approved", "childType", "children", "editedArgs", "rationale", "relationships"], "toolCallId": "call_1", "toolName": "propose_child_items"}], "outcome": "interrupt", "type": "RUN_FINISHED"}
+      ]
+    },
+    {
+      "run": "resume",
+      "request": {"resume": [{"approved": true, "status": "resolved"}]},
+      "status": 200,
+      "threadStatus": "idle",
+      "modelRequests": 1,
+      "mcpCalls": [{"arguments": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two (renamed)"}], "parentId": "<item>", "projectId": "<project>", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}], "runId": "<run-1>"}, "tool": "create_child_items"}],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"stepName": "Reading item", "type": "STEP_STARTED"},
+        {"name": "PredictState", "stateKeys": ["childPreview", "preview"], "type": "CUSTOM"},
+        {"snapshot": {"childPreview": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two (renamed)"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}]}, "itemId": "<item>", "preview": null, "projectId": "<project>", "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"content": {"created": [{"itemId": "new-0", "proposalId": "c1", "title": "Story one"}, {"itemId": "new-1", "proposalId": "c2", "title": "Story two (renamed)"}], "edited": ["c2"], "failed": [], "rejected": ["c3"], "relationshipsCreated": 1, "relationshipsSkipped": [{"reason": "a related child was rejected in the review", "sourceRef": "c3", "targetRef": "c1"}]}, "messageId": "<id-3>", "toolCallId": "call_1", "type": "TOOL_CALL_RESULT"},
+        {"snapshot": {"childPreview": null, "itemId": "<item>", "lastApply": {"at": "<at>", "created": [{"itemId": "new-0", "proposalId": "c1", "title": "Story one"}, {"itemId": "new-1", "proposalId": "c2", "title": "Story two (renamed)"}], "edited": ["c2"], "failed": [], "rejected": ["c3"], "relationshipsCreated": 1, "relationshipsSkipped": [{"reason": "a related child was rejected in the review", "sourceRef": "c3", "targetRef": "c1"}], "toolCallId": "call_1"}, "preview": null, "projectId": "<project>", "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"stepName": "Reading item", "type": "STEP_FINISHED"},
+        {"messageId": "<id-4>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-4>", "text": "Created two stories.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"messageId": "<id-4>", "type": "TEXT_MESSAGE_END"},
+        {"messages": [{"content": "Break this item down into child items.", "id": "m1", "role": "user"}, {"content": "Here is a breakdown.", "id": "<id-1>", "role": "assistant"}, {"id": "<id-2>", "role": "assistant", "toolCalls": [{"arguments": {"childType": "user-story", "children": [{"markdown": "## Summary\n\nOne", "proposalId": "c1", "title": "Story one"}, {"markdown": "## Summary\n\nTwo", "proposalId": "c2", "title": "Story two"}, {"markdown": "## Summary\n\nThree", "proposalId": "c3", "title": "Story three"}], "rationale": "Split by user outcome", "relationships": [{"sourceRef": "c1", "targetRef": "c2", "type": "depends-on"}, {"sourceRef": "c3", "targetRef": "c1", "type": "related-to"}]}, "id": "call_1", "name": "propose_child_items"}]}, {"content": {"created": [{"itemId": "new-0", "proposalId": "c1", "title": "Story one"}, {"itemId": "new-1", "proposalId": "c2", "title": "Story two (renamed)"}], "edited": ["c2"], "failed": [], "rejected": ["c3"], "relationshipsCreated": 1, "relationshipsSkipped": [{"reason": "a related child was rejected in the review", "sourceRef": "c3", "targetRef": "c1"}]}, "id": "approval-response-<interrupt-1>", "role": "tool", "toolCallId": "call_1"}, {"content": "Created two stories.", "id": "<id-4>", "role": "assistant"}], "type": "MESSAGES_SNAPSHOT"},
+        {"outcome": "success", "type": "RUN_FINISHED"}
+      ]
+    }
+  ]
+}
