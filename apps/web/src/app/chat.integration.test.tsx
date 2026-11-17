@@ -93,5 +93,7 @@ describe('chat with the agent', () => {
     }]);
     expect(await screen.findByText('Applied 1 section · 1 edited')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Proposed changes' })).toBeNull();
+    // The review card unmounted with its focused button: focus moves on instead of dropping to <body>.
+    expect(document.body).not.toHaveFocus();
   }, 20_000);
 });

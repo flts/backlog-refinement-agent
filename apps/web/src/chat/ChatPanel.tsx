@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { Item, ItemSummary } from '../api';
 import type { FeedbackRating, ResumeDecision, Thread } from '../agent';
 import type { AskUserResult, NextAction } from '../contracts';
@@ -58,6 +58,23 @@ export type ChatPanelProps = {
   onSend?: (text: string) => void;
 };
 
+/**
+ * When the ask_user / review card is answered it unmounts together with the focused control, which would drop focus on
+ * <body>. Hand focus on to the composer (or the conversation log while the composer is disabled).
+ */
+function useRestoreFocusAfterCard(phase: RunState['phase'], root: React.RefObject<HTMLElement | null>) {
+  const previous = useRef(phase);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = phase;
+    if ((before !== 'awaitingInput' && before !== 'awaitingReview') || before === phase) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    const target = root.current?.querySelector<HTMLElement>('textarea:not(:disabled)') ?? root.current?.querySelector<HTMLElement>('.conversation-scroll');
+    target?.focus({ preventScroll: true });
+  }, [phase, root]);
+}
+
 export function ChatPanel(props: ChatPanelProps) {
   const { className, item, threads, activeThreadId, run, busy, canRetry, message,
     onNewThread, onSelectThread, onRenameThread, onDeleteThread, onMessageChange, onSubmit, onContinue, onStop, onRetry, onAnswer, onDecideAll, onCreateItem, onSuggestion, onFeedback, projectId, slashCommands, onSlashCommand, mentionItems, onDecide, onSend } = props;
@@ -68,12 +85,14 @@ export function ChatPanel(props: ChatPanelProps) {
   const running = run.phase === 'running';
   const hydrating = run.phase === 'hydrating';
   const announcements = useRunAnnouncements(run);
+  const section = useRef<HTMLElement>(null);
+  useRestoreFocusAfterCard(run.phase, section);
   const activeThread = threads.find((thread) => thread.id === activeThreadId);
   const asking = run.phase === 'awaitingInput' && Boolean(run.pendingAskUser?.args);
   const reason = running ? 'The agent is working. Press Esc to stop it.' : hydrating ? 'Loading the conversation…' : undefined;
 
   return (
-    <section className={className} aria-label="Refinement workspace">
+    <section ref={section} className={className} aria-label="Refinement workspace">
       {item ? <>
         <div className="refine-heading">
           <div>

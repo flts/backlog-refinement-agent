@@ -166,7 +166,7 @@ function PaletteDialog({ projectId, currentItem, agentBusy = false, onSelectItem
             value={query} onChange={(event) => { setQuery(event.target.value); setActiveId(undefined); }} onKeyDown={onKeyDown} />
           <kbd aria-hidden="true">Esc</kbd>
         </div>
-        <div className="palette-list" ref={listRef}>
+        <div className="palette-list" ref={listRef} tabIndex={0} aria-label="Scrollable results">
           <div id={listId} role="listbox" aria-label="Results">
             {GROUPS.map((group) => {
               const groupRows = rows.filter((row) => row.group === group.id);

@@ -16,7 +16,7 @@ export function AccountMenu() {
     onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
     <button ref={button} type="button" className="avatar-button" aria-label={`Account: ${auth.user.name}`} aria-expanded={open} aria-controls={open ? panelId : undefined}
       aria-haspopup="dialog" title={auth.user.email} onClick={() => setOpen((value) => !value)}>
-      <span className="avatar" aria-hidden="true">{initialsOf(auth.user)}</span>
+      <span className="avatar" aria-hidden="true" data-initials={initialsOf(auth.user)} />
     </button>
     {open && <div id={panelId} className="menu-popover shell-menu-popover align-end account-panel" role="dialog" aria-label="Account" onMouseDown={(event) => event.preventDefault()}>
       <p className="account-name">{auth.user.name}</p>

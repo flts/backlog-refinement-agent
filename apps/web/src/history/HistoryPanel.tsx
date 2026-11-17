@@ -52,7 +52,7 @@ function RevisionDetail({ projectId, item, revisions, selected, nameOf, busy, on
 
   return <section className="history-detail" aria-label={`Version ${selected.version}`}>
     <div className="history-detail-head">
-      <h4>Version {selected.version}{isCurrent && <span className="history-current"> · current</span>}</h4>
+      <h3>Version {selected.version}{isCurrent && <span className="history-current"> · current</span>}</h3>
       <p>{attributionText(selected, nameOf)} · <RevisionTime date={selected.createdAt} /></p>
     </div>
     <fieldset className="history-modes">
@@ -61,7 +61,7 @@ function RevisionDetail({ projectId, item, revisions, selected, nameOf, busy, on
         <input type="radio" name={modeName} value={entry.id} checked={mode === entry.id} disabled={entry.disabled} onChange={() => setMode(entry.id)} /> {entry.label}
       </label>)}
     </fieldset>
-    <div className="history-content" aria-live="polite">
+    <div className="history-content">
       {loadFailed ? <p className="history-note" role="alert">Could not load this version.</p>
         : !ready ? <p className="history-note" role="status">Loading version…</p>
           : mode === 'view' ? <>

@@ -12,10 +12,10 @@ const statuses: Record<RunPhase, { text: string; tone: 'idle' | 'working' | 'inp
 
 export const agentStatusText = (phase: RunPhase) => statuses[phase].text;
 
-/** The agent's state for the open conversation. A polite live region, so phase changes are announced; the state is always text, never colour alone. */
+/** The agent's state for the open conversation. Visual only (not a live region): the chat announcer reads phase changes, so they are not announced twice. The state is always text, never colour alone. */
 export function AgentStatusPill({ phase }: { phase: RunPhase }) {
   const { text, tone } = statuses[phase];
-  return <span className={`agent-pill agent-${tone}`} role="status" aria-live="polite" data-phase={phase}>
+  return <span className={`agent-pill agent-${tone}`} data-phase={phase}>
     <i aria-hidden="true" /><span className="agent-pill-label">Agent</span><b>{text}</b>
   </span>;
 }

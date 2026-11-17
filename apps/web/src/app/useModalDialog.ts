@@ -8,6 +8,10 @@ export function useModalDialog(onClose: () => void, canClose: () => boolean = ()
     const dialog = ref.current;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
     if (dialog && !dialog.open) dialog.showModal();
+    // Browsers focus the first focusable control (or [autofocus]) themselves; make that explicit so it also holds where showModal does not.
+    if (dialog && !dialog.contains(document.activeElement)) {
+      dialog.querySelector<HTMLElement>('[autofocus], input:not([type="hidden"]):not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled), [tabindex="0"]')?.focus();
+    }
     return () => {
       if (dialog?.open) dialog.close();
       if (previous?.isConnected) previous.focus();
