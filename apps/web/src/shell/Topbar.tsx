@@ -89,6 +89,7 @@ export function Topbar(props: TopbarProps) {
   }
 
   return <header className={`topbar ${overflow ? 'topbar-compact' : ''}`}>
+    <h1 className="sr-only">Backlog Studio – {project.name}</h1>
     <Brand />
     <ProjectSwitcher project={project} controls={controls} locked={props.locked} onOpenProjectSettings={props.onOpenProjectSettings} />
     {!overflow && <button type="button" className="topbar-button sources-button" aria-haspopup="dialog" onClick={() => setSourcesOpen(true)}>

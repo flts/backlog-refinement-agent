@@ -25,13 +25,13 @@ export function SourcesDrawer({ projectId, projectName, onClose }: SourcesDrawer
 
   return <dialog className="sources-drawer" aria-labelledby="sources-title" {...dialog}>
     <div className="sources-panel">
-      <header className="sources-header">
+      <div className="sources-header">
         <div>
           <h2 id="sources-title">Sources</h2>
           {projectName && <p className="sources-hint">{projectName}</p>}
         </div>
         <button ref={closeButton} type="button" className="close-button" onClick={onClose} aria-label="Close sources" autoFocus><span aria-hidden="true">×</span></button>
-      </header>
+      </div>
       {sources.data && <BudgetMeter used={sources.data.pinnedBudget.used} limit={sources.data.pinnedBudget.limit} />}
       <DataDisclosure agentEndpoint={config} />
       <AddSource projectId={projectId} />

@@ -26,7 +26,7 @@
     --danger: #9b1c1c;
     --danger-soft: #fbefed;
     --danger-border: #f0d8d1;
-    --border-control: #8a909b;
+    --border-control: #7f858f;
     --focus: #1a5c3f;
     --backdrop: #20242c70;
     --track: #c9cdd4;
@@ -190,7 +190,7 @@ main:focus {
 }
 
 .topbar {
-    height: 64px;
+    min-height: 64px;
     flex-shrink: 0;
     border-bottom: 1px solid var(--line);
     background: var(--panel);
@@ -232,7 +232,7 @@ main:focus {
     height: 7px;
     width: 7px;
     border-radius: 50%;
-    background: #65a782
+    background: var(--accent-border)
 }
 
 .topbar-divider {
@@ -262,7 +262,7 @@ main:focus {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #65a782
+    background: var(--accent-border)
 }
 
 .icon-button,
@@ -359,7 +359,7 @@ main:focus {
 
 .add-button:hover {
     background: var(--green-soft);
-    color: var(--green)
+    color: var(--accent-text)
 }
 
 .backlog-summary {
@@ -383,7 +383,7 @@ main:focus {
 }
 
 .tree-row {
-    height: 34px;
+    min-height: 34px;
     display: flex;
     align-items: center;
     gap: 1px;
@@ -479,17 +479,21 @@ main:focus {
     flex-shrink: 0
 }
 
+.tree-status-draft {
+    background: var(--border-control)
+}
+
 .tree-status-refining {
-    background: #7d70cd
+    background: var(--violet-text)
 }
 
 .tree-status-ready,
 .tree-status-ready-with-open-questions {
-    background: #50a278
+    background: var(--accent-border)
 }
 
 .tree-status-complete {
-    background: #6b9b7f
+    background: var(--accent-text)
 }
 
 .tree-add {
@@ -526,7 +530,7 @@ main:focus {
     place-items: center;
     border-radius: 11px;
     background: var(--green-soft);
-    color: var(--green);
+    color: var(--accent-text);
     font-size: 1.1875rem;
     margin: 0 auto 13px
 }
@@ -754,7 +758,7 @@ main:focus {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background: #8da796;
+    background: var(--muted);
     animation: pulse 1s infinite
 }
 
@@ -1170,7 +1174,7 @@ main:focus {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: #71a182
+    background: var(--accent-border)
 }
 
 .quality-section>p {
@@ -1269,7 +1273,7 @@ main:focus {
     font-size: 0.75rem
 }
 
-.preview-empty h3 {
+.preview-empty h2 {
     font: 700 0.8125rem var(--font-display)
 }
 
@@ -1675,7 +1679,7 @@ dialog.modal-dialog::backdrop {
     }
 
     .topbar {
-        height: 56px;
+        min-height: 56px;
         padding: 0 14px
     }
 
@@ -1683,7 +1687,7 @@ dialog.modal-dialog::backdrop {
         display: block;
         position: relative;
         padding: 0;
-        height: calc(100% - 94px)
+        height: auto
     }
 
     .workspace-grid>aside,
@@ -1695,15 +1699,7 @@ dialog.modal-dialog::backdrop {
         display: none
     }
 
-    .workspace-grid .panel-tree {
-        display: flex
-    }
-
-    .workspace-grid .panel-refine {
-        display: flex
-    }
-
-    .workspace-grid .panel-preview {
+    .workspace-grid>.is-mobile-active {
         display: flex
     }
 
@@ -1776,7 +1772,7 @@ dialog.modal-dialog::backdrop {
     }
 
     .tree-row {
-        height: 39px
+        min-height: 39px
     }
 
     .tree-title {
@@ -2039,7 +2035,6 @@ dialog.modal-dialog::backdrop {
 .quality-list li small {
     grid-column: 1 / -1;
     text-transform: none;
-    opacity: 0.75;
 }
 
 .quality-level {
@@ -2533,7 +2528,7 @@ dialog.sources-drawer::backdrop {
 .sources-disclosure summary {
     cursor: pointer;
     font-weight: 600;
-    color: var(--green)
+    color: var(--accent-text)
 }
 
 .sources-disclosure ul {
@@ -2615,6 +2610,7 @@ dialog.sources-drawer::backdrop {
 .source-kind { font-size: 1.125rem; line-height: 1.3; color: var(--violet-text) }
 .source-title { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px }
 .source-name, .source-url { overflow-wrap: anywhere }
+.source-url { color: var(--accent-text) }
 .source-meta { color: var(--muted); font-size: 0.75rem }
 .source-rename { display: flex; flex-wrap: wrap; gap: 6px; align-items: center }
 .source-rename input { flex: 1; min-width: 8rem }
@@ -3055,7 +3051,7 @@ dialog.modal-dialog.conflict-dialog {
     background: var(--panel)
 }
 
-.history-detail-head h4 {
+.history-detail-head h3 {
     margin: 0;
     font-size: 0.875rem
 }
@@ -3128,10 +3124,10 @@ dialog.modal-dialog.conflict-dialog {
 .backlog-filter { display: grid; gap: 6px; margin: 0 0 8px }
 .filter-input { width: 100%; box-sizing: border-box; padding: 6px 9px; border: 1px solid var(--border-control); border-radius: 7px; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.8125rem }
 .filter-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center }
-.filter-chip { border: 1px solid var(--border-control); border-radius: 999px; padding: 2px 8px; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.75rem; cursor: pointer }
+.filter-chip { border: 1px solid var(--border-control); border-radius: 999px; padding: 2px 8px; min-height: 24px; background: var(--panel); color: var(--ink); font: inherit; font-size: 0.75rem; cursor: pointer }
 .filter-chip:hover { background: var(--panel-subtle) }
 .filter-chip.active { background: var(--green-soft); border-color: var(--accent-border); color: var(--accent-text); font-weight: 600 }
-.filter-clear { border: 0; background: transparent; color: var(--accent-text); font: inherit; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 2px 4px }
+.filter-clear { border: 0; background: transparent; color: var(--accent-text); font: inherit; font-size: 0.75rem; text-decoration: underline; cursor: pointer; padding: 2px 4px; min-height: 24px }
 .filter-count { margin: 0; min-height: 0; color: var(--muted); font-size: 0.75rem }
 .filter-count:empty { display: none }
 .tree-row-context .tree-title { color: var(--muted); font-style: italic; font-weight: 400 }
@@ -3172,7 +3168,7 @@ dialog.modal-dialog.conflict-dialog {
 .skeleton-line.short { width: 55% }
 
 .activity-timeline { margin: 0 0 14px 35px; max-width: 585px; font-size: 0.75rem; color: var(--muted) }
-.activity-toggle { border: 0; background: transparent; padding: 2px 0; color: var(--muted); font-size: 0.75rem; font-weight: 600; cursor: pointer }
+.activity-toggle { border: 0; background: transparent; padding: 2px 0; min-height: 24px; color: var(--muted); font-size: 0.75rem; font-weight: 600; cursor: pointer }
 .activity-toggle:hover { color: var(--ink) }
 .activity-list { list-style: none; margin: 6px 0 0; padding: 0 0 0 4px; border-left: 2px solid var(--line) }
 .activity-list[hidden] { display: none }
@@ -3286,7 +3282,7 @@ dialog.modal-dialog.conflict-dialog {
 .ask-option:hover { background: var(--panel-subtle) }
 .ask-option[data-selected] { border-color: var(--accent-border); background: var(--green-soft) }
 .ask-option:focus-within { outline: 3px solid var(--focus); outline-offset: 2px }
-.ask-option input[type="radio"], .ask-option input[type="checkbox"] { margin: 3px 0 0; accent-color: var(--accent-border); flex: none; width: 1rem; height: 1rem }
+.ask-option input[type="radio"], .ask-option input[type="checkbox"] { margin: 0; accent-color: var(--accent-border); flex: none; width: 1.5rem; height: 1.5rem }
 .ask-option-body { flex: 1; min-width: 0; display: grid; gap: 2px }
 .ask-option-label { font-size: 0.8125rem; font-weight: 600; color: var(--ink); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; overflow-wrap: anywhere }
 .ask-option-desc { font-size: 0.75rem; line-height: 1.5; color: var(--muted); overflow-wrap: anywhere }
@@ -3622,6 +3618,9 @@ dialog.modal-dialog.palette-dialog { width: min(640px, calc(100% - 36px)); margi
 
 .splitter {
     position: relative;
+    z-index: 1;
+    min-width: 24px;
+    margin: 0 -7px;
     cursor: col-resize;
     touch-action: none;
     min-height: 0
@@ -3635,14 +3634,12 @@ dialog.modal-dialog.palette-dialog { width: min(640px, calc(100% - 36px)); margi
     height: 36px;
     margin: -18px 0 0 -2px;
     border-radius: 3px;
-    background: var(--border-control);
-    opacity: .55
+    background: var(--border-control)
 }
 
 .splitter:hover>span,
 .splitter:focus-visible>span,
 body.is-resizing .splitter>span {
-    opacity: 1;
     background: var(--accent-border)
 }
 
@@ -3708,13 +3705,23 @@ body.is-resizing {
     }
 
     .search-trigger {
+        position: relative;
         flex: 0 0 auto;
         padding: 5px 8px
     }
 
-    .search-text,
     .search-trigger kbd {
         display: none
+    }
+
+    /* Visually hidden, not display:none: the icon-only trigger keeps its accessible name. */
+    .search-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap
     }
 
     .switcher-name {
@@ -3726,13 +3733,32 @@ body.is-resizing {
     }
 }
 
+@media (max-width: 420px) {
+    .topbar {
+        flex-wrap: wrap;
+        row-gap: 4px;
+        padding-block: 4px
+    }
+
+    .topbar-actions {
+        flex-wrap: wrap;
+        gap: 4px;
+        justify-content: flex-end;
+        min-width: 0
+    }
+
+    .switcher-name {
+        max-width: 64px
+    }
+}
+
 /* --- fe-review-ui --- */
 .review-card h3 { font: 700 0.875rem var(--font-display); margin: 4px 0 0; outline-offset: 3px }
 .review-card h4 { font: 700 0.8125rem var(--font-display); margin: 0 }
 .review-sections, .review-conflicts, .review-created, .review-problem-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px }
 .review-section, .review-conflict { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: var(--panel) }
 .review-accepted { border-color: var(--accent-border) }
-.review-rejected { border-style: dashed; opacity: 0.85 }
+.review-rejected { border-style: dashed }
 .review-section-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px }
 .review-pill { padding: 1px 7px; border: 1px solid var(--border-control); border-radius: 999px; font-size: 0.6875rem; font-weight: 600; color: var(--muted) }
 .review-state { margin-left: auto }
@@ -3766,4 +3792,26 @@ body.is-resizing {
 .predictive-summary { margin: 8px 0 0; font-size: 0.8125rem }
 .predictive-meta { margin: 4px 0 0; font-size: 0.75rem; color: var(--muted) }
 .predictive-sections { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 10px }
-.predictive-section h4 { display: flex; gap: 6px; align-items: center; margin: 0; font: 700 0.8125rem var(--font-display) }
+.predictive-section h3 { display: flex; gap: 6px; align-items: center; margin: 0; font: 700 0.8125rem var(--font-display) }
+
+.avatar[data-initials]::before { content: attr(data-initials) }
+
+/* --- ux-a11y --- */
+.composer:focus-within { outline: 3px solid var(--focus); outline-offset: 2px }
+.tree-select { align-self: stretch; min-height: 24px }
+.conversation-scroll, .preview-scroll { scroll-padding-block: 56px }
+
+.palette-list:focus-visible { outline-offset: -3px }
+
+@media (forced-colors: active) {
+    .composer:focus-within { outline-color: Highlight }
+    .agent-pill, .review-pill, .filter-chip, .context-chip, .suggestion-chip, .local-badge,
+    .presence-dot, .avatar, .user-avatar { border: 1px solid ButtonText; forced-color-adjust: auto }
+    .tree-status, .status-indicator i, .agent-pill i, .workspace-dot, .typing i, .unsaved-dot, .history-dot,
+    .local-badge>span, .splitter>span { background: ButtonText; forced-color-adjust: none }
+    .filter-chip.active, .tree-row.selected, .history-entry.selected, .palette-option[aria-selected="true"],
+    .review-accepted, .ask-option[data-selected] { outline: 2px solid Highlight; outline-offset: -2px }
+    .splitter:hover>span, .splitter:focus-visible>span, body.is-resizing .splitter>span { background: Highlight }
+    .context-meter > span, .budget-meter-fill, .track { background: Highlight; forced-color-adjust: none }
+    .context-meter, .budget-meter { border: 1px solid ButtonText }
+}

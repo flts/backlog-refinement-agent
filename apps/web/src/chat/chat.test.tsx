@@ -319,10 +319,11 @@ describe('ChatPanel', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Agent is working');
     rerender(<ChatPanel {...props(runOf({ phase: 'idle' }))} />);
     expect(screen.getByRole('status')).toHaveTextContent('Agent replied');
+    // The ask_user and review cards announce themselves, so the panel stays quiet (no double announcement).
     rerender(<ChatPanel {...props(runOf({ phase: 'awaitingInput' }))} />);
-    expect(screen.getByRole('status')).toHaveTextContent('Agent needs your input');
+    expect(screen.getAllByRole('status').every((node) => node.textContent !== 'Agent needs your input')).toBe(true);
     rerender(<ChatPanel {...props(runOf({ phase: 'awaitingReview' }))} />);
-    expect(screen.getByRole('status')).toHaveTextContent('Review proposed changes');
+    expect(screen.getAllByRole('status').every((node) => node.textContent !== 'Review proposed changes')).toBe(true);
     rerender(<ChatPanel {...props(runOf({ phase: 'error', lastError: error('INTERNAL') }))} />);
     expect(screen.getByRole('alert')).toHaveTextContent(/Something went wrong/);
   });

@@ -25,14 +25,15 @@ describe('agent status pill', () => {
     ['idle', 'Idle'], ['hydrating', 'Idle'], ['running', 'Working…'], ['awaitingInput', 'Needs your input'], ['awaitingReview', 'Review changes'], ['cancelled', 'Idle'], ['error', 'Run failed'],
   ])('shows %s as "%s"', (phase, text) => {
     render(<AgentStatusPill phase={phase} />);
-    expect(screen.getByRole('status')).toHaveTextContent(text);
+    expect(screen.getByText(text)).toBeInTheDocument();
   });
 
-  it('is a polite live region that updates with the phase', () => {
-    const { rerender } = render(<AgentStatusPill phase="idle" />);
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+  it('is not a live region (the chat announcer reads phase changes) and updates with the phase', () => {
+    const { rerender, container } = render(<AgentStatusPill phase="idle" />);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-live]')).toBeNull();
     rerender(<AgentStatusPill phase="awaitingReview" />);
-    expect(screen.getByRole('status')).toHaveTextContent('Review changes');
+    expect(screen.getByText('Review changes')).toBeInTheDocument();
   });
 });
 

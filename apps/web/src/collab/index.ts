@@ -1,5 +1,6 @@
 export { ConflictDialog, type ConflictDialogProps } from './ConflictDialog';
 export { PresenceAvatars, PresenceDot, Avatar, presenceSentence } from './PresenceAvatars';
+export { PresenceAnnouncer, presenceChangeText } from './PresenceAnnouncer';
 export { RemoteChangeNotice } from './RemoteChangeNotice';
 export { attributionText } from './RevisionAttribution';
 export { ShareDialog, type ShareDialogProps } from './ShareDialog';

@@ -68,8 +68,9 @@ export function PreviewPanel({ className, item, parentItem, projectId, revisions
   const requestedTab = item ? tabByItem[item.id] : undefined;
   const activeTab: PreviewTabId = tabs.some((tab) => tab.id === requestedTab) ? requestedTab! : 'document';
   return (
-    <aside className={className}>
+    <aside className={className} aria-label="Item details">
       {item ? <>
+            <h2 className="sr-only">Item details</h2>
             <div className="preview-head">
               <div className="preview-type"><span className="type-icon">{typeShort[item.type]}</span>
               {/* <span>{itemTypeLabel[item.type]}</span> */}
@@ -116,7 +117,7 @@ export function PreviewPanel({ className, item, parentItem, projectId, revisions
               </>}
                 </div>
             </div>
-      </> : <div className="preview-empty"><span className="type-icon">↗</span><h3>Your item preview</h3><p>Choose an item to see its structure and refinement details.</p></div>}
+      </> : <div className="preview-empty"><span className="type-icon">↗</span><h2>Your item preview</h2><p>Choose an item to see its structure and refinement details.</p></div>}
     </aside>
   );
 }

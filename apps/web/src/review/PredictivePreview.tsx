@@ -30,7 +30,7 @@ export function PredictivePreview({ document, proposal, status }: PredictivePrev
           const { isNew } = sectionDiff(document, section);
           return (
             <li key={section.id} className="predictive-section">
-              <h4>{section.heading} <span className="review-pill">{isNew ? 'New section' : modeLabel[section.mode]}</span></h4>
+              <h3>{section.heading} <span className="review-pill">{isNew ? 'New section' : modeLabel[section.mode]}</span></h3>
               <SectionDiff document={document} change={section} />
             </li>
           );

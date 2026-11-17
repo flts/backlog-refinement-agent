@@ -3,7 +3,7 @@ import { MdContentCopy,MdControlPointDuplicate, MdDelete, MdDownload } from "rea
 import type { ItemType, Project } from '../api';
 import type { AgentIntent } from '../contracts';
 import {
-  ConflictDialog, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
+  ConflictDialog, PresenceAnnouncer, RemoteChangeNotice, closeReasonText, useMemberDirectory, usePresence, useProjectEvents, useProjectPresence,
   type RemoteItemChange,
 } from '../collab';
 import type { FinalCloseReason } from '../collab/projectEvents';
@@ -143,7 +143,6 @@ export default function App({ project, projectBusy, projectControls, onOpenShare
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">Skip to main content</a>
-      <h1 className="sr-only">Backlog Studio – {project.name}</h1>
       <Topbar project={project} controls={controls} locked={agentBusy} people={presence.people}
         saveStatus={backlog.saveStatus} onResolveConflict={() => backlog.selectedId && backlog.autosave.reopenConflict(backlog.selectedId)}
         agentPhase={run.state.phase} focusMode={layout.focus !== null} onToggleFocus={layout.toggleFocus}
@@ -157,14 +156,14 @@ export default function App({ project, projectBusy, projectControls, onOpenShare
 
       <WorkspaceLayout layout={layout} inert={projectBusy}
         tree={<SidebarPanel
-          className={`sidebar panel-${mobilePanel}`}
+          className={`sidebar ${mobilePanel === 'tree' ? 'is-mobile-active' : ''}`}
           items={backlog.items} selectedId={backlog.selectedId}
           onSelect={selectItem} presenceFor={presence.forItem} projectId={project.id} threadStatuses={threadStatuses.statuses}
           onCreate={(parent) => setNewItem({ type: parent?.childType ?? 'capability', title: '', parentId: parent?.id })}
         />}
 
         chat={<ChatPanel
-          className={`refinement-column panel-${mobilePanel}`}
+          className={`refinement-column ${mobilePanel === 'refine' ? 'is-mobile-active' : ''}`}
           item={selectedItem} parentItem={backlog.parentItem} threads={threads.threads} activeThreadId={threads.activeThreadId}
           run={run.state} busy={agentBusy} canRetry={run.canRetry} message={message}
           onSelectItem={selectItem} onNewThread={() => void newThread()} onSelectThread={threads.selectThread} onRenameThread={threads.rename} onDeleteThread={deleteThread}
@@ -180,7 +179,7 @@ export default function App({ project, projectBusy, projectControls, onOpenShare
 
         preview={<PreviewPanel
           proposal={proposalForPreview(run.state)}
-          className={`preview-column panel-${mobilePanel}`}
+          className={`preview-column ${mobilePanel === 'preview' ? 'is-mobile-active' : ''}`}
           item={selectedItem} parentItem={backlog.parentItem} projectId={project.id} revisions={backlog.revisions} revisionsLoading={backlog.revisionsLoading} nameOf={nameOf}
           presence={presence.forItem(backlog.selectedId)} remoteChange={remoteChange} session={{ id: threads.activeThreadId ?? 'new' }} busy={agentBusy}
           menuActions={[
@@ -200,6 +199,7 @@ export default function App({ project, projectBusy, projectControls, onOpenShare
         onSelectItem={selectItem} {...paletteHandlers} />
 
       <Toast notifications={notifications} />
+      <PresenceAnnouncer people={presence.people} />
 
       {conflict && backlog.selectedId && <ConflictDialog key={conflict.theirs.version} plan={conflict.plan} theirAuthor={nameOf(conflict.theirs.updatedBy)}
         onResolve={(merged) => void backlog.autosave.resolveConflict(conflict.itemId, merged)} onClose={() => backlog.autosave.postponeConflict(conflict.itemId)} />}
