@@ -14,7 +14,9 @@ import asyncio
 import os
 import re
 from collections.abc import AsyncIterator, Iterator
+from contextlib import AsyncExitStack
 from dataclasses import dataclass, field
+from typing import Protocol
 
 import httpx
 import pytest
@@ -28,8 +30,9 @@ from agent_service.agents import build_placeholder_registry
 from agent_service.auth.tokens import StaticKeySource
 from agent_service.db.connection_strings import to_async_database_url
 from agent_service.db.migrate import upgrade_database
-from agent_service.main import create_app
+from agent_service.main import RegistryFactory, create_app
 from agent_service.settings import Settings
+from agent_service.telemetry import Telemetry
 from agent_service_testkit import TEST_AUDIENCE, TEST_ISSUER, TokenFactory
 from fakes.server import running_fake_gateway, running_fake_mcp
 
@@ -216,3 +219,46 @@ async def rclient(refiner_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     transport = httpx.ASGITransport(app=refiner_app)
     async with httpx.AsyncClient(transport=transport, base_url="http://agent-service.test", timeout=30) as http:
         yield http
+
+
+class AppFactory(Protocol):
+    async def __call__(
+        self,
+        *,
+        registry_factory: RegistryFactory = ...,
+        telemetry: Telemetry | None = ...,
+        **overrides: object,
+    ) -> httpx.AsyncClient: ...
+
+
+@pytest.fixture
+async def app_factory(
+    settings: Settings, tokens: TokenFactory, database_url: str, backlog: BacklogMock
+) -> AsyncIterator[AppFactory]:
+    """``await app_factory(registry_factory=..., telemetry=..., **settings_overrides)`` -> client of a running app."""
+    await truncate_all(database_url)
+    stack = AsyncExitStack()
+
+    async def build(
+        *,
+        registry_factory: RegistryFactory = build_placeholder_registry,
+        telemetry: Telemetry | None = None,
+        **overrides: object,
+    ) -> httpx.AsyncClient:
+        application = create_app(
+            settings.model_copy(update=overrides),
+            key_source=StaticKeySource(tokens.jwks),
+            registry_factory=registry_factory,
+            backlog_transport=httpx.MockTransport(backlog.handler),
+            configure_logs=False,
+            telemetry=telemetry,
+        )
+        await stack.enter_async_context(LifespanManager(application, startup_timeout=30))
+        return await stack.enter_async_context(
+            httpx.AsyncClient(transport=httpx.ASGITransport(app=application), base_url="http://agent-service.test")
+        )
+
+    try:
+        yield build
+    finally:
+        await stack.aclose()

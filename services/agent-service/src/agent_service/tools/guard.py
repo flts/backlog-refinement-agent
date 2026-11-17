@@ -15,6 +15,7 @@ state (the tool's ``error_state``), for example ``{"preview": null}`` so a rejec
 from __future__ import annotations
 
 import logging
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
@@ -23,6 +24,7 @@ from agent_framework_ag_ui import state_update
 from pydantic import BaseModel, ValidationError
 
 from agent_service.mcp_client import current_run_scope
+from agent_service.metrics import get_metrics
 from agent_service.tools import ToolSpec
 
 logger = logging.getLogger(__name__)
@@ -126,3 +128,26 @@ def _as_mapping(arguments: Any) -> Mapping[str, Any]:
     if isinstance(arguments, BaseModel):
         return arguments.model_dump(by_alias=True)
     return arguments if isinstance(arguments, Mapping) else {}
+
+
+class ToolMetrics(FunctionMiddleware):
+    """Counts tool calls and times them by tool name and outcome (``ok`` | ``rejected`` | ``error``); no arguments."""
+
+    async def process(self, context: FunctionInvocationContext, call_next: Callable[[], Awaitable[None]]) -> None:
+        name = context.function.name
+        started = time.perf_counter()
+        outcome = "ok"
+        try:
+            await call_next()
+            result = context.result
+            text = result if isinstance(result, str) else getattr(result, "text", None)
+            if isinstance(text, str) and text.startswith("Error:"):
+                outcome = "rejected"
+        except BaseException:
+            outcome = "error"
+            raise
+        finally:
+            attributes = {"tool": name, "outcome": outcome}
+            metrics = get_metrics()
+            metrics.tool_calls.add(1, attributes)
+            metrics.tool_duration.record(time.perf_counter() - started, attributes)

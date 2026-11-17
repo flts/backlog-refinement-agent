@@ -25,11 +25,13 @@ from agent_service.backlog import BacklogClient
 from agent_service.db.migrate import upgrade_database
 from agent_service.db.session import Database
 from agent_service.hooks import DisabledHookSubscriber, HookSubscriber, create_subscriber
+from agent_service.limits import RunLimits, TokenBucketLimiter
 from agent_service.llm import LlmReadiness
 from agent_service.middleware import BodySizeLimitMiddleware, RequestContextMiddleware
 from agent_service.observability import configure_logging
 from agent_service.problems import PROBLEM_CONTENT_TYPE, Problem, install_problem_handlers
 from agent_service.settings import AGENTS_PATH_PREFIX, API_PREFIX, Settings
+from agent_service.telemetry import Telemetry, setup_telemetry
 from agent_service.threads.store import PgThreadSnapshotStore
 
 logger = logging.getLogger(__name__)
@@ -67,17 +69,23 @@ def create_app(
     llm_transport: httpx.AsyncBaseTransport | None = None,
     configure_logs: bool = True,
     hooks_transport: httpx.AsyncBaseTransport | None = None,
+    telemetry: Telemetry | None = None,
 ) -> FastAPI:
     """Build the app.
 
     ``hooks_transport`` carries the event-hook traffic (Keycloak token endpoint and backlog-api event stream).
     ``key_source`` (JWKS), ``registry_factory`` (builds the agents from the settings and the snapshot store; default:
     the agent loader, i.e. ``agents/*.agent.md`` + ``tools/tools.yaml``) and the HTTP transports of the backlog-api /
-    LLM readiness clients can be injected (tests).
+    LLM readiness clients can be injected (tests). ``telemetry`` replaces the OpenTelemetry setup from the ``OTEL_*``
+    environment (tests pass one with in-memory exporters).
     """
     settings = settings or Settings()
     if configure_logs:
-        configure_logging(settings.log_level)
+        configure_logging(settings.log_level, log_content=settings.log_content)
+    # Before the database engine is created (SQLAlchemy instrumentation patches engine creation).
+    telemetry = telemetry or setup_telemetry(
+        "agent-service", version=__version__, environment=settings.env, log_content=settings.log_content
+    )
     # The snapshot store resolves the session factory lazily: the database is created in the lifespan.
     state: dict[str, Database] = {}
     snapshot_store = PgThreadSnapshotStore(lambda: state["db"].sessionmaker)
@@ -120,6 +128,7 @@ def create_app(
                 await authenticator.aclose()
             await database.dispose()
             state.pop("db", None)
+            telemetry.shutdown()
 
     app = FastAPI(
         title="Agent Service",
@@ -136,6 +145,8 @@ def create_app(
         redoc_url=None,
     )
     app.state.settings = settings
+    app.state.telemetry = telemetry
+    app.state.run_limits = RunLimits(TokenBucketLimiter(settings.rate_limit_runs_per_minute, settings.rate_limit_burst))
     app.state.snapshot_store = snapshot_store
     factory = registry_factory or default_registry_factory
     app.state.agents = factory(settings, snapshot_store) if settings.llm_base_url else AgentRegistry()
@@ -157,6 +168,7 @@ def create_app(
             max_age=600,
         )
     app.add_middleware(RequestContextMiddleware)
+    telemetry.instrument_app(app)
 
     app.include_router(health.router, include_in_schema=False)
     app.include_router(health.router, prefix=API_PREFIX)

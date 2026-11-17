@@ -37,7 +37,8 @@ references are injected, so no `.env` is needed. OpenAPI docs: <http://localhost
 | `BACKLOG_BACKUP_MAX_BYTES` | `52428800` | Maximum size of a project backup: export answers 413 `backup-too-large`, the import body limit is 413 `payload-too-large` |
 | `BACKLOG_MCP_MAX_OUTPUT_CHARS` | `120000` | Max JSON size of one MCP tool result; longer texts are truncated and marked `truncated` |
 | `BACKLOG_MCP_SIMILAR_MIN_SCORE` | `0.5` | Minimum cosine similarity returned by MCP `find_similar_items` |
-| `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content) |
+| `BACKLOG_LOG_LEVEL` | `INFO` | JSON logs to stdout (no tokens or content; secrets such as `ticket` / `access_token` are redacted; `request_id`, `trace_id`, `span_id` included) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | — (Aspire injects them) | OpenTelemetry traces, metrics and logs (FastAPI, httpx, SQLAlchemy) over OTLP; off without an endpoint or with `OTEL_SDK_DISABLED=true` |
 | `BACKLOG_EVENTS_HEARTBEAT_SECONDS` | `15` | SSE keepalive comment interval |
 | `BACKLOG_EVENTS_RETENTION_SECONDS` / `BACKLOG_EVENTS_MAX_PER_PROJECT` | `86400` / `5000` | Resume window of the event log (age / events per project) |
 | `BACKLOG_EVENTS_REPLAY_LIMIT` | `1000` | A larger gap makes the client `reset` instead of replaying |

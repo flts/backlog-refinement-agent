@@ -15,6 +15,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from agent_service.db.models import ThreadSnapshot
+from agent_service.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,7 @@ class PgThreadSnapshotStore:
                 await session.commit()
         except Exception as exc:
             self.save_failures += 1
+            get_metrics().snapshot_save_failures.add(1)
             logger.error(
                 "thread snapshot save failed",
                 extra={"thread_id": thread_id, "error_type": type(exc).__name__, "save_failures": self.save_failures},
