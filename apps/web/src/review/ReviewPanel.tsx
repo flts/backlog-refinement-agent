@@ -4,7 +4,8 @@ import { PROPOSE_CHILD_ITEMS_TOOL_NAME, PROPOSE_DOCUMENT_CHANGES_TOOL_NAME } fro
 import type { RunState } from '../run';
 import { ChildProposalCard } from './ChildProposalCard';
 import { similarItemsFrom } from './proposal';
-import { ExpiredProposal, ReviewCard } from './ReviewCard';
+import { ExpiredProposal } from './ExpiredProposal';
+import { ReviewCard } from './ReviewCard';
 
 export interface ReviewPanelProps {
   run: Pick<RunState, 'phase' | 'interrupts' | 'messages'>;
@@ -14,8 +15,10 @@ export interface ReviewPanelProps {
   disabled?: boolean;
   /** Sends the decisions for ALL pending interrupts in one resume (`run.decide`). */
   onDecide: (decisions: ResumeDecision[]) => void;
-  /** Expired proposals: `run.retry()`. */
+  /** Expired proposals, "Start over": `run.retry()`. */
   onRetry: () => void;
+  /** Expired proposals, "Ask the agent to re-propose with my edits": `run.repropose()`. */
+  onRepropose?: () => void;
   onSelectItem?: (id: string) => void;
 }
 
@@ -23,7 +26,7 @@ export interface ReviewPanelProps {
  * The review cards of every pending interrupt. The server needs one resume entry per interrupt (spike #8), so with
  * several pending proposals the decisions are collected and sent together.
  */
-export function ReviewPanel({ run, document, itemId, disabled = false, onDecide, onRetry, onSelectItem }: ReviewPanelProps) {
+export function ReviewPanel({ run, document, itemId, disabled = false, onDecide, onRetry, onRepropose, onSelectItem }: ReviewPanelProps) {
   const live = run.interrupts.filter((interrupt) => !interrupt.expired);
   const expired = run.interrupts.filter((interrupt) => interrupt.expired);
   const [collected, setCollected] = useState<Record<string, ResumeDecision>>({});
@@ -48,7 +51,7 @@ export function ReviewPanel({ run, document, itemId, disabled = false, onDecide,
       </>
     );
   }
-  if (expired.length > 0) return <ExpiredProposal onRetry={onRetry} disabled={disabled} />;
+  if (expired.length > 0) return <ExpiredProposal interrupts={expired} document={document} onRetry={onRetry} onRepropose={onRepropose} disabled={disabled} />;
   return null;
 }
 

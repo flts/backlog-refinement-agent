@@ -4,7 +4,8 @@ import type { ResumeDecision } from '../agent';
 import { ProposeChildItemsArgsSchema, type ProposedChild, type ProposeChildItemsArgs } from '../contracts';
 import { MarkdownMessage } from '../chat/MarkdownMessage';
 import { itemTypeLabel } from '../app/labels';
-import { ExpiredProposal, OverlapWarning } from './ReviewCard';
+import { ExpiredProposal } from './ExpiredProposal';
+import { OverlapWarning } from './ReviewCard';
 import type { ReviewInterrupt } from '../run';
 import { readChildProposal, type SimilarItem } from './proposal';
 import { useReviewState, type Decision } from './useReviewState';
@@ -19,6 +20,7 @@ export interface ChildProposalCardProps {
   onSelectItem?: (id: string) => void;
   onDecide: (decision: ResumeDecision) => void;
   onRetry?: () => void;
+  onRepropose?: () => void;
   autoFocus?: boolean;
 }
 
@@ -38,9 +40,9 @@ export function buildEditedChildArgs(interrupt: Pick<ReviewInterrupt, 'args'>, p
   return ProposeChildItemsArgsSchema.safeParse(edited).success ? edited : null;
 }
 
-export function ChildProposalCard({ interrupt, parentItemId, disabled = false, locked = false, similar = [], onSelectItem, onDecide, onRetry, autoFocus = true }: ChildProposalCardProps) {
+export function ChildProposalCard({ interrupt, parentItemId, disabled = false, locked = false, similar = [], onSelectItem, onDecide, onRetry, onRepropose, autoFocus = true }: ChildProposalCardProps) {
   const proposal = readChildProposal(interrupt.args);
-  if (interrupt.expired) return <ExpiredProposal onRetry={onRetry} disabled={disabled} />;
+  if (interrupt.expired) return <ExpiredProposal interrupts={[interrupt]} onRetry={onRetry} onRepropose={onRepropose} disabled={disabled} autoFocus={autoFocus} />;
   if (!proposal) {
     return (
       <div className="proposal-panel review-card" role="region" aria-label="Proposal cannot be shown">

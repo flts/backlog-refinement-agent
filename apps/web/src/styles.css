@@ -3786,6 +3786,12 @@ body.is-resizing {
 .review-conflict details { margin-top: 6px; font-size: 0.75rem }
 .review-created { margin-top: 6px }
 .review-created .text-link { font-size: 0.75rem }
+.review-expired .eyebrow { color: var(--danger) }
+.review-expired-summary { margin-top: 10px }
+.review-expired-meta { margin: 6px 0 0; padding-left: 18px; font-size: 0.75rem }
+.review-expired details > summary { cursor: pointer; font-size: 0.8125rem; min-height: 24px }
+.review-expired .review-section details[open] > summary { margin-bottom: 8px }
+.review-expired-label { font-weight: 700 }
 .composer-note { margin: 0 0 6px; font-size: 0.75rem; color: var(--warning-text); background: var(--warning-soft); padding: 4px 9px; border-radius: 6px }
 .predictive-preview { border: 1px solid var(--accent-border); border-radius: 9px; padding: 10px; margin-bottom: 12px; background: var(--panel) }
 .predictive-banner { display: flex; gap: 8px; align-items: center; margin: 0; padding: 6px 9px; border-radius: 7px; background: var(--green-soft); color: var(--accent-text); font-size: 0.75rem }
