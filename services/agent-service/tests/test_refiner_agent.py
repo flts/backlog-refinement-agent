@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 import pytest
 from asgi_lifespan import LifespanManager
-from fastapi import FastAPI
 
 from agent_service.agents.definition import load_agent_definitions
 from agent_service.auth.tokens import StaticKeySource
@@ -37,34 +35,6 @@ ASK_USER = {
 }
 READ_TOOLS = {"get_item_context", "get_project_guidance", "get_pinned_sources", "search_sources", "find_similar_items"}
 WRITE_TOOLS = {"apply_document_changes", "create_child_items", "set_item_quality"}
-
-
-@pytest.fixture
-async def refiner_app(
-    settings: Settings,
-    tokens: TokenFactory,
-    database_url: str,
-    backlog: BacklogMock,
-    mcp_url: str,
-    mcp: httpx.AsyncClient,
-) -> AsyncIterator[FastAPI]:
-    await truncate_all(database_url)
-    configured = settings.model_copy(update={"backlog_api_url": mcp_url})
-    application = create_app(
-        configured,
-        key_source=StaticKeySource(tokens.jwks),
-        backlog_transport=httpx.MockTransport(backlog.handler),
-        configure_logs=False,
-    )
-    async with LifespanManager(application, startup_timeout=30):
-        yield application
-
-
-@pytest.fixture
-async def rclient(refiner_app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
-    transport = httpx.ASGITransport(app=refiner_app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://agent-service.test", timeout=30) as http:
-        yield http
 
 
 async def llm_requests(gateway: httpx.AsyncClient) -> list[dict[str, Any]]:

@@ -7,7 +7,8 @@ For every definition the loader creates a MAF ``Agent`` with
   1. :class:`~agent_service.mcp_client.McpProvider` - per-run MCP connections with the caller's token (``mcp:``),
   2. the skills provider - defaults from ``skills/`` plus the project's guidance overrides (``skills:``),
   3. the providers named in ``context_providers:`` (``item_context``, ``intent``),
-* the agent-side tools resolved by name from :mod:`agent_service.tools` (``tools:``),
+* the agent-side tools resolved by name from :mod:`agent_service.tools` (``tools:``) and their function middleware
+  (argument guard with the validation-retry cap),
 
 and wraps it in an AG-UI runner that adds the per-run MCP scope and the ``STEP_*`` timeline rows. Client tools
 (``client_tools:``, for example ``ask_user``) are declared by the SPA in ``RunAgentInput.tools``; nothing is
@@ -129,6 +130,7 @@ def build_agent(
         tools=tools,
         default_options=options or None,  # type: ignore[arg-type]
         context_providers=providers,
+        middleware=tool_registry.middleware() or None,  # type: ignore[arg-type]
     )
 
 

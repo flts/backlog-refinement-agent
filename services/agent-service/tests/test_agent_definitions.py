@@ -94,6 +94,8 @@ def test_shipped_definitions_are_valid() -> None:
     assert refiner.mcp == ("backlog",)
     assert refiner.client_tools == ("ask_user",)
     assert refiner.predict_state["preview"].tool == "propose_document_changes"
+    assert refiner.predict_state["preview"].argument == "*"
+    assert refiner.predict_state["childPreview"].tool == "propose_child_items"
 
 
 TOOLS_YAML = """\

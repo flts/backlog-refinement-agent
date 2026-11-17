@@ -67,8 +67,38 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
   project overrides from MCP `get_project_guidance`, see `agents/skills.py`), then `context_providers:` from the
   definition (`item_context`, `intent`, see `agents/providers.py`). `StepEmittingRunner` closes the run's MCP
   connections and injects `STEP_STARTED/FINISHED` timeline rows. `ask_user` is declared by the SPA, never server-side.
-  Agent tools are resolved by name in `agent_service.tools` (`ToolRegistry`; `tools/placeholders.py` holds marked
-  placeholders until `svc-tools`). With `AGENT_ENV=development` definitions, tools.yaml and skills reload on change.
+  Agent tools are resolved by name in `agent_service.tools` (`ToolRegistry`, `default_tool_registry()`); the registry
+  also supplies the function middleware (`tools/guard.py`) every agent is built with. With `AGENT_ENV=development`
+  definitions, tools.yaml and skills reload on change.
+- **Agent tools** (`agent_service/tools/`; model-facing descriptions and schemas come from `contracts/schemas`):
+  - `propose_document_changes` / `propose_child_items` (`proposals.py`, `always_require`): predictive state fills
+    `state.preview` / `state.childPreview` with the full arguments (`predict_state`, `argument: "*"`), the run ends with
+    an interrupt, and the user approves (optionally with `editedArgs`, a FULL replacement of the arguments) or rejects.
+    After approval the tool re-validates the returned arguments, loads the model's ORIGINAL arguments from the thread
+    snapshot (`toolCalls` of the stored assistant message, read with the caller's scope; MAF gives the tool only the
+    edited arguments) and requires the edits to be a subset: section ids / child proposal ids and relationships must
+    exist in the proposal; `baseVersion` and `childType` are fixed; a section's `heading` and `mode` are fixed (only its
+    Markdown may be edited); a child's title and Markdown may be edited; a dropped `suggestedTitle`/`suggestedStatus`
+    is simply not applied but a new or changed one is an error. Accepted sections are classified `applied` (unchanged),
+    `edited` (Markdown changed) and `rejected` (left out); `conflicted` comes from the backlog. The hidden MCP write
+    tool (`apply_document_changes` / `create_child_items`) is called with the user's own token and the run id;
+    relationships that touch a rejected child, or that the user removed, are skipped and reported. The result is the
+    `document-changes.result` / `child-items.result` JSON (the model's tool result) and the state is updated:
+    `preview` / `childPreview` -> `null`, `lastApply` (document changes; exactly `document-changes.result`).
+    A rejection never runs the tool (MAF returns `Error: Tool call invocation was rejected by user.`); the runner
+    (`StepEmittingRunner`) clears `preview` / `childPreview` in the request state of a resume that rejects.
+  - `record_quality_assessment` (`assessment.py`): stores the assessment with the document hash of the run's cached
+    `get_item_context` (a hash passed by the model is only a fallback), `set_item_quality`, and mirrors it into
+    `state.quality` (`assessedAt` and `documentHash` added). A `stale-assessment` answer becomes an error that tells the
+    model to re-read the item and assess again.
+  - `suggest_next_actions` (`state.nextActions`, at most 3) and `set_session_title` (updates `threads.title` of the
+    current thread, at most 60 characters; the tool reaches the database through `tools/services.py`, bound by the
+    dispatcher).
+  - **Validation retry cap** (`tools/guard.py`, `ToolInputGuard` function middleware): arguments are validated with the
+    strict contract model and every failure (also `ToolInputError` raised by a tool body, e.g. a non-subset edit) is a
+    concise `Error: invalid arguments for <tool>: <path: message>` tool result. After 2 failed attempts of the same tool
+    in one run the result is final (`Do not call <tool> again in this turn; explain the problem to the user`) and later
+    calls of that tool in the run are not executed. Counters live in the run's `RunMcpScope.cache`.
 - **Approval state** is process-local in MAF (single replica or sticky routing by thread).
 - **Event hooks:** `agent_service/hooks/` runs one background SSE subscriber (single replica). The last processed event
   id lives in `hook_cursor` (migration `0002_hook_cursor`) and is sent as `Last-Event-ID` after a restart; `reset` continues

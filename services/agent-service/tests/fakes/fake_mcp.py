@@ -5,7 +5,8 @@ It records every HTTP request (JSON-RPC method + Authorization header) and every
 concurrent users never see each other's data.
 
 Control (plain HTTP, no auth):
-  POST /_config   {"guidance": {...}, "delay": 0.1, "pinned": {...}, "fail": {"<tool>": {status, type, detail}}}
+  POST /_config   {"guidance": {...}, "delay": 0.1, "pinned": {...}, "fail": {"<tool>": {status, type, detail}},
+                   "conflicts": ["<section id>"], "failedChildren": ["<proposal id>"]}
   POST /_reset    clears the logs and the configuration
   GET  /_calls    tool calls: [{"tool", "arguments", "authorization"}]
   GET  /_http_log HTTP requests: [{"rpc", "authorization"}]
@@ -189,36 +190,90 @@ async def find_similar_items(
 
 @mcp.tool()
 async def apply_document_changes(
-    projectId: str, itemId: str, baseVersion: int, sections: list[dict[str, Any]], ctx: Context
+    projectId: str,
+    itemId: str,
+    baseVersion: int,
+    sections: list[dict[str, Any]],
+    ctx: Context,
+    suggestedTitle: str | None = None,
+    suggestedStatus: str | None = None,
+    runId: str | None = None,
 ) -> CallToolResult:
-    """Apply accepted section changes (hidden write tool)."""
-    arguments = {"projectId": projectId, "itemId": itemId, "baseVersion": baseVersion, "sections": sections}
+    """Apply accepted section changes (hidden write tool). ``CONFIG["conflicts"]`` lists section ids that conflict."""
+    arguments = {
+        "projectId": projectId,
+        "itemId": itemId,
+        "baseVersion": baseVersion,
+        "sections": sections,
+        "suggestedTitle": suggestedTitle,
+        "suggestedStatus": suggestedStatus,
+        "runId": runId,
+    }
     if (failed := await _begin("apply_document_changes", ctx, arguments)) is not None:
         return failed
+    conflicting = set(CONFIG.get("conflicts") or [])
+    conflicted = [
+        {
+            "sectionId": s["id"],
+            "heading": s["heading"],
+            "reason": "changed-since-base-version",
+            "currentMarkdown": "Changed by someone else.",
+        }
+        for s in sections
+        if s["id"] in conflicting
+    ]
+    applied = [s["id"] for s in sections if s["id"] not in conflicting]
     return _result(
         {
-            "applied": [s["id"] for s in sections],
-            "conflicted": [],
-            "newVersion": baseVersion + 1,
+            "applied": applied,
+            "conflicted": conflicted,
+            "newVersion": baseVersion + (1 if applied else 0),
             "warnings": [],
-            "titleApplied": False,
-            "statusApplied": False,
+            "titleApplied": bool(suggestedTitle),
+            "statusApplied": bool(suggestedStatus),
         }
     )
 
 
 @mcp.tool()
 async def create_child_items(
-    projectId: str, parentId: str, childType: str, children: list[dict[str, Any]], ctx: Context
+    projectId: str,
+    parentId: str,
+    childType: str,
+    children: list[dict[str, Any]],
+    ctx: Context,
+    relationships: list[dict[str, Any]] | None = None,
+    runId: str | None = None,
 ) -> CallToolResult:
-    """Create child items (hidden write tool)."""
-    arguments = {"projectId": projectId, "parentId": parentId, "childType": childType, "children": children}
+    """Create child items (hidden write tool). ``CONFIG["failedChildren"]`` lists proposal ids that fail."""
+    arguments = {
+        "projectId": projectId,
+        "parentId": parentId,
+        "childType": childType,
+        "children": children,
+        "relationships": relationships,
+        "runId": runId,
+    }
     if (failed := await _begin("create_child_items", ctx, arguments)) is not None:
         return failed
+    failing = set(CONFIG.get("failedChildren") or [])
     created = [
-        {"proposalId": c["proposalId"], "itemId": f"new-{i}", "title": c["title"]} for i, c in enumerate(children)
+        {"proposalId": c["proposalId"], "itemId": f"new-{i}", "title": c["title"]}
+        for i, c in enumerate(children)
+        if c["proposalId"] not in failing
     ]
-    return _result({"created": created, "failed": [], "relationshipsCreated": 0, "relationshipsSkipped": []})
+    return _result(
+        {
+            "created": created,
+            "failed": [
+                {"proposalId": p, "reason": "duplicate title"}
+                for p in failing
+                if p in {c["proposalId"] for c in children}
+            ],
+            "relationshipsCreated": len(relationships or []),
+            "relationshipsSkipped": [],
+        }
+    )
 
 
 @mcp.tool()

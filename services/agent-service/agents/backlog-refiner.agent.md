@@ -28,6 +28,9 @@ predict_state:
   preview:
     tool: propose_document_changes
     argument: "*"
+  childPreview:
+    tool: propose_child_items
+    argument: "*"
 ---
 You are a human-guided backlog refinement assistant. You work on ONE backlog item (a Capability, Feature, User Story or Enabler) together with the user. The item is a single Markdown document.
 

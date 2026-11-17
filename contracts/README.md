@@ -49,9 +49,9 @@ validates every tool argument and `resume` payload (Pydantic) and builds the res
 `state.preview` is the predictive state of `propose_document_changes`: configure MAF
 `predict_state_config={"preview": {"tool": "propose_document_changes", "tool_argument": "*"}, "childPreview": {"tool": "propose_child_items", "tool_argument": "*"}}`
 so the preview holds the (possibly partial) arguments object. (The spike verified `tool_argument="sections"`, which makes
-`preview` a bare array; this contract uses `"*"` so summary/title/status travel with it. `"*"` is supported by the MAF source
-but not yet exercised by the spike - `svc-tools` must verify it.) MAF emits one `STATE_DELTA` when the argument JSON is complete.
-Clear it with `state_update(state={"preview": None, "lastApply": …})` on apply; on reject the SPA sends `state.preview = null`;
+`preview` a bare array; this contract uses `"*"` so summary/title/status travel with it. `"*"` is verified by agent-service's tests
+(`tests/test_agent_tools.py`: one `STATE_DELTA replace /preview` with the full arguments object).) MAF emits one `STATE_DELTA` when the argument JSON is complete.
+agent-service clears it with `state_update(state={"preview": None, "lastApply": …})` on apply and, for a rejection, in the request state of the resume (the SPA also sends `state.preview = null`);
 on cancel the SPA ignores a stale preview when no interrupt is pending.
 
 ### Validation layers
