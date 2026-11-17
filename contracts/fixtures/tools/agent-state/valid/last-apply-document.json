@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p1",
+  "itemId": "i1",
+  "preview": null,
+  "lastApply": {
+    "applied": ["s1"],
+    "edited": ["s2"],
+    "rejected": [],
+    "conflicted": [],
+    "newVersion": 5,
+    "warnings": [],
+    "titleApplied": false,
+    "statusApplied": false,
+    "toolCallId": "call_1",
+    "at": "2026-11-16T12:00:00+00:00"
+  },
+  "quality": {
+    "overall": "ready",
+    "areas": [{ "area": "scope", "level": "clear" }],
+    "documentHash": "sha256:abc",
+    "stale": false
+  }
+}

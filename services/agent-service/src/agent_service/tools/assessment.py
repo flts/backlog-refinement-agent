@@ -63,7 +63,7 @@ async def record_quality_assessment_impl(ctx: FunctionInvocationContext, argumen
             )
         logger.warning("set_item_quality failed", extra={"status": exc.status, "type": exc.type})
         return f"Error: the assessment could not be stored ({exc.type}: {exc.detail}). Tell the user."
-    mirrored = {**quality, "documentHash": stored.get("documentHash") or document_hash}
+    mirrored = {**quality, "documentHash": stored.get("documentHash") or document_hash, "stale": False}
     if stored.get("assessedAt"):
         mirrored["assessedAt"] = stored["assessedAt"]
     state = StateQuality.model_validate(mirrored)

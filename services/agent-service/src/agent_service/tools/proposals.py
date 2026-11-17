@@ -12,8 +12,8 @@ rejects per section / child. After approval the tool runs with the *returned* ar
 3. each accepted section / child is classified as unchanged (``applied``), changed by the user (``edited``) or left
    out (``rejected``),
 4. the accepted subset is written through the hidden MCP write tool with the user's own token,
-5. the shared state is updated (``preview``/``childPreview`` cleared, ``lastApply`` for documents) and the model gets
-   the result JSON (``document-changes.result`` / ``child-items.result``).
+5. the shared state is updated (``preview``/``childPreview`` cleared, ``lastApply`` = the result plus the proposal's
+   ``toolCallId`` and ``at``) and the model gets the result JSON (``document-changes.result`` / ``child-items.result``).
 
 A rejected proposal never reaches the tool (MAF answers ``Error: Tool call invocation was rejected by user.``); the
 runner clears the previews for it (:class:`~agent_service.agents.runner.StepEmittingRunner`).
@@ -30,8 +30,10 @@ from agent_framework import FunctionInvocationContext, tool
 from agent_framework_ag_ui import state_update
 from backlog_contracts import (
     ChildItemsResult,
+    ChildLastApply,
     CreatedChild,
     DocumentChangesResult,
+    DocumentLastApply,
     FailedChild,
     ProposeChildItemsArgs,
     ProposeDocumentChangesArgs,
@@ -43,7 +45,7 @@ from agent_service.agents.providers import ITEM_CONTEXT_CACHE_KEY
 from agent_service.mcp_client import McpToolError, current_mcp, current_run_scope
 from agent_service.tools import ToolRegistry
 from agent_service.tools.guard import ToolInputError, guarded, validate_arguments
-from agent_service.tools.runtime import item_ids, original_arguments, run_id, tool_schema
+from agent_service.tools.runtime import apply_stamp, item_ids, original_arguments, run_id, tool_schema
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +145,8 @@ async def propose_document_changes_impl(ctx: FunctionInvocationContext, argument
     if applied_by_backlog or result.title_applied or result.status_applied:
         _forget_item_context()
     wire = result.to_wire()
-    return state_update(text=_compact(wire), state={**PREVIEW_CLEARED, "lastApply": wire})
+    last_apply = DocumentLastApply.model_validate({**wire, **apply_stamp(ctx)}).to_wire()
+    return state_update(text=_compact(wire), state={**PREVIEW_CLEARED, "lastApply": last_apply})
 
 
 def _forget_item_context() -> None:
@@ -230,7 +233,9 @@ async def propose_child_items_impl(ctx: FunctionInvocationContext, arguments: Ma
         relationships_created=int(outcome.get("relationshipsCreated", 0)),
         relationships_skipped=skipped,
     )
-    return state_update(text=_compact(result.to_wire()), state=CHILD_PREVIEW_CLEARED)
+    wire = result.to_wire()
+    last_apply = ChildLastApply.model_validate({**wire, **apply_stamp(ctx)}).to_wire()
+    return state_update(text=_compact(wire), state={**CHILD_PREVIEW_CLEARED, "lastApply": last_apply})
 
 
 # --- registration -------------------------------------------------------------------------------------------------

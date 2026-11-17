@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p1",
+  "itemId": "i1",
+  "preview": null,
+  "lastApply": {
+    "applied": ["s1"],
+    "edited": [],
+    "rejected": [],
+    "conflicted": [],
+    "newVersion": 5,
+    "toolCallId": "call_1",
+    "unexpected": true
+  }
+}

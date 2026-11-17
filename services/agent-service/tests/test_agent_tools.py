@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
+from backlog_contracts import AgentState, ChildLastApply
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -119,7 +121,11 @@ async def test_approve_all_applies_with_the_users_token_and_clears_the_preview(
     }
     state = last_state(events)
     assert state["preview"] is None
-    assert state["lastApply"] == result
+    last_apply = state["lastApply"]
+    assert last_apply["toolCallId"] == "call_1"
+    assert datetime.fromisoformat(last_apply["at"]).utcoffset() == timedelta(0)
+    assert {k: v for k, v in last_apply.items() if k not in ("toolCallId", "at")} == result
+    assert AgentState.model_validate({**STATE, "preview": None, "lastApply": last_apply}).last_apply is not None
     types = event_types(events)
     assert types.index("TOOL_CALL_RESULT") < max(i for i, t in enumerate(types) if t == "STATE_SNAPSHOT")
     assert finished(events).get("outcome", {}).get("type") != "interrupt"
@@ -144,7 +150,7 @@ async def test_partial_accept_with_edits_classifies_applied_edited_rejected(
     assert result["edited"] == ["s2"]
     assert result["rejected"] == ["s3"]
     assert result["titleApplied"] is True and result["statusApplied"] is True
-    assert last_state(events)["lastApply"] == result
+    assert {k: v for k, v in last_state(events)["lastApply"].items() if k not in ("toolCallId", "at")} == result
 
 
 async def test_conflicts_are_reported_to_the_model_and_the_ui(
@@ -275,7 +281,14 @@ async def test_breakdown_partial_accept_creates_children_and_skips_relationships
         ("c3", "c1"): "a related child was rejected in the review",
         ("c2", "c3"): "a related child was rejected in the review",
     }
-    assert last_state(events)["childPreview"] is None
+    state = last_state(events)
+    assert state["childPreview"] is None
+    last_apply = state["lastApply"]
+    assert last_apply["toolCallId"] == "call_1"
+    assert datetime.fromisoformat(last_apply["at"]).utcoffset() == timedelta(0)
+    assert {k: v for k, v in last_apply.items() if k not in ("toolCallId", "at")} == result
+    parsed = AgentState.model_validate({**STATE, "preview": None, "lastApply": last_apply}).last_apply
+    assert isinstance(parsed, ChildLastApply)
 
 
 async def test_child_proposal_edits_must_stay_inside_the_proposal(
@@ -326,7 +339,7 @@ async def test_quality_assessment_uses_the_cached_hash_and_mirrors_into_state(
     assert quality["overall"] == "ready-with-open-questions"
     assert quality["documentHash"] == "hash-1"
     assert quality["assessedAt"] == "2026-01-01T00:00:00Z"
-    assert "stale" not in quality
+    assert quality["stale"] is False
 
 
 async def test_stale_assessment_tells_the_model_to_reread_the_item(

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p1",
+  "itemId": "i1",
+  "preview": null,
+  "lastApply": {
+    "created": [{ "proposalId": "c1", "itemId": "item-9", "title": "Offline editing" }],
+    "edited": [],
+    "rejected": [],
+    "failed": [],
+    "relationshipsCreated": 1,
+    "toolCallId": "call_2",
+    "at": 1763294700
+  }
+}

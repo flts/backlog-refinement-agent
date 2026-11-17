@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "projectId": "p1",
+  "itemId": "i1",
+  "preview": null,
+  "childPreview": null,
+  "lastApply": {
+    "created": [{ "proposalId": "c1", "itemId": "item-9", "title": "Offline editing" }],
+    "edited": [],
+    "rejected": ["c2"],
+    "failed": [{ "proposalId": "c3", "reason": "Validation failed" }],
+    "relationshipsCreated": 1,
+    "relationshipsSkipped": [{ "sourceRef": "c2", "targetRef": "c1", "reason": "a related child was rejected in the review" }],
+    "toolCallId": "call_2",
+    "at": "2026-11-16T12:05:00+00:00"
+  }
+}

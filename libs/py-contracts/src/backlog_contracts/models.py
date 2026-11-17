@@ -10,7 +10,7 @@ import json
 from enum import StrEnum
 from typing import Annotated, Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, model_validator
 from pydantic.alias_generators import to_camel
 
 ItemType = Literal["capability", "feature", "user-story", "enabler"]
@@ -278,6 +278,7 @@ class StateQuality(_QualityFields):
     """Latest assessment as mirrored into the shared state."""
 
     assessed_at: str | None = None
+    stale: bool | None = None
 
 
 class NextAction(ContractModel):
@@ -304,6 +305,42 @@ class SetSessionTitleArgs(ContractModel):
 # --- shared state, forwarded props, errors ------------------------------------------------------------------------
 
 
+class DocumentLastApply(DocumentChangesResult):
+    """``state.lastApply`` after ``propose_document_changes``: the result plus the proposal's call id and apply time."""
+
+    tool_call_id: str | None = None
+    at: str | None = None
+
+
+class ChildLastApply(ChildItemsResult):
+    """``state.lastApply`` after ``propose_child_items``: the result plus the proposal's call id and apply time."""
+
+    tool_call_id: str | None = None
+    at: str | None = None
+
+
+def _last_apply_variant(value: Any) -> str | None:
+    """Pick the ``lastApply`` variant by key presence (``applied`` vs ``created``), as wire dict or model."""
+    if isinstance(value, dict):
+        keys = {str(key) for key in value}
+        if "applied" in keys and "created" not in keys:
+            return "document"
+        if "created" in keys and "applied" not in keys:
+            return "children"
+        return None
+    if isinstance(value, DocumentLastApply):
+        return "document"
+    if isinstance(value, ChildLastApply):
+        return "children"
+    return None
+
+
+LastApply = Annotated[
+    Annotated[DocumentLastApply, Tag("document")] | Annotated[ChildLastApply, Tag("children")],
+    Discriminator(_last_apply_variant),
+]
+
+
 class AgentState(ContractModel):
     """Shared AG-UI state. ``preview`` is required and nullable: initialise it to ``None`` (see :meth:`initial`)."""
 
@@ -317,7 +354,7 @@ class AgentState(ContractModel):
     child_preview: ChildPreview | None = None
     next_actions: Annotated[list[NextAction], Field(max_length=3)] | None = None
     quality: StateQuality | None = None
-    last_apply: DocumentChangesResult | None = None
+    last_apply: LastApply | None = None
 
     @classmethod
     def initial(cls, project_id: str, item_id: str, item_type: ItemType | None = None) -> Self:

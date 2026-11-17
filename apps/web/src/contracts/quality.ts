@@ -38,6 +38,7 @@ export const StateQualitySchema = z.strictObject({
   summary: z.string().optional(),
   documentHash: z.string().optional(),
   assessedAt: z.string().optional(),
+  stale: z.boolean().optional(),
 });
 
 export type QualityAssessmentArgs = z.infer<typeof QualityAssessmentArgsSchema>;
