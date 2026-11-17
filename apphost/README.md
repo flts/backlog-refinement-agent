@@ -45,7 +45,7 @@ Other scripts in `apphost/package.json`: `pnpm build` (type-check and emit to `d
 
 ```text
 postgres (pgvector/pgvector:pg17, data volume) ── backlogdb, agentdb
-keycloak :8080 (realm import ../deploy/keycloak/realms)
+keycloak :8080 (data volume, realm import ../deploy/keycloak/realms)
 fake-gateway :8090 (optional, ../deploy/fake-gateway)
 backlog-api :8001   → backlogdb, keycloak, [fake-gateway]
 agent-service :8002 → agentdb, keycloak, backlog-api, [fake-gateway]
@@ -188,13 +188,19 @@ FAKE_GATEWAY_SCRIPT=deploy/fake-gateway/script.example.json pnpm dev
   stores it in user secrets: `cd apphost && aspire secret get Parameters:keycloak-password`.
 - The PostgreSQL password is generated the same way (`Parameters:postgres-password`). Keep it:
   the data volume is initialised with it.
+- Keycloak keeps its data (realm, users, sessions and changes made in the admin console) in a
+  named volume, so sign-ins and admin changes survive an AppHost restart. The `backlog` realm is
+  imported only on the first start, while the volume is empty.
 
 ## Troubleshooting
 
-- **Realm changes are not picked up.** Keycloak imports the realm with `IGNORE_EXISTING`. The
-  AppHost uses no Keycloak data volume, so restarting the AppHost re-imports the realm. If the
-  container survived (for example after a crash), remove it: `docker ps -a | grep keycloak`, then
-  `docker rm -f <id>`. With Keycloak's own data volume you would also need to delete that volume.
+- **Realm changes are not picked up.** Keycloak imports the realm with `IGNORE_EXISTING`, and the
+  realm already exists in Keycloak's data volume after the first run. To apply changes from
+  `deploy/keycloak/realms/backlog-realm.json`, stop the AppHost and delete the volume
+  (`docker volume ls | grep keycloak-data`, then `docker volume rm <name>`), or change the realm in
+  the admin console. Deleting the volume also resets users, sessions and admin changes. If you
+  delete the secret `Parameters:keycloak-password`, delete the volume too; the admin user is
+  created with that password when the volume is initialised.
 - **Login fails with "Invalid redirect URI".** `backlog-web` allows ports 5173, 4173, 8080 and
   8088 only. Keep `web` on 5173, or add the URL to `deploy/keycloak/realms/backlog-realm.json`
   and restart.

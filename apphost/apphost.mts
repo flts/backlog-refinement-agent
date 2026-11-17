@@ -58,9 +58,11 @@ const backlogDb = await postgres.addDatabase('backlogdb');
 const agentDb = await postgres.addDatabase('agentdb');
 
 // Keycloak on a fixed HTTP port so the issuer and the SPA redirect URIs are stable.
-// No data volume: the `backlog` realm is re-imported from deploy/keycloak/realms on every run.
+// Data (realm, users, sessions, admin changes) persists in a named volume across runs. The `backlog` realm is imported
+// from deploy/keycloak/realms only while it does not exist yet (IGNORE_EXISTING); delete the volume to re-import it.
 const keycloak = await builder
   .addKeycloak('keycloak', { port: 8080 })
+  .withDataVolume()
   .withRealmImport('../deploy/keycloak/realms')
   .withoutHttpsCertificate();
 const oidcIssuer = refExpr`${await keycloak.getEndpoint('http')}/realms/backlog`;
