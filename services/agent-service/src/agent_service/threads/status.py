@@ -1,8 +1,9 @@
 """Thread status derivation (``idle | running | awaiting_input | awaiting_review``).
 
 * ``awaiting_review``: the snapshot has a pending interrupt (an approval of a proposal).
-* ``awaiting_input``: an assistant tool call has no tool result yet and is not an interrupt - the client tool
-  ``ask_user`` ends the run successfully and waits for the user's answer (spike Q1).
+* ``awaiting_input``: an ``ask_user`` call has no answer yet and no later user message - the client tool ends the run
+  successfully and waits for the user's answer (spike Q1). A proposal whose interrupt is gone (for example after a
+  restart) is not pending input.
 * ``idle`` otherwise.
 """
 
@@ -26,22 +27,33 @@ def _tool_calls(message: Mapping[str, Any]) -> Sequence[Mapping[str, Any]]:
     return [call for call in calls if isinstance(call, Mapping)] if isinstance(calls, list) else []
 
 
-def pending_tool_call_ids(messages: Sequence[Mapping[str, Any]]) -> list[str]:
-    """Ids of tool calls in the transcript that have no ``tool`` message with a result yet."""
-    answered = {
-        str(message.get("toolCallId") or message.get("tool_call_id"))
-        for message in messages
-        if message.get("role") == "tool"
-    }
-    pending: list[str] = []
+CLIENT_TOOL_NAMES = frozenset({"ask_user"})
+"""Tools answered by the client; only their unanswered calls make a thread ``awaiting_input``."""
+
+
+def pending_tool_call_ids(
+    messages: Sequence[Mapping[str, Any]], *, tool_names: frozenset[str] | None = CLIENT_TOOL_NAMES
+) -> list[str]:
+    """Ids of tool calls (of ``tool_names``; all when ``None``) still waiting for the client's answer.
+
+    Walks the transcript in order like the SPA does: a ``tool`` message answers its call, and a ``user`` message after
+    an unanswered call dismisses it (MAF answers it with a synthetic result that the stored transcript does not keep).
+    """
+    pending: dict[str, None] = {}
     for message in messages:
-        if message.get("role") != "assistant":
-            continue
-        for call in _tool_calls(message):
-            call_id = call.get("id")
-            if isinstance(call_id, str) and call_id not in answered:
-                pending.append(call_id)
-    return pending
+        role = message.get("role")
+        if role == "assistant":
+            for call in _tool_calls(message):
+                call_id = call.get("id")
+                function = call.get("function")
+                name = function.get("name") if isinstance(function, Mapping) else call.get("name")
+                if isinstance(call_id, str) and (tool_names is None or name in tool_names):
+                    pending[call_id] = None
+        elif role == "tool":
+            pending.pop(str(message.get("toolCallId") or message.get("tool_call_id")), None)
+        elif role == "user":
+            pending.clear()
+    return list(pending)
 
 
 def derive_status(snapshot: AGUIThreadSnapshot | None) -> str:

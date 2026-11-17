@@ -62,7 +62,8 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
 - **AG-UI wiring:** `agents/endpoint.py` registers MAF's endpoint once on `/api/agent/agents/{agent_id}` with an
   `AgentDispatcher` runner. The `guard_agent_request` dependency checks agent id, thread ownership and state ids before
   MAF runs; the dispatcher delegates to `AgentRegistry.get(agent_id)`, maintains `threads.status` and refreshes it
-  after each run and on hydrate. `require_confirmation=False`; snapshots live in `PgThreadSnapshotStore`.
+  after each run and on hydrate (`awaiting_input` = an unanswered `ask_user` call that no later user message dismissed;
+  see `threads/status.py`). `require_confirmation=False`; snapshots live in `PgThreadSnapshotStore`.
 - **Agent loader:** `agents/loader.py` builds one MAF `Agent` per `agents/*.agent.md` (YAML frontmatter + Markdown body
   = base instructions; see `agents/definition.py` for the fields) at startup; the default `registry_factory`.
   Context providers run in this order: `McpProvider` (per-run MCP connection with the caller's bearer token as a
@@ -147,3 +148,24 @@ docker build -f services/agent-service/Dockerfile -t agent-service .   # build c
 
 `tests/fakes/fake_gateway.py` is a scripted OpenAI-compatible gateway and `tests/fakes/fake_mcp.py` a fake backlog MCP
 server (contract-shaped, records tokens and calls) used by the tests (test-local).
+
+### Golden AG-UI event streams
+
+`tests/test_golden.py` drives the real AG-UI endpoint through the scenarios of the SPA (refine, `ask_user` round trip
+and dismissal, approval with apply / partial accept with edits / conflict / reject / cancel, breakdown, assessment,
+hydrate of a pending interrupt or question) and compares a normalised stream with `tests/golden/<scenario>.json`
+(`tests/golden_harness.py`): thread / message / interrupt / run ids and timestamps become placeholders, token chunks are
+coalesced, and each run lists its event types, tool names, state deltas / snapshots, the thread status, the number of
+model requests and the MCP calls. Every model request of every scenario is also checked for the hidden write tools.
+`tests/spa_fixtures.py` compares the `ask_user` and approval streams structurally with the SPA's recordings in
+`apps/web/src/agent/__fixtures__` (same event order, same fields), so server and client cannot drift apart silently.
+`tests/test_integration.py` holds the other cross-cutting checks: thread privacy, token forwarding on resume, the
+validation retry cap, restarts (a new app on the same database) and the derived thread status.
+
+A failing golden test prints the diff. After an intended change (for example an Agent Framework upgrade or a new tool),
+regenerate the files, review `git diff services/agent-service/tests/golden`, and update the SPA fixtures if the
+compatibility check fails:
+
+```bash
+UPDATE_GOLDEN=1 uv run --package agent-service pytest services/agent-service/tests/test_golden.py
+```

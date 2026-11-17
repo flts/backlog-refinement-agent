@@ -1,0 +1,35 @@
+{
+  "scenario": "assess",
+  "runs": [
+    {
+      "run": "assess",
+      "request": {"forwardedProps": {"intent": "assess"}, "messages": ["user: Assess the quality of this item."]},
+      "status": 200,
+      "threadStatus": "idle",
+      "modelRequests": 2,
+      "mcpCalls": [{"arguments": {"documentHash": "hash-1", "itemId": "<item>", "projectId": "<project>", "quality": {"areas": [{"area": "problem", "level": "clear"}, {"area": "scope", "level": "unclear", "note": "Too broad"}], "overall": "ready-with-open-questions", "summary": "Mostly fine"}}, "tool": "set_item_quality"}],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"stepName": "Reading item", "type": "STEP_STARTED"},
+        {"name": "PredictState", "stateKeys": ["childPreview", "preview"], "type": "CUSTOM"},
+        {"stepName": "Reading item", "type": "STEP_FINISHED"},
+        {"messageId": "<id-1>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"parentMessageId": "<id-1>", "toolCallId": "call_1", "toolCallName": "record_quality_assessment", "type": "TOOL_CALL_START"},
+        {"stepName": "Assessing quality", "type": "STEP_STARTED"},
+        {"args": {"areas": [{"area": "problem", "level": "clear"}, {"area": "scope", "level": "unclear", "note": "Too broad"}], "documentHash": "model-made-up", "overall": "ready-with-open-questions", "summary": "Mostly fine"}, "toolCallId": "call_1", "type": "TOOL_CALL_ARGS"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"toolCallId": "call_1", "type": "TOOL_CALL_END"},
+        {"content": "ok: the assessment was stored.", "messageId": "<id-2>", "toolCallId": "call_1", "type": "TOOL_CALL_RESULT"},
+        {"stepName": "Assessing quality", "type": "STEP_FINISHED"},
+        {"snapshot": {"itemId": "<item>", "preview": null, "projectId": "<project>", "quality": {"areas": [{"area": "problem", "level": "clear"}, {"area": "scope", "level": "unclear", "note": "Too broad"}], "assessedAt": "<at>", "documentHash": "hash-1", "overall": "ready-with-open-questions", "stale": false, "summary": "Mostly fine"}, "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"messageId": "<id-1>", "type": "TEXT_MESSAGE_END"},
+        {"messageId": "<id-3>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-3>", "text": "Assessed: ready with open questions.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"messageId": "<id-3>", "type": "TEXT_MESSAGE_END"},
+        {"messages": [{"content": "Assess the quality of this item.", "id": "m1", "role": "user"}, {"id": "<id-1>", "role": "assistant", "toolCalls": [{"arguments": {"areas": [{"area": "problem", "level": "clear"}, {"area": "scope", "level": "unclear", "note": "Too broad"}], "documentHash": "model-made-up", "overall": "ready-with-open-questions", "summary": "Mostly fine"}, "id": "call_1", "name": "record_quality_assessment"}]}, {"content": "ok: the assessment was stored.", "id": "<id-2>", "role": "tool", "toolCallId": "call_1"}, {"content": "Assessed: ready with open questions.", "id": "<id-3>", "role": "assistant"}], "type": "MESSAGES_SNAPSHOT"},
+        {"outcome": "success", "type": "RUN_FINISHED"}
+      ]
+    }
+  ]
+}
