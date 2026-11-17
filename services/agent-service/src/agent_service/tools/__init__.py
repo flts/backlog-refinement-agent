@@ -101,6 +101,7 @@ def default_tool_registry() -> ToolRegistry:
     proposals.register(registry)
     assessment.register(registry)
     session.register(registry)
+    registry.add_middleware(guard.ToolMetrics())
     registry.add_middleware(guard.ToolInputGuard(registry.specs()))
     return registry
 

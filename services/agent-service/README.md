@@ -49,6 +49,10 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
 | `AGENT_SERVICE_CLIENT_ID` / `AGENT_SERVICE_CLIENT_SECRET` | `agent-service` / — | Keycloak client-credentials for the hooks (token endpoint `<issuer>/protocol/openid-connect/token`, override `AGENT_SERVICE_TOKEN_URL`); secret |
 | `AGENT_INTERNAL_TOKEN` | — | Dev only (refused when `AGENT_ENV=production`): static `X-Internal-Token` instead of Keycloak |
 | `AGENT_LOG_LEVEL` | `INFO` | JSON logs (no content, no tokens) |
+| `AGENT_LOG_CONTENT` | `false` | Allow message content in Agent Framework telemetry and library debug logs. Off: IDs and metadata only |
+| `AGENT_RUN_TIMEOUT_SECONDS` | `180` | Wall-clock limit of one run; exceeding it ends the stream with `RUN_ERROR` `RUN_TIMEOUT` |
+| `AGENT_RATE_LIMIT_RUNS_PER_MINUTE` / `AGENT_RATE_LIMIT_BURST` | `20` / `10` | Per-user token bucket for AG-UI runs (`0` disables); refused runs are HTTP 429 with `Retry-After` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | — (Aspire injects them) | OpenTelemetry traces, metrics and logs over OTLP (`grpc` default, `http/protobuf`); off without an endpoint or with `OTEL_SDK_DISABLED=true` |
 
 ## Design notes
 
@@ -99,6 +103,31 @@ backlog-api (`services__backlog-api__http__0`) references are injected. OpenAPI 
     concise `Error: invalid arguments for <tool>: <path: message>` tool result. After 2 failed attempts of the same tool
     in one run the result is final (`Do not call <tool> again in this turn; explain the problem to the user`) and later
     calls of that tool in the run are not executed. Counters live in the run's `RunMcpScope.cache`.
+- **Limits (before the stream starts):** `guard_agent_request` admits every run that has messages or a `resume`
+  (hydrate requests are free). A per-user token bucket (`limits.py`, key `user:<email>`) answers HTTP 429
+  `/problems/rate-limited` with `Retry-After`; an in-process lock per user+thread answers HTTP 409
+  `/problems/thread-busy`. The lock is not `threads.status`; it is released when the run's stream ends (completion,
+  `RUN_ERROR`, timeout, client disconnect) and by the dependency's own cleanup if the request fails afterwards. MAF only
+  guards concurrent runs for detached runs, which are not used. Both limits are per process (single replica or sticky
+  routing by thread), like MAF's approval state.
+- **Run errors (`agents/stream.py`, `run_errors.py`):** every event passes `guarded_stream`, which enforces the run
+  deadline and sanitizes failures. Clients only see a `RunErrorCode` and a fixed message; the exception stays in the
+  server log. Mapping: deadline → `RUN_TIMEOUT`; LLM gateway failures (`ChatClientException`, `openai.OpenAIError`,
+  `httpx.TransportError`) → `LLM_UNAVAILABLE`; MCP/backlog failures (`McpUnavailableError`, `McpToolError` ≥ 500,
+  backlog `ProblemError`) → `BACKLOG_UNAVAILABLE`; 401/403/404 problems → `UNAUTHENTICATED` / `FORBIDDEN` /
+  `NOT_FOUND`; everything else → `INTERNAL` with a `Reference: <trace id or random id>` in the message (also in the log
+  line `Run failed`). A `RUN_ERROR` produced by MAF keeps its code only when `RunErrorCode.normalize` knows it
+  (`APPROVAL_RESUME_*`); exception class names and other MAF codes become `INTERNAL`. Open timeline steps are finished
+  before the `RUN_ERROR`, nothing follows it, and `runId` is included.
+- **Observability:** `telemetry.py` sets up traces, metrics and logs (OTLP) from the standard `OTEL_*` variables, only
+  when an endpoint is configured, and instruments FastAPI (health probes excluded, `ticket` / `access_token` masked in
+  URL attributes), httpx, SQLAlchemy and Agent Framework (`enable_instrumentation`, sensitive data = `AGENT_LOG_CONTENT`).
+  Logs are JSON with `request_id`, `run_id`, `thread_id`, `agent_id`, `trace_id`, `span_id`; `observability.py`
+  redacts bearer tokens, JWTs, `Authorization`, `access_token`, `ticket` and secret fields in every record, and the OTLP
+  log bridge exports no exception text. Metrics (`metrics.py`): `agent.runs.started|completed|failed|rejected`,
+  `agent.run.duration`, `agent.tool.calls|duration`, `agent.mcp.call.duration`, `agent.snapshot.save_failures`
+  (Agent Framework swallows save failures, the store counts them). Attributes are low cardinality (agent, outcome / code,
+  tool, MCP server); never user, thread or content.
 - **Approval state** is process-local in MAF (single replica or sticky routing by thread).
 - **Event hooks:** `agent_service/hooks/` runs one background SSE subscriber (single replica). The last processed event
   id lives in `hook_cursor` (migration `0002_hook_cursor`) and is sent as `Last-Event-ID` after a restart; `reset` continues

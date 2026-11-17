@@ -329,13 +329,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     target.add_argument("--all", action="store_true", help="Every project.")
     args = parser.parse_args(argv)
     from backlog_api.observability import configure_logging
+    from backlog_api.telemetry import setup_telemetry
 
     settings = Settings()
     configure_logging(settings.log_level)
+    telemetry = setup_telemetry("backlog-api-worker", environment=settings.env)
     try:
         return asyncio.run(_run_standalone(settings, args))
     except KeyboardInterrupt:
         return 130
+    finally:
+        telemetry.shutdown()
 
 
 if __name__ == "__main__":

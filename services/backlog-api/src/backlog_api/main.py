@@ -40,6 +40,7 @@ from backlog_api.observability import configure_logging
 from backlog_api.problems import PROBLEM_CONTENT_TYPE, Problem, install_problem_handlers
 from backlog_api.settings import API_PREFIX, Settings
 from backlog_api.stream_tickets import TicketSigner
+from backlog_api.telemetry import Telemetry, setup_telemetry
 from backlog_api.worker import IndexingWorker
 
 logger = logging.getLogger(__name__)
@@ -83,12 +84,15 @@ def create_app(
     key_source: KeySource | None = None,
     event_publisher: EventPublisher | None = None,
     configure_logs: bool = True,
+    telemetry: Telemetry | None = None,
 ) -> FastAPI:
     """Build the app. ``key_source`` and ``event_publisher`` can be injected (tests). The default publisher is the
     :class:`PostgresEventPublisher` (event log + LISTEN/NOTIFY), started and stopped with the app."""
     settings = settings or Settings()
     if configure_logs:
         configure_logging(settings.log_level)
+    # Before the database engine is created (SQLAlchemy instrumentation patches engine creation).
+    telemetry = telemetry or setup_telemetry("backlog-api", version=__version__, environment=settings.env)
     mcp_endpoint = McpEndpoint()
 
     @asynccontextmanager
@@ -139,6 +143,7 @@ def create_app(
             if authenticator is not None:
                 await authenticator.aclose()
             await database.dispose()
+            telemetry.shutdown()
 
     app = FastAPI(
         title="Backlog API",
@@ -154,6 +159,7 @@ def create_app(
         redoc_url=None,
     )
     app.state.settings = settings
+    app.state.telemetry = telemetry
     publisher: EventPublisher = event_publisher or PostgresEventPublisher(settings)
     app.state.events = publisher
     app.state.ticket_signer = _build_ticket_signer(settings)
@@ -169,6 +175,7 @@ def create_app(
         ],
     )
     app.add_middleware(RequestContextMiddleware)
+    telemetry.instrument_app(app)
 
     app.include_router(health.router, include_in_schema=False)
     app.include_router(health.router, prefix=API_PREFIX)

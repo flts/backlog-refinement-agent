@@ -77,6 +77,13 @@ Aspire also injects the standard reference variables for every `withReference`, 
 `KEYCLOAK_HTTP`, `services__backlog-api__http__0` and `BACKLOG_API_HTTP`. `PORT` is the port the
 process listens on (uvicorn and Vite receive it as `--port`), plus the OpenTelemetry `OTEL_*` variables.
 
+**Telemetry**: `addUvicornApp` already calls `withOtlpExporter()` itself, so `backlog-api` and `agent-service` receive
+`OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES` (no
+AppHost code needed). The services honour these standard variables (`services/*/src/*/telemetry.py`) and send traces,
+metrics and logs to the Aspire dashboard; without an endpoint telemetry is off. Aspire's development-only
+`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is deliberately not honoured: message content in telemetry is only
+enabled with `AGENT_LOG_CONTENT=true` on agent-service.
+
 **backlog-api**
 
 | Variable | Value |

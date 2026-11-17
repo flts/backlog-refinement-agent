@@ -50,6 +50,13 @@ class Settings(BaseSettings):
 
     env: Environment = "production"
     log_level: str = "INFO"
+    log_content: bool = Field(
+        default=False,
+        description=(
+            "Log and trace message content (prompts, model output, tool arguments). Off by default: only IDs and "
+            "metadata are logged. Development aid only; secrets are still redacted."
+        ),
+    )
 
     database_url: str | None = Field(
         default=None,
@@ -117,6 +124,15 @@ class Settings(BaseSettings):
     max_body_bytes: int = Field(default=1 * MiB, ge=1024)
     agui_max_body_bytes: int = Field(default=2 * MiB, ge=1024, description="Body limit for AG-UI run requests.")
     agui_keepalive_seconds: float = Field(default=15.0, gt=0)
+    run_timeout_seconds: float = Field(
+        default=180.0, gt=0, description="A run is stopped with RUN_ERROR RUN_TIMEOUT after this many seconds."
+    )
+    rate_limit_runs_per_minute: float = Field(
+        default=20.0,
+        ge=0,
+        description="Per-user token bucket refill rate for AG-UI runs (process-local); 0 disables the limit.",
+    )
+    rate_limit_burst: int = Field(default=10, ge=1, description="Per-user token bucket capacity (burst of runs).")
     cors_allow_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=list,
         description="Comma-separated browser origins allowed by CORS. Empty (default) = same-origin via the proxy.",

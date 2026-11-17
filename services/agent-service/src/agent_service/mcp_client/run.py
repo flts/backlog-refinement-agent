@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import Sequence
 from contextvars import ContextVar
 from typing import Any
@@ -22,6 +23,7 @@ from agent_framework.exceptions import ToolExecutionException
 
 from agent_service.auth.context import current_principal, current_token
 from agent_service.mcp_client.config import McpServerConfig
+from agent_service.metrics import get_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,15 @@ class McpToolError(Exception):
         self.status = status
         self.type = type_
         self.detail = detail
+
+
+class McpUnavailableError(Exception):
+    """The MCP server could not be reached (connect or transport failure); the run reports BACKLOG_UNAVAILABLE."""
+
+    def __init__(self, server: str, tool: str | None = None) -> None:
+        super().__init__(f"MCP server '{server}' is unavailable" + (f" (tool {tool})" if tool else ""))
+        self.server = server
+        self.tool = tool
 
 
 def _parse_error(tool: str, message: str) -> McpToolError:
@@ -73,10 +84,20 @@ class McpConnection:
 
         Raises :class:`McpToolError` for tool errors. Arguments use the camelCase names of the contract.
         """
+        started = time.perf_counter()
+        outcome = "ok"
         try:
             contents = await self._tool.call_tool(tool, **{k: v for k, v in arguments.items() if v is not None})
         except ToolExecutionException as exc:
+            outcome = "error"
             raise _parse_error(tool, str(exc)) from exc
+        except Exception as exc:
+            outcome = "unavailable"
+            raise McpUnavailableError(self.name, tool) from exc
+        finally:
+            get_metrics().mcp_call_duration.record(
+                time.perf_counter() - started, {"server": self.name, "tool": tool, "outcome": outcome}
+            )
         text = (
             contents
             if isinstance(contents, str)
@@ -180,7 +201,17 @@ class McpProvider(ContextProvider):
                 approval_mode="never_require",
                 request_timeout=config.request_timeout_seconds,
             )
-            await tool.connect()
+            started = time.perf_counter()
+            outcome = "ok"
+            try:
+                await tool.connect()
+            except Exception as exc:
+                outcome = "unavailable"
+                raise McpUnavailableError(config.name) from exc
+            finally:
+                get_metrics().mcp_call_duration.record(
+                    time.perf_counter() - started, {"server": config.name, "tool": "connect", "outcome": outcome}
+                )
             connection = McpConnection(config, tool)
             scope.add(connection)
             context.extend_tools(self.source_id, connection.model_tools)
