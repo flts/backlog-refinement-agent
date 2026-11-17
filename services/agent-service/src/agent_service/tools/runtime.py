@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import Any
 
 from agent_framework import FunctionInvocationContext
@@ -52,6 +53,19 @@ def run_id(ctx: FunctionInvocationContext) -> str | None:
     metadata = getattr(ctx.session, "metadata", None) or {}
     value = metadata.get("ag_ui_run_id")
     return value[:MAX_RUN_ID_CHARS] if isinstance(value, str) and value else None
+
+
+def tool_call_id(ctx: FunctionInvocationContext) -> str | None:
+    """Id of the tool call being executed (for a proposal: the id the SPA knows from its transcript)."""
+    value = ctx.metadata.get("call_id")
+    return value if isinstance(value, str) and value else None
+
+
+def apply_stamp(ctx: FunctionInvocationContext) -> dict[str, str]:
+    """``toolCallId`` + ``at`` (UTC, ISO 8601) that identify a ``state.lastApply`` entry."""
+    stamp = {"at": datetime.now(UTC).isoformat(timespec="seconds")}
+    call_id = tool_call_id(ctx)
+    return {"toolCallId": call_id, **stamp} if call_id is not None else stamp
 
 
 async def original_arguments(ctx: FunctionInvocationContext) -> dict[str, Any]:

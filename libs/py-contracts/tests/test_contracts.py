@@ -10,7 +10,9 @@ from backlog_contracts import (
     CONTRACT_MODELS,
     AgentState,
     AskUserArgs,
+    ChildLastApply,
     ContractsNotFoundError,
+    DocumentLastApply,
     ForwardedProps,
     ProposeDocumentChangesArgs,
     RunErrorCode,
@@ -135,6 +137,16 @@ def test_state_initial_has_preview_null_and_camel_case_wire_form() -> None:
     assert wire == {"schemaVersion": 1, "projectId": "p1", "itemId": "i1", "itemType": "feature", "preview": None}
     assert list(_validator("agent-state").iter_errors(wire)) == []
     assert "itemType" not in AgentState.initial("p1", "i1").to_wire()
+
+
+def test_last_apply_variant_is_chosen_by_key_presence_and_round_trips() -> None:
+    base = {"schemaVersion": 1, "projectId": "p", "itemId": "i", "preview": None}
+    for name, variant in (("last-apply-document", DocumentLastApply), ("last-apply-children", ChildLastApply)):
+        wire = _load(FIXTURES / "agent-state" / "valid" / f"{name}.json")
+        state = AgentState.model_validate(wire)
+        assert isinstance(state.last_apply, variant)
+        assert state.to_wire() == wire
+    assert AgentState.model_validate({**base, "lastApply": None}).last_apply is None
 
 
 def test_snake_case_names_are_accepted_too() -> None:

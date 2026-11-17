@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contracts.backlog-refinement-agent.dev/schemas/agent-state.schema.json",
   "title": "AG-UI shared agent state",
-  "description": "Shared AG-UI state (`RunAgentInput.state`, persisted per thread). The SPA sends schemaVersion, projectId, itemId, itemType and `preview: null`; the agent writes preview, childPreview, nextActions and quality. `preview` is REQUIRED and nullable and must be initialised to null: a JSON-Patch `replace /preview` fails client-side when the key is absent. The item document is never part of the state. Unknown keys are allowed (MAF and the agent-service may add bookkeeping keys). Increase schemaVersion on every breaking change.",
+  "description": "Shared AG-UI state (`RunAgentInput.state`, persisted per thread). The SPA sends schemaVersion, projectId, itemId, itemType and `preview: null`; the agent writes preview, childPreview, nextActions, quality and lastApply. `preview` is REQUIRED and nullable and must be initialised to null: a JSON-Patch `replace /preview` fails client-side when the key is absent. The item document is never part of the state. Unknown keys are allowed (MAF and the agent-service may add bookkeeping keys). Increase schemaVersion on every breaking change.",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -361,6 +361,10 @@
             "assessedAt": {
               "type": "string",
               "description": "ISO-8601 timestamp of the assessment."
+            },
+            "stale": {
+              "type": "boolean",
+              "description": "True when the document changed after this assessment (documentHash no longer matches)."
             }
           },
           "required": [
@@ -450,6 +454,14 @@
             "statusApplied": {
               "type": "boolean",
               "description": "Whether suggestedStatus was applied."
+            },
+            "toolCallId": {
+              "type": "string",
+              "description": "Id of the propose_* tool call this result belongs to (matches the proposal in the transcript)."
+            },
+            "at": {
+              "type": "string",
+              "description": "ISO-8601 UTC timestamp of the apply."
             }
           },
           "required": [
@@ -460,12 +472,126 @@
             "newVersion"
           ],
           "additionalProperties": false,
-          "description": "Outcome of the last approved propose_document_changes call (document-changes.result)."
+          "description": "Outcome of the last approved propose_document_changes call (document-changes.result) plus toolCallId and at."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "created": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "proposalId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "itemId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Id of the new backlog item."
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "proposalId",
+                  "itemId",
+                  "title"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Children that were created."
+            },
+            "edited": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "proposalIds of created children that carry the user's edits."
+            },
+            "rejected": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "proposalIds the user rejected."
+            },
+            "failed": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "proposalId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "proposalId",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Children that could not be created."
+            },
+            "relationshipsCreated": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of relationships created."
+            },
+            "relationshipsSkipped": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sourceRef": {
+                    "type": "string"
+                  },
+                  "targetRef": {
+                    "type": "string"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "sourceRef",
+                  "targetRef",
+                  "reason"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Relationships skipped, e.g. because an endpoint was rejected."
+            },
+            "toolCallId": {
+              "type": "string",
+              "description": "Id of the propose_* tool call this result belongs to (matches the proposal in the transcript)."
+            },
+            "at": {
+              "type": "string",
+              "description": "ISO-8601 UTC timestamp of the apply."
+            }
+          },
+          "required": [
+            "created",
+            "edited",
+            "rejected",
+            "failed",
+            "relationshipsCreated"
+          ],
+          "additionalProperties": false,
+          "description": "Outcome of the last approved propose_child_items call (child-items.result) plus toolCallId and at."
         },
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Outcome of the last apply: the document variant (has `applied`) or the child-items variant (has `created`), each with optional toolCallId and at, or null."
     }
   },
   "required": [
