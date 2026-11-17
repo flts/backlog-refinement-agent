@@ -13,6 +13,42 @@
 		respond `{"endpoint":"{$LLM_ENDPOINT:}","model":"{$LLM_MODEL:}","streaming":{$LLM_STREAMING:false}}` 200
 	}
 
+	# Same-origin relay for fetching source URLs that do not send CORS headers (internal hosts and the
+	# Internet). Requested as /source-proxy/<http|https>/<host[:port]>/<path>?<query>.
+	# SSRF guard: only hosts matching the SOURCE_PROXY_HOSTS regular expression (host[:port], unanchored
+	# alternatives) are relayed. Unset = relay disabled (falls through to the SPA). Example:
+	# SOURCE_PROXY_HOSTS='wiki\.corp\.example|[^/]+\.docs\.example\.com'
+	@proxyhttp path_regexp proxyhttp ^/source-proxy/http/((?:{$SOURCE_PROXY_HOSTS:\b\B}))(/.*)?$
+	handle @proxyhttp {
+		rewrite * {re.proxyhttp.2}
+		reverse_proxy {re.proxyhttp.1} {
+			header_up Host {upstream_hostport}
+			header_up -Cookie
+			header_up -Authorization
+			header_down -Set-Cookie
+			header_down Location ^(https?)://([^/]+)(.*)$ /source-proxy/$1/$2$3
+		}
+	}
+	@proxyhttps path_regexp proxyhttps ^/source-proxy/https/((?:{$SOURCE_PROXY_HOSTS:\b\B}))(/.*)?$
+	handle @proxyhttps {
+		rewrite * {re.proxyhttps.2}
+		reverse_proxy {re.proxyhttps.1} {
+			header_up Host {upstream_hostport}
+			header_up -Cookie
+			header_up -Authorization
+			header_down -Set-Cookie
+			header_down Location ^(https?)://([^/]+)(.*)$ /source-proxy/$1/$2$3
+				transport http {
+					tls
+				}
+		}
+	}
+
+	handle /source-proxy/* {
+		header Cache-Control no-store
+		respond "Source proxy is disabled or the host is not allowed (SOURCE_PROXY_HOSTS)." 403
+	}
+
 	handle {
 		try_files {path} /index.html
 		file_server

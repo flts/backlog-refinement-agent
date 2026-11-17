@@ -18,6 +18,11 @@ afterEach(async () => {
   await backlogDatabase.delete();
 });
 
+async function openProjectMenu() {
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Project:/ })).toBeInTheDocument());
+  if (!screen.queryByRole('group', { name: 'Project actions' })) await userEvent.click(screen.getByRole('button', { name: /^Project:/ }));
+}
+
 describe('project workspace', () => {
   it('imports saved configuration from Settings and does not leave stale edits in the modal', async () => {
     const time = '2026-01-01T00:00:00.000Z';
@@ -59,16 +64,16 @@ describe('project workspace', () => {
     ]);
     const user = userEvent.setup();
     const { unmount } = render(<Projects />);
-    const selector = await screen.findByLabelText('Choose project');
+    const selector = (await openProjectMenu(), await screen.findByLabelText('Choose project'));
     await user.selectOptions(selector, 'beta');
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('beta'));
     unmount();
     const reopened = render(<Projects />);
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('beta');
+    expect((await openProjectMenu(), await screen.findByLabelText('Choose project'))).toHaveValue('beta');
     reopened.unmount();
     await backlogDatabase.projects.delete('beta');
     render(<Projects />);
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('alpha');
+    expect((await openProjectMenu(), await screen.findByLabelText('Choose project'))).toHaveValue('alpha');
     await waitFor(() => expect(localStorage.getItem('selected-project-id')).toBe('alpha'));
   });
 
@@ -78,7 +83,7 @@ describe('project workspace', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Storage unavailable'); });
     render(<Projects />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not remember the selected project: Storage unavailable');
-    expect(await screen.findByLabelText('Choose project')).toHaveValue('p');
+    expect((await openProjectMenu(), await screen.findByLabelText('Choose project'))).toHaveValue('p');
   });
 
   it('discloses the resolved runtime AI endpoint for selected project sources', async () => {
@@ -87,6 +92,7 @@ describe('project workspace', () => {
     }));
     await backlogDatabase.projects.add({ id: 'p', name: 'Project', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z' });
     render(<Projects />);
+    await userEvent.click(await screen.findByRole('button', { name: /Sources/ }));
     expect(await screen.findByText(/0 selected sources sent to https:\/\/proxy\.example/)).toBeInTheDocument();
   });
 
@@ -99,6 +105,7 @@ describe('project workspace', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     vi.spyOn(window, 'prompt').mockReturnValue('copy');
     const { container } = render(<Projects />);
+    await openProjectMenu();
     await screen.findByRole('button', { name: 'Import project' });
     const upload = () => {
       const input = container.querySelector<HTMLInputElement>('input[accept=".json,application/json"]')!;
@@ -107,6 +114,8 @@ describe('project workspace', () => {
       fireEvent.change(input, { target: { files: [file] } });
     };
     upload();
+    await screen.findByRole('button', { name: 'Project: Imported' });
+    await openProjectMenu();
     await screen.findByRole('button', { name: 'Export project' });
     expect(await backlogDatabase.projects.count()).toBe(1);
     upload();
@@ -118,11 +127,12 @@ describe('project workspace', () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<Projects />);
+    await openProjectMenu();
     const name = await screen.findByLabelText('New project name');
     await user.type(name, 'Alpha');
     await user.click(screen.getByRole('button', { name: 'Create project' }));
     await screen.findByRole('button', { name: 'Create first item' });
-    await user.click(screen.getByText('Project sources (0)'));
+    await user.click(screen.getByRole('button', { name: /Sources/ }));
     await user.type(screen.getByLabelText('Reference name'), 'Specification');
     await user.type(screen.getByLabelText('Reference URL'), 'https://example.com/spec');
     await user.type(screen.getByLabelText('Reference text'), 'Source content');
@@ -161,14 +171,15 @@ describe('project workspace', () => {
       expect(sessions).toHaveLength(1);
       expect(sessions[0].id).not.toBe(firstSessionId);
     });
+    await openProjectMenu();
     await user.type(screen.getByLabelText('New project name'), 'Beta');
     await user.click(screen.getByRole('button', { name: 'Create project' }));
     await waitFor(() => expect(screen.queryByDisplayValue('Alpha work')).not.toBeInTheDocument());
-    const select = await screen.findByLabelText('Choose project');
+    const select = (await openProjectMenu(), await screen.findByLabelText('Choose project'));
     const alpha = (await backlogDatabase.projects.toArray()).find((project) => project.name === 'Alpha')!;
     await user.selectOptions(select, alpha.id);
     await screen.findByDisplayValue('Alpha work');
-    await user.click(screen.getByText('Project sources (1)'));
+    await user.click(screen.getByRole('button', { name: /Sources/ }));
     expect(await screen.findByRole('checkbox', { name: 'Specification' })).toBeChecked();
   });
 });

@@ -78,11 +78,9 @@ export default function App({ project, projectBusy, renderProjectPanel }: { proj
       <h1 className="sr-only">Backlog Studio – {project.name}</h1>
       <header className="topbar">
         <span className="brand"><span className="brand-mark" aria-hidden="true">b.</span><span>backlog<span className="brand-light">studio</span></span></span>
-        <div className="topbar-center"><span className="workspace-dot" aria-hidden="true" /> {project.name} <span className="topbar-divider">/</span> Product backlog</div>
+        {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm, config.llmEnvironment).endpoint)}
         <div className="topbar-actions"><span className="local-badge"><span aria-hidden="true" /> Saved locally</span><button className="icon-button" aria-label="Open settings" onClick={() => config.setOpen(true)}><span aria-hidden="true">⚙</span></button><span className="avatar" aria-hidden="true">;-)</span></div>
       </header>
-
-      {renderProjectPanel(flow.busy, getLlmConfiguration(config.llm, config.llmEnvironment).endpoint)}
 
       <nav className="mobile-tabs" aria-label="Workspace sections">
         <button className={mobilePanel === 'tree' ? 'active' : ''} aria-pressed={mobilePanel === 'tree'} onClick={() => setMobilePanel('tree')}>Backlog</button>

@@ -10,5 +10,7 @@ FROM caddy:2-alpine
 COPY Caddyfile /etc/caddy/Caddyfile
 COPY --from=build /app/dist /srv
 # Runtime configuration, served as /config.json by Caddy (not part of the build).
+# Hosts the /source-proxy relay may fetch for source URLs without CORS (regex of host[:port] alternatives; empty = disabled).
+ENV SOURCE_PROXY_HOSTS=""
 ENV LLM_ENDPOINT="" LLM_MODEL="" LLM_STREAMING="false"
 EXPOSE 8080

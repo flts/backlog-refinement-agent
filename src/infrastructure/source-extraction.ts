@@ -187,7 +187,12 @@ async function readResponse(response: Response): Promise<Uint8Array> {
   return bytes;
 }
 
-/** Fetch an explicit HTTP(S) URL in the browser; the server must allow CORS. */
+/** Same-origin relay path served by Caddy (production) or the Vite dev server for hosts that do not allow CORS. */
+export function sourceProxyUrl(url: URL, base: string = import.meta.env.BASE_URL): string {
+  return `${base.replace(/\/?$/, '/')}source-proxy/${url.protocol.slice(0, -1)}/${url.host}${url.pathname}${url.search}`;
+}
+
+/** Fetch an explicit HTTP(S) URL: directly when the server allows CORS, otherwise through the same-origin source proxy. */
 export async function extractUrlText(input: string): Promise<string> {
   let url: URL;
   try {
@@ -200,7 +205,22 @@ export async function extractUrlText(input: string): Promise<string> {
   try {
     response = await fetch(url, { method: 'GET', mode: 'cors', referrerPolicy: 'no-referrer' });
   } catch {
-    throw new SourceExtractionError('fetch-failed', 'Could not fetch the URL. The server may not allow CORS or may be unreachable.');
+    try {
+      response = await fetch(sourceProxyUrl(url), { method: 'GET', referrerPolicy: 'no-referrer', credentials: 'omit' });
+    } catch {
+      throw new SourceExtractionError('fetch-failed', 'Could not fetch the URL. The server may not allow CORS or may be unreachable.');
+    }
+    const note = response.status === 403 || response.status === 502 ? await response.clone().text() : '';
+    if (response.status === 403 && note.includes('SOURCE_PROXY_HOSTS')) {
+      throw new SourceExtractionError('fetch-failed', `The server does not allow CORS and ${url.host} is not allowed by the source proxy. Add it to SOURCE_PROXY_HOSTS (a regular expression matching the full host, e.g. (www\\.)?nu\\.nl) and restart the server, or paste the text instead.`);
+    }
+    if (response.status === 502) {
+      const reason = note.startsWith('Source proxy upstream error:') ? note.slice('Source proxy upstream error:'.length).trim() : 'the relay could not reach the site';
+      throw new SourceExtractionError('fetch-failed', `The source proxy could not fetch ${url.host}: ${reason}.`);
+    }
+    if ((response.headers.get('content-type') ?? '').startsWith('text/html') && response.ok && (await response.clone().text()).includes('id="root"')) {
+      throw new SourceExtractionError('fetch-failed', 'The source proxy is not available (the server returned the app itself). Restart the dev server or enable the relay with SOURCE_PROXY_HOSTS.');
+    }
   }
   if (!response.ok) throw new SourceExtractionError('http-error', `URL request failed with HTTP ${response.status}.`);
   const type = mediaType(response.headers.get('content-type') ?? '');

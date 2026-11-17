@@ -23,7 +23,7 @@ describe('ProjectPanel', () => {
     const { container } = render(<ProjectPanel projects={[project]} project={project} sources={[]} busy={false} endpoint=""
       onSelect={vi.fn()} onCreate={vi.fn()} onRename={vi.fn()} onDelete={vi.fn()} onAddFile={onAddFile} onAddUrl={vi.fn()}
       onEditText={vi.fn()} onFetch={vi.fn()} onToggle={vi.fn()} onRemove={vi.fn()} onExport={vi.fn()} onImport={vi.fn()} />);
-    await user.click(screen.getByText('Project sources (0)'));
+    await user.click(screen.getByRole('button', { name: /Sources/ }));
     const input = container.querySelector<HTMLInputElement>('input[accept^=".pdf"]')!;
     const click = vi.spyOn(input, 'click');
     await user.click(screen.getByRole('button', { name: 'Add PDF or text file' }));
