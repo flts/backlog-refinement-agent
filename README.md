@@ -54,7 +54,7 @@ pnpm test            # web unit and component tests (Vitest, axe)
 pnpm typecheck && pnpm build
 pnpm test:py         # Python services and libs (needs Docker for the Postgres testcontainers)
 pnpm lint:py         # ruff
-pnpm e2e             # Playwright against the Compose stack (see e2e/)
+pnpm e2e             # Playwright against the Compose stack with e2e/docker-compose.e2e.yml (see e2e/README.md)
 ```
 
 ## Documentation
