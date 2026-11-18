@@ -1,0 +1,15 @@
+{
+  "name": "conform-duplicate-headings-used-once",
+  "description": "Two given sections with the same heading: the first fills the template, the second becomes an additional note.",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "## Summary\n\n## Scope",
+    "markdown": "## Summary\nfirst\n\n## Summary\nsecond"
+  },
+  "expected": {
+    "document": "## Summary\nfirst\n\n## Scope\n\n## Additional notes\n### Summary\nsecond",
+    "extraHeadings": [
+      "Summary"
+    ]
+  }
+}

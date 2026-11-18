@@ -1,0 +1,12 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-err3"
+ },
+ {
+  "type": "RUN_ERROR",
+  "message": "An internal error has occurred while streaming events.",
+  "code": "ValueError"
+ }
+]

@@ -1,0 +1,13 @@
+{
+  "name": "conform-preamble-to-notes",
+  "description": "Preamble text of the given document ends up in \"Additional notes\".",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "## Summary\n\n## Scope",
+    "markdown": "Loose intro\n\n## Summary\nS"
+  },
+  "expected": {
+    "document": "## Summary\nS\n\n## Scope\n\n## Additional notes\nLoose intro",
+    "extraHeadings": []
+  }
+}

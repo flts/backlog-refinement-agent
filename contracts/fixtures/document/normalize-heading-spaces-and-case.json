@@ -1,0 +1,9 @@
+{
+  "name": "normalize-heading-spaces-and-case",
+  "description": "Trims, collapses whitespace and lower-cases.",
+  "fn": "normalizeHeading",
+  "input": {
+    "heading": "  Open   QUESTIONS "
+  },
+  "expected": "open questions"
+}

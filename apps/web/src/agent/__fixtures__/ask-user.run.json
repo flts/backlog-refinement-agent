@@ -1,0 +1,95 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-ask"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "PredictState",
+  "value": []
+ },
+ {
+  "type": "TEXT_MESSAGE_START",
+  "messageId": "m1",
+  "role": "assistant"
+ },
+ {
+  "type": "TEXT_MESSAGE_CONTENT",
+  "messageId": "m1",
+  "delta": "Let me ask."
+ },
+ {
+  "type": "TOOL_CALL_START",
+  "toolCallId": "call_ask_1",
+  "toolCallName": "ask_user",
+  "parentMessageId": "m1"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_ask_1",
+  "delta": "{\"questions\": [{\"id\": \"q1\", \"header\": "
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_ask_1",
+  "delta": "\"Scope\", \"question\": \"Which users?\", \""
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_ask_1",
+  "delta": "options\": [{\"label\": \"Admins\"}, {\"labe"
+ },
+ {
+  "type": "TOOL_CALL_ARGS",
+  "toolCallId": "call_ask_1",
+  "delta": "l\": \"All\"}]}]}"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "usage",
+  "value": {}
+ },
+ {
+  "type": "TOOL_CALL_END",
+  "toolCallId": "call_ask_1"
+ },
+ {
+  "type": "TEXT_MESSAGE_END",
+  "messageId": "m1"
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "Refine this feature"
+   },
+   {
+    "id": "m1",
+    "role": "assistant",
+    "content": "Let me ask."
+   },
+   {
+    "id": "m2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_ask_1",
+      "type": "function",
+      "function": {
+       "name": "ask_user",
+       "arguments": "{\"questions\": [{\"id\": \"q1\", \"header\": \"Scope\", \"question\": \"Which users?\", \"options\": [{\"label\": \"Admins\"}, {\"label\": \"All\"}]}]}"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-ask"
+ }
+]

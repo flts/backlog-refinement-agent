@@ -1,0 +1,9 @@
+{
+  "actions": [
+    {
+      "id": "a1",
+      "label": "Break it down",
+      "intent": "message"
+    }
+  ]
+}

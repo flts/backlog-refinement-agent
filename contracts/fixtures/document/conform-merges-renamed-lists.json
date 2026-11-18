@@ -1,0 +1,13 @@
+{
+  "name": "conform-merges-renamed-lists",
+  "description": "Renamed assumption/question sections are merged into the template lists.",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "## Summary\n\n## Assumptions\n- [ ] \n\n## Open questions\n- [ ] ",
+    "markdown": "## Summary\nS\n\n## Aannames\n- [ ] A1\n\n## Open vragen\n- [ ] Q1"
+  },
+  "expected": {
+    "document": "## Summary\nS\n\n## Assumptions\n- [ ] A1\n\n## Open questions\n- [ ] Q1",
+    "extraHeadings": []
+  }
+}

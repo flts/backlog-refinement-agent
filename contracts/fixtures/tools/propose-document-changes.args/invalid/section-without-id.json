@@ -1,0 +1,10 @@
+{
+  "summary": "x",
+  "baseVersion": 1,
+  "sections": [
+    {
+      "heading": "A",
+      "markdown": "b"
+    }
+  ]
+}

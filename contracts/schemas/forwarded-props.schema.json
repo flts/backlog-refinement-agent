@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/forwarded-props.schema.json",
+  "title": "AG-UI forwardedProps",
+  "description": "`RunAgentInput.forwardedProps`: per-request only, never persisted. MAF drops metadata values whose serialized form exceeds 512 characters, so the serialized object must stay far below 512 characters. additionalProperties=false and the enums guarantee that (max ~60 characters); never add free-text fields here. `context[]` is not part of the contract (ignored by MAF). Anything that must persist belongs in the state instead.",
+  "type": "object",
+  "properties": {
+    "intent": {
+      "type": "string",
+      "enum": [
+        "refine",
+        "continue",
+        "breakdown",
+        "assess"
+      ],
+      "description": "What this run should do."
+    },
+    "childType": {
+      "type": "string",
+      "enum": [
+        "capability",
+        "feature",
+        "user-story",
+        "enabler"
+      ],
+      "description": "Type of children for intent breakdown."
+    }
+  },
+  "required": [
+    "intent"
+  ],
+  "additionalProperties": false
+}

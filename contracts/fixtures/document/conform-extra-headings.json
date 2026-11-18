@@ -1,0 +1,15 @@
+{
+  "name": "conform-extra-headings",
+  "description": "Filled sections are kept, missing ones stay empty, hints are removed and unknown sections move under \"Additional notes\".",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "# T\n\n## Summary\n<!-- hint -->\n\n## Scope\n<!-- hint -->\n\n## Assumptions\n- [ ] \n\n## Open questions\n- [ ] ",
+    "markdown": "## assumptions\n- [ ] A\n\n## Summary\nS\n\n## My own\nExtra"
+  },
+  "expected": {
+    "document": "## Summary\nS\n\n## Scope\n\n## Assumptions\n- [ ] A\n\n## Open questions\n\n## Additional notes\n### My own\nExtra",
+    "extraHeadings": [
+      "My own"
+    ]
+  }
+}

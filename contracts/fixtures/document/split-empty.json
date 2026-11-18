@@ -1,0 +1,12 @@
+{
+  "name": "split-empty",
+  "description": "An empty document has no preamble and no sections.",
+  "fn": "splitSections",
+  "input": {
+    "document": ""
+  },
+  "expected": {
+    "preamble": "",
+    "sections": []
+  }
+}

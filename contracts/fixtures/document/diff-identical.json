@@ -1,0 +1,13 @@
+{
+  "name": "diff-identical",
+  "description": "Identical documents have no added or removed lines.",
+  "fn": "diffDocuments",
+  "input": {
+    "before": "## A\nx",
+    "after": "## A\nx"
+  },
+  "expected": {
+    "added": [],
+    "removed": []
+  }
+}

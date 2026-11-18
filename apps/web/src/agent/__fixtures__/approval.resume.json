@@ -1,0 +1,121 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-res"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "PredictState",
+  "value": []
+ },
+ {
+  "type": "STATE_SNAPSHOT",
+  "snapshot": {
+   "schemaVersion": 1,
+   "projectId": "p1",
+   "itemId": "item-42",
+   "preview": [
+    {
+     "id": "s1",
+     "heading": "Summary",
+     "mode": "replace",
+     "markdown": "New summary text",
+     "rationale": "clarity"
+    },
+    {
+     "id": "s2",
+     "heading": "Acceptance criteria",
+     "mode": "replace",
+     "markdown": "- [ ] AC1\n- [ ] AC2"
+    }
+   ]
+  }
+ },
+ {
+  "type": "TOOL_CALL_RESULT",
+  "messageId": "t2",
+  "toolCallId": "call_prop",
+  "content": "{\"applied\": [\"s1\"], \"edited\": [\"s1\"], \"rejected\": [], \"conflicted\": [], \"newVersion\": 8}",
+  "role": "tool"
+ },
+ {
+  "type": "STATE_SNAPSHOT",
+  "snapshot": {
+   "schemaVersion": 1,
+   "projectId": "p1",
+   "itemId": "item-42",
+   "preview": null,
+   "lastApply": {
+    "applied": [
+     "s1"
+    ],
+    "edited": [
+     "s1"
+    ],
+    "rejected": [],
+    "conflicted": [],
+    "newVersion": 8
+   }
+  }
+ },
+ {
+  "type": "TEXT_MESSAGE_START",
+  "messageId": "a3",
+  "role": "assistant"
+ },
+ {
+  "type": "TEXT_MESSAGE_CONTENT",
+  "messageId": "a3",
+  "delta": "Applied the summary change."
+ },
+ {
+  "type": "TEXT_MESSAGE_END",
+  "messageId": "a3"
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "improve"
+   },
+   {
+    "id": "a1",
+    "role": "assistant",
+    "content": "Here is my proposal."
+   },
+   {
+    "id": "a2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_prop",
+      "type": "function",
+      "function": {
+       "name": "propose_document_changes",
+       "arguments": "{\"summary\": \"Tighten summary + ACs\", \"base_version\": 7, \"sections\": [{\"id\": \"s1\", \"heading\": \"Summary\", \"mode\": \"replace\", \"markdown\": \"New summary text\", \"rationale\": \"clarity\"}, {\"id\": \"s2\", \"heading\": \"Acceptance criteria\", \"mode\": \"replace\", \"markdown\": \"- [ ] AC1\\n- [ ] AC2\"}]}"
+      }
+     }
+    ]
+   },
+   {
+    "id": "t2",
+    "role": "tool",
+    "toolCallId": "call_prop",
+    "content": "{\"applied\": [\"s1\"], \"edited\": [\"s1\"], \"rejected\": [], \"conflicted\": [], \"newVersion\": 8}"
+   },
+   {
+    "id": "a3",
+    "role": "assistant",
+    "content": "Applied the summary change."
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-res"
+ }
+]

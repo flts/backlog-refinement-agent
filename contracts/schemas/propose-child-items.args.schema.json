@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/propose-child-items.args.schema.json",
+  "title": "propose_child_items arguments",
+  "description": "Arguments of the agent-service tool `propose_child_items`. Propose a breakdown of the current item into child items of one type. The user reviews each child (accept / edit / reject); approved children are created server-side as children of the current item. Relationship refs are child proposalIds or the parent item id; a parent-child relationship to the parent is created automatically.",
+  "x-tool": "propose_child_items",
+  "type": "object",
+  "properties": {
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why the item is split this way."
+    },
+    "childType": {
+      "type": "string",
+      "enum": [
+        "capability",
+        "feature",
+        "user-story",
+        "enabler"
+      ],
+      "description": "Type of all proposed children."
+    },
+    "children": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "proposalId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identifier of the proposed child, unique within the proposal and different from the parent item id (for example \"c1\")."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Child item title."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "The child's full Markdown document (## sections following the child type's template; it is conformed to the template server-side)."
+          }
+        },
+        "required": [
+          "proposalId",
+          "title",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "The proposed children."
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceRef": {
+            "type": "string",
+            "minLength": 1,
+            "description": "proposalId of a proposed child, or the parent item id."
+          },
+          "targetRef": {
+            "type": "string",
+            "minLength": 1,
+            "description": "proposalId of a proposed child, or the parent item id."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "parent-child",
+              "supports",
+              "depends-on",
+              "related-to"
+            ]
+          }
+        },
+        "required": [
+          "sourceRef",
+          "targetRef",
+          "type"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 40,
+      "description": "Optional extra relationships between children or to the parent."
+    }
+  },
+  "required": [
+    "rationale",
+    "childType",
+    "children"
+  ],
+  "additionalProperties": false
+}

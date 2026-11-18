@@ -1,0 +1,13 @@
+{
+  "name": "conform-template-without-sections",
+  "description": "A template without level-2 sections returns the trimmed markdown.",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "# Just a title",
+    "markdown": "  anything\n## goes  "
+  },
+  "expected": {
+    "document": "anything\n## goes",
+    "extraHeadings": []
+  }
+}

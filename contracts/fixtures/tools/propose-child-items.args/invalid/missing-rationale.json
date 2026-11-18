@@ -1,0 +1,10 @@
+{
+  "childType": "feature",
+  "children": [
+    {
+      "proposalId": "c1",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    }
+  ]
+}

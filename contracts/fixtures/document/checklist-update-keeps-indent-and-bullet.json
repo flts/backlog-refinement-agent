@@ -1,0 +1,11 @@
+{
+  "name": "checklist-update-keeps-indent-and-bullet",
+  "description": "Indentation and the bullet character are preserved when checking.",
+  "fn": "updateChecklistLine",
+  "input": {
+    "document": "## Assumptions\n  * [ ] Nested",
+    "line": 1,
+    "action": "check"
+  },
+  "expected": "## Assumptions\n  * [x] Nested"
+}

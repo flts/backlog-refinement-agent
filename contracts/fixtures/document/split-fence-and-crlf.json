@@ -1,0 +1,21 @@
+{
+  "name": "split-fence-and-crlf",
+  "description": "Fenced headings are ignored and CRLF is normalised.",
+  "fn": "splitSections",
+  "input": {
+    "document": "## A\r\n```md\r\n## fake\r\n```\r\n## B"
+  },
+  "expected": {
+    "preamble": "",
+    "sections": [
+      {
+        "heading": "A",
+        "body": "```md\n## fake\n```"
+      },
+      {
+        "heading": "B",
+        "body": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "normalize-heading-hashes",
+  "description": "A leading run of \"#\" is stripped.",
+  "fn": "normalizeHeading",
+  "input": {
+    "heading": "## Summary"
+  },
+  "expected": "summary"
+}

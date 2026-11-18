@@ -1,0 +1,24 @@
+{
+  "name": "apply-empty-document",
+  "description": "Updates on an empty document create the sections.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "",
+    "updates": [
+      {
+        "heading": "Summary",
+        "markdown": "First",
+        "mode": "replace"
+      },
+      {
+        "heading": "Scope",
+        "markdown": "Second",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## Summary\nFirst\n\n## Scope\nSecond",
+    "warnings": []
+  }
+}

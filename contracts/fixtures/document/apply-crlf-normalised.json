@@ -1,0 +1,19 @@
+{
+  "name": "apply-crlf-normalised",
+  "description": "CRLF line endings are normalised to LF.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\r\nline\r\n\r\n## B\r\nb",
+    "updates": [
+      {
+        "heading": "A",
+        "markdown": "x",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\nx\n\n## B\nb",
+    "warnings": []
+  }
+}

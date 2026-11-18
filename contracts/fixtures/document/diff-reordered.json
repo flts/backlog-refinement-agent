@@ -1,0 +1,17 @@
+{
+  "name": "diff-reordered",
+  "description": "A moved line is reported as removed and added.",
+  "fn": "diffDocuments",
+  "input": {
+    "before": "a\nb\nc",
+    "after": "b\nc\na"
+  },
+  "expected": {
+    "added": [
+      "a"
+    ],
+    "removed": [
+      "a"
+    ]
+  }
+}

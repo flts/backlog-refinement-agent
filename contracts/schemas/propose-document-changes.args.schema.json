@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/propose-document-changes.args.schema.json",
+  "title": "propose_document_changes arguments",
+  "description": "Arguments of the agent-service tool `propose_document_changes`. Propose section-level changes to the current item's Markdown document. The user reviews them per section (accept / edit / reject) and only accepted sections are applied. Return ONLY the sections you change. Never remove or rewrite content the user wrote or confirmed ('- [x]' items); prefer mode append for lists. On approval the tool returns a result matching document-changes.result. All argument keys are required in the user's `editedArgs` (full replacement).",
+  "x-tool": "propose_document_changes",
+  "type": "object",
+  "properties": {
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Short summary of the proposed changes for the reviewer."
+    },
+    "suggestedTitle": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional new item title."
+    },
+    "suggestedStatus": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "ready-with-open-questions"
+      ],
+      "description": "Optional new item status."
+    },
+    "baseVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "The item version the proposal is based on (from get_item_context). Sections changed by someone else since then are reported as conflicts."
+    },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identifier of this section change, unique within the proposal (for example \"s1\"). Used for accept/edit/reject and in the result."
+          },
+          "heading": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "Existing or new level-2 (##) heading of the item's Markdown document, without the leading ##. Matching ignores case and whitespace."
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "replace",
+              "append"
+            ],
+            "default": "replace",
+            "description": "replace swaps the section body (confirmed '- [x]' lines are always kept); append adds new lines to the end without duplicating existing ones."
+          },
+          "markdown": {
+            "type": "string",
+            "description": "Section body in Markdown, without the heading line."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Optional short reason for the change, shown to the reviewer."
+          }
+        },
+        "required": [
+          "id",
+          "heading",
+          "markdown"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 20,
+      "description": "Only the sections you change; untouched sections are kept."
+    }
+  },
+  "required": [
+    "summary",
+    "baseVersion",
+    "sections"
+  ],
+  "additionalProperties": false
+}

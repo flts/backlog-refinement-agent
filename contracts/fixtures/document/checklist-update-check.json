@@ -1,0 +1,11 @@
+{
+  "name": "checklist-update-check",
+  "description": "Checking a line turns \"[ ]\" into \"[x]\".",
+  "fn": "updateChecklistLine",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?",
+    "line": 5,
+    "action": "check"
+  },
+  "expected": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [x] Maybe\n\n## Open questions\n- [ ] Who?"
+}

@@ -1,0 +1,12 @@
+export { ConflictDialog, type ConflictDialogProps } from './ConflictDialog';
+export { PresenceAvatars, PresenceDot, Avatar, presenceSentence } from './PresenceAvatars';
+export { PresenceAnnouncer, presenceChangeText } from './PresenceAnnouncer';
+export { RemoteChangeNotice } from './RemoteChangeNotice';
+export { attributionText } from './RevisionAttribution';
+export { ShareDialog, type ShareDialogProps } from './ShareDialog';
+export { applyMerge, planMerge, type MergeInput, type MergePlan, type SectionChoice } from './merge';
+export { displayName, initialsOf, normalizeEmail, useMemberDirectory } from './people';
+export { presenceIntervalMs, usePresence, useProjectPresence, type PresenceState, type PresenceUser } from './presence';
+export { createProjectEventsClient, type ProjectEvent, type ProjectEventsStatus } from './projectEvents';
+export { useItemAutosave, autosaveDelayMs, type ConflictState, type ItemAutosave, type SaveStatus } from './useItemAutosave';
+export { applyProjectEvent, closeReasonText, remoteChangeText, useProjectEvents, type RemoteItemChange } from './useProjectEvents';

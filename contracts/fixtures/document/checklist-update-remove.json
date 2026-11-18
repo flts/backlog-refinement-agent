@@ -1,0 +1,11 @@
+{
+  "name": "checklist-update-remove",
+  "description": "Removing a line deletes it.",
+  "fn": "updateChecklistLine",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?",
+    "line": 5,
+    "action": "remove"
+  },
+  "expected": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n\n## Open questions\n- [ ] Who?"
+}

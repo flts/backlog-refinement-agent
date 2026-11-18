@@ -1,0 +1,48 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-hyd"
+ },
+ {
+  "type": "STATE_SNAPSHOT",
+  "snapshot": {
+   "projectId": "p1",
+   "itemId": "i1"
+  }
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "Refine this feature"
+   },
+   {
+    "id": "m1",
+    "role": "assistant",
+    "content": "Let me ask."
+   },
+   {
+    "id": "m2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_ask_1",
+      "type": "function",
+      "function": {
+       "name": "ask_user",
+       "arguments": "{\"questions\": [{\"id\": \"q1\", \"header\": \"Scope\", \"question\": \"Which users?\", \"options\": [{\"label\": \"Admins\"}, {\"label\": \"All\"}]}]}"
+      }
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-hyd"
+ }
+]

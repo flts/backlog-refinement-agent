@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/resume-entry.schema.json",
+  "title": "Resume entry",
+  "description": "One element of `RunAgentInput.resume[]`: `{interruptId, status, payload}`. `interruptId` is `interrupt.id` (\"af-call-...\"), not the toolCallId. status \"resolved\" requires a payload (approval-resume); status \"cancelled\" must not carry one and does not start a model call. Do not send a new user message together with a cancelled resume: it would be ignored - send it in a separate run.",
+  "type": "object",
+  "properties": {
+    "interruptId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "`interrupt.id` of the pending interrupt (af-call-...)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "resolved",
+        "cancelled"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "approved": {
+          "type": "boolean",
+          "description": "true approves the tool call (with editedArgs, if present); false rejects it."
+        },
+        "editedArgs": {
+          "type": "object",
+          "description": "Full REPLACEMENT of the tool arguments (never merged): all argument keys, with only the accepted sections/children, including the user's edits. Must be a subset of the original proposal (checked by id). Validated against the tool's args schema. Omit to approve the proposal unchanged."
+        }
+      },
+      "required": [
+        "approved"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "interruptId",
+    "status"
+  ],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "resolved"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "required": [
+          "payload"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "cancelled"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "not": {
+          "required": [
+            "payload"
+          ]
+        }
+      }
+    }
+  ]
+}

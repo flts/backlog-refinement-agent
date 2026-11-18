@@ -1,0 +1,28 @@
+{
+  "rationale": "Order matters",
+  "childType": "feature",
+  "children": [
+    {
+      "proposalId": "c1",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    },
+    {
+      "proposalId": "c2",
+      "title": "Offline editing",
+      "markdown": "## Summary\nEdit without network."
+    }
+  ],
+  "relationships": [
+    {
+      "sourceRef": "c2",
+      "targetRef": "c1",
+      "type": "depends-on"
+    },
+    {
+      "sourceRef": "11111111-1111-4111-8111-111111111111",
+      "targetRef": "c1",
+      "type": "supports"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "name": "apply-preamble-preserved",
+  "description": "Text before the first level-2 heading (title, intro) is kept as preamble.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "# Title\n\nIntro text.\n\n## Summary\nOld",
+    "updates": [
+      {
+        "heading": "Summary",
+        "markdown": "New",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "# Title\n\nIntro text.\n\n## Summary\nNew",
+    "warnings": []
+  }
+}

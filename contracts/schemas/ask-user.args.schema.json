@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/ask-user.args.schema.json",
+  "title": "ask_user arguments",
+  "description": "Arguments of the client-side `ask_user` tool. Ask 1-3 clarifying questions, each with 1-4 suggested answers; the UI always offers a free-text answer too. Call it at most once per turn and only when the answer is needed to continue. Declared by the SPA in RunAgentInput.tools; validated by the SPA and by the agent-service.",
+  "x-tool": "ask_user",
+  "type": "object",
+  "properties": {
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable identifier of the question, unique within this call (for example \"q1\"). Answers refer to it."
+          },
+          "header": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24,
+            "description": "Very short label (at most 24 characters) shown as the stepper tab, for example \"Target users\"."
+          },
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The full question, phrased for a product owner."
+          },
+          "rationale": {
+            "type": "string",
+            "description": "Optional one-sentence reason why the answer matters for the backlog item."
+          },
+          "relatedSection": {
+            "type": "string",
+            "description": "Optional document section heading the answer will affect."
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "description": "Short answer the user can pick."
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Optional clarification of the answer."
+                }
+              },
+              "required": [
+                "label"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1,
+            "maxItems": 4,
+            "description": "1-4 suggested answers. The UI always adds a free-text 'Other' answer itself; do not add one."
+          },
+          "recommended": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Optional zero-based index (0-3) into options of the answer you recommend; the UI shows it first with a badge. Should be smaller than the number of options (consumers ignore an out-of-range index)."
+          },
+          "multiSelect": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allow selecting several options (checkboxes). Defaults to false."
+          }
+        },
+        "required": [
+          "id",
+          "header",
+          "question",
+          "options"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 3,
+      "description": "1-3 questions, shown one at a time."
+    }
+  },
+  "required": [
+    "questions"
+  ],
+  "additionalProperties": false
+}

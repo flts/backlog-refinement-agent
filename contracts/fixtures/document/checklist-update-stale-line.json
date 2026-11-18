@@ -1,0 +1,11 @@
+{
+  "name": "checklist-update-stale-line",
+  "description": "A line that is not a task leaves the document unchanged.",
+  "fn": "updateChecklistLine",
+  "input": {
+    "document": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?",
+    "line": 0,
+    "action": "check"
+  },
+  "expected": "## Summary\nOld\n\n## Assumptions\n- [x] Kept\n- [ ] Maybe\n\n## Open questions\n- [ ] Who?"
+}

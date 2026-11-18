@@ -1,0 +1,14 @@
+{
+  "name": "template-headings",
+  "description": "Headings of a template, with hints stripped.",
+  "fn": "templateHeadings",
+  "input": {
+    "template": "# T\n\n## Summary\n<!-- hint -->\n\n## Scope\n<!-- hint -->\n\n## Assumptions\n- [ ] \n\n## Open questions\n- [ ] "
+  },
+  "expected": [
+    "Summary",
+    "Scope",
+    "Assumptions",
+    "Open questions"
+  ]
+}

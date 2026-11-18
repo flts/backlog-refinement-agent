@@ -1,0 +1,19 @@
+{
+  "name": "apply-empty-markdown-clears-section",
+  "description": "Replacing with an empty body leaves just the heading.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\nx\n\n## B\ny",
+    "updates": [
+      {
+        "heading": "A",
+        "markdown": "   ",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\n\n## B\ny",
+    "warnings": []
+  }
+}

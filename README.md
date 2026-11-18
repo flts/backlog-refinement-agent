@@ -1,65 +1,66 @@
 # Backlog Refinement Agent
 
-A local-first React and TypeScript workspace for creating, refining, and decomposing Capabilities, Features, User Stories, and Enablers. Backlog items, relationships, refinement conversations, settings, and templates are stored in browser IndexedDB; the app has no application backend or account system.
+A shared workspace for creating, refining and decomposing Capabilities, Features, User Stories and Enablers together with an LLM agent. Each backlog item is one Markdown document. The agent asks focused follow-up questions, proposes changes section by section, and you review every proposal before anything is applied.
 
-## Projects and backups
+## Features
 
-Create a project before adding backlog items. Each project has its own backlog, relationships, refinement sessions and sources. The selected project is remembered locally across reloads and browser sessions; if it no longer exists, another available project is selected. Project deletion removes all of these after confirmation. The refinement workspace lets you select or delete a session without deleting its item or previously accepted changes; after deletion the most recent remaining session opens, or a fresh one is created. Use the status controls to move an item back to Refining or forward to Ready. Resolving a question or assumption does not itself change status; an accepted AI assessment can suggest a status change.
+- **Agent refinement with follow-up questions.** The agent (`backlog-refiner`, AG-UI over SSE) reads the item, its relationships and your sources, then uses `ask_user` to ask 1–3 questions with suggested answers (a recommended option, free text, multi-select, skip). Answer with the mouse or the keys `1`–`5`, `Enter` and `Esc`.
+- **Review with track changes.** Proposed document changes and child items stream in as live track changes. Accept, edit or reject each section or child; the server applies only what you approved and merges section by section (confirmed `- [x]` items are never dropped). Conflicts with edits by others are resolved per section.
+- **Break-down, continue and quality assessment.** `/break-down`, `/continue` and `/assess` (or the ⌘K / Ctrl+K palette) run the agent with a specific intent; quality is stored with the item and shown stale after edits.
+- **Sharing.** Owners add people by email, as owner or contributor, with immediate access (no invitations). Everyone sees live updates and who is viewing what; refinement sessions stay private to their creator.
+- **Sources.** Upload PDF/text files, fetch a URL or paste text. Sources can be pinned (sent in full, within a budget), searchable (hybrid vector + full-text retrieval with citations) or excluded.
+- **History and backups.** Every change is a revision (manual, agent or restore) that you can compare and restore. Owners can export and import a whole project and the project's guidance.
+- **Project guidance.** Default principles, per-type instructions and templates are Agent Skills in `skills/`; owners can override them per project.
 
-Add PDF or UTF-8 text files, or save an HTTP(S) URL reference with optional pasted text. PDFs must contain selectable text; scanned PDFs require OCR and are not supported. File input is limited to 10 MiB, 200 PDF pages and 1,000,000 characters of extracted text. Fetching a URL is explicit and requires the destination's CORS permission; if it fails, paste the text instead. Browser fetch defaults apply: same-origin credentials may be sent. Fetched HTML is read as static text, not executed.
+## Quick start
 
-Sources start unselected. Select project sources to include them in refinement, decomposition and quality-assessment requests; the workspace displays the configured AI endpoint. Selected source content is sent to that endpoint along with the item and related context. No other project's sources are sent. The combined selected text is limited to 100,000 characters; deselect sources if it exceeds the limit.
-
-Export a complete project to a JSON backup, including original files, source text, backlog items, relationships and session history. Import creates a project; if its ID already exists, choose a separate copy or confirm replacement. Project backups are limited to 50 MiB and do not contain application-wide settings or LLM connection overrides. Configuration import/export remains separate. Backups may contain sensitive project content, so handle them accordingly.
-
-Data is local to this browser and origin, not synchronized across devices. Browser storage has quotas and can be cleared or evicted, so export backups regularly. AI requests still require a separately configured endpoint.
-
-**Upgrade:** This version does not migrate old backlog data. When existing data is detected, the app asks for confirmation before permanently discarding old items, relationships and sessions; valid current-format settings and local connection overrides are retained. Older configuration formats and placeholder templates are not supported.
-
-## Run locally
-
-Requires Node.js 22.12+ and pnpm. Use pnpm for installing and running package scripts.
+Requires Node.js 22.12+, pnpm, [uv](https://docs.astral.sh/uv/), Docker and the Aspire CLI (see `apphost/README.md`).
 
 ```sh
 pnpm install
-pnpm dev
+uv sync --all-packages
+pnpm dev        # Aspire AppHost: Postgres, Keycloak, fake LLM gateway, both services, Vite (http://localhost:5173)
 ```
 
-Run checks with `pnpm test` and `pnpm build`.
+Sign in as `alice@example.test` (also `bob`, `carol`; password `dev-password`). By default the AppHost starts a scripted fake LLM gateway; set the `llm-base-url` parameter (and `llm-api-key`, `llm-chat-model`, `embedding-model`, `embedding-dim`) to use a real OpenAI-compatible gateway, see `apphost/README.md`. `pnpm dev:web` runs only the Vite dev server against services that are already running (copy `apps/web/.env.example` to `apps/web/.env.local`).
 
-## Configure the LLM proxy
-
-Copy `.env.example` to `.env.local` for local development:
+### Docker Compose
 
 ```sh
-cp .env.example .env.local
+docker compose --profile fake up -d --build --wait   # with the scripted fake gateway
+docker compose up -d --build --wait                  # real gateway: set LLM_BASE_URL, LLM_API_KEY, LLM_MODEL in .env
+deploy/compose-smoke.sh                              # end-to-end curl/jq check
+docker compose --profile fake down -v                # stop and delete the data
 ```
 
-Nothing from the environment is compiled into the bundle. The app reads its defaults at runtime from `/config.json` at the origin root, independent of any app subpath (`{ "endpoint": "...", "model": "...", "streaming": false }`). In development the Vite server generates `/config.json` from `.env.local` (`LLM_ENDPOINT`, `LLM_MODEL`, `LLM_STREAMING`, and the development-only `LOCAL_LLM_API_KEY`); restart the dev server after changing it. In production, the host must serve `/config.json` from its runtime configuration; the Caddy container below uses container environment variables. The endpoint can be an absolute HTTP(S) URL (for example `https://proxy.example`) or a root-relative same-origin path such as `/api`. The app appends `/v1/chat/completions` and `/v1/models` itself; relative paths resolve against the origin only, not the current app path.
+Open <http://localhost:8088>. Keycloak is at <http://localhost:8080> (admin `admin` / `dev-admin-password`). `.env.example` documents all settings; every secret there is a **dev-only default**.
 
-**Docker/Caddy:** the `Dockerfile` builds the app and serves it with Caddy. The `Caddyfile` generates `/config.json` per request from the container's runtime environment variables `LLM_ENDPOINT`, `LLM_MODEL` and `LLM_STREAMING` (also `PORT`, default 8080), so one image works for every deployment:
+### Kubernetes
+
+Kustomize manifests with Istio (mTLS, JWT validation) are in `deploy/k8s`; see `deploy/k8s/README.md` for prerequisites, secrets and the Keycloak client setup. Postgres (with `vector` and `citext`), Keycloak and the LLM gateway are external.
+
+## Configuration
+
+- **Web (runtime, never bundled):** `/config.json` = `{ auth: { mode, authority, clientId, scope }, api: { backlog, agent }, agentId }`. In containers Caddy builds it from `AUTH_MODE` (`oidc` or `platform`), `OIDC_AUTHORITY`, `OIDC_CLIENT_ID`, `OIDC_SCOPE`, `AGENT_ID` and proxies `/api/backlog` and `/api/agent` to `BACKLOG_API_URL` and `AGENT_API_URL`. In `oidc` mode the SPA signs in with Authorization Code + PKCE; in `platform` mode the gateway authenticates and injects the bearer token.
+- **backlog-api:** `BACKLOG_*` variables (database, Keycloak/OIDC, limits, embeddings, events); see `services/backlog-api/README.md` and `.env.example`.
+- **agent-service:** `AGENT_*` variables (database, OIDC, backlog-api URL, LLM gateway `AGENT_LLM_BASE_URL` / `AGENT_LLM_MODEL` / `AGENT_LLM_API_KEY`); see `services/agent-service/README.md`.
+- **Compose:** `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`, `APP_ENV` and the dev secrets in `.env.example`.
+- Both services export OpenTelemetry through the standard `OTEL_*` environment variables, rate-limit agent runs per user, time runs out after 180 s and allow one active run per thread.
+
+## Tests and checks
 
 ```sh
-docker build -t backlog-refinement-agent .
-docker run -p 8080:8080 -e LLM_ENDPOINT=https://proxy.example -e LLM_MODEL=my-model backlog-refinement-agent
+pnpm test            # web unit and component tests (Vitest, axe)
+pnpm typecheck && pnpm build
+pnpm test:py         # Python services and libs (needs Docker for the Postgres testcontainers)
+pnpm lint:py         # ruff
+pnpm e2e             # Playwright against the Compose stack with e2e/docker-compose.e2e.yml (see e2e/README.md)
 ```
 
-`LLM_ENDPOINT` and `LLM_MODEL` default to empty strings; `LLM_STREAMING` defaults to the JSON boolean `false` and, when set, must be `true` or `false`. Values must not contain double quotes or backslashes (they are inserted into JSON verbatim). `LOCAL_LLM_API_KEY` is intentionally not supported here.
+## Documentation
 
-For Kubernetes/Helm, configure these variables on the same container that runs Caddy. Caddy reads them when it loads the Caddyfile, so changing a value requires rolling out pods with the updated environment. If `/config.json` is unexpectedly empty, check that the request reaches the intended pod, verify `LLM_ENDPOINT` is non-empty in that pod, and confirm the pod runs an image containing the current `Caddyfile`. To check the variable without printing its value:
-
-```sh
-kubectl exec <pod> -- sh -c 'test -n "$LLM_ENDPOINT" && echo LLM_ENDPOINT is set || echo LLM_ENDPOINT is empty'
-```
-
-When there are multiple replicas, check each pod; an ingress or service may still route requests to an older pod.
-
-You can also enter the base URL, model and API key in Settings > General (the key field is masked). Those values are stored in this browser's localStorage, override the config values per field, and can be removed with "Remove saved connection". They are never included in the configuration export. "Load models from /v1/models" fetches the model list from the endpoint's OpenAI-compatible `/models` route; if it fails or returns nothing, type the model name manually.
-
-**Security:** The API key is only served in development, sent to the browser and visible in network requests, so use it only for a trusted local session. `config.json` in production never has its `apiKey` honoured; authenticate at the endpoint/proxy boundary instead. Production requests may include same-origin browser credentials; a user can also enter an API key in Settings. Configure the endpoint and CORS policy accordingly (including for `/models`).
-
-Set `"streaming": true` in `config.json` (or `LLM_STREAMING=true` in development) to request OpenAI-compatible Server-Sent Events (SSE) streaming; the default is `false`. Streaming sends `"stream": true` and reads the response as SSE chunks, but the assistant response is structured JSON, so the UI only displays it after the complete response has been received and validated. While the request is in flight, the chat automatically scrolls to the bottom and shows the thinking indicator.
-
-Backlog content is only sent when the user requests refinement, decomposition or quality assessment. The app transmits the selected item, its directly linked items and relationships, the relevant refinement conversation, and selected project sources; unrelated backlog items are excluded. The default request timeout is three minutes.
-
-Agent instructions and Markdown templates can be exported and imported as JSON under Settings > Backup. Exports contain saved settings, not unsaved edits; imports replace saved settings and discard unsaved Settings edits. Default templates are Markdown files under `src/defaults/templates/`; the base refinement principles and per-type instructions are Markdown files under `src/defaults/instructions/`. User edits to templates, principles and type instructions are saved in IndexedDB (configuration export format version 4 only) and can be reset to the source files. The agent is given the user's saved template for an item type verbatim. Templates are plain Markdown (headings plus `<!-- hint -->` comments, no placeholders): each item stores one Markdown document and the agent decides what to fill in. The agent returns only per-section updates, which the app merges so untouched sections stay byte-identical; confirmed `- [x]` items are never dropped, and the last 10 versions are kept with an “Undo last AI change” button. Sections titled “Assumptions” / “Open questions” (`- [ ]` task lists) get confirm/reject/resolve buttons. “Break this down” gives the model the template of the requested child type and pre-fills each proposed child (including assumptions and open questions); the app then rebuilds every child description on that template's headings, keeping any extra content under “Additional notes”. Refinement sessions and accepted backlog changes remain local and survive reloads; generated child items are only persisted after explicit acceptance.
+- [`docs/architecture.md`](docs/architecture.md): architecture, data model, AG-UI contract, security and operations
+- [`docs/accessibility.md`](docs/accessibility.md): WCAG 2.2 AA measures and test protocol
+- [`contracts/README.md`](contracts/README.md), [`skills/README.md`](skills/README.md), [`apphost/README.md`](apphost/README.md), [`deploy/k8s/README.md`](deploy/k8s/README.md), [`deploy/keycloak/README.md`](deploy/keycloak/README.md)
+- Service READMEs: [`services/backlog-api`](services/backlog-api/README.md), [`services/agent-service`](services/agent-service/README.md)
+- [`AGENTS.md`](AGENTS.md): rules for contributors and coding agents

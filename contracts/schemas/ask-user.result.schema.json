@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/ask-user.result.schema.json",
+  "title": "ask_user result",
+  "description": "Content of the tool message the SPA sends back for `ask_user` (JSON-encoded). `dismissed` is kept for completeness only: when the user types in the composer instead of answering, the SPA does NOT send a dismissed tool result (MAF would overwrite it); it sends only the user message, optionally prefixed with `[dismissed question q1]`, and the server injects a synthetic skipped result.",
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "answered",
+        "skipped",
+        "dismissed"
+      ],
+      "description": "answered: at least one question answered; skipped: user skipped all; dismissed: see schema description."
+    },
+    "answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The `id` of the question that was answered."
+          },
+          "selected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Labels of the selected options (empty when only free text was given or skipped)."
+          },
+          "freeform": {
+            "type": "string",
+            "description": "Free-text answer from the 'Other' field."
+          },
+          "skipped": {
+            "type": "boolean",
+            "description": "True when the user skipped this question; record it as an open question."
+          }
+        },
+        "required": [
+          "questionId",
+          "selected",
+          "skipped"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "status",
+    "answers"
+  ],
+  "additionalProperties": false
+}

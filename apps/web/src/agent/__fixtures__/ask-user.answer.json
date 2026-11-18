@@ -1,0 +1,76 @@
+[
+ {
+  "type": "RUN_STARTED",
+  "threadId": "thr-1",
+  "runId": "run-ans"
+ },
+ {
+  "type": "CUSTOM",
+  "name": "PredictState",
+  "value": []
+ },
+ {
+  "type": "TEXT_MESSAGE_START",
+  "messageId": "m3",
+  "role": "assistant"
+ },
+ {
+  "type": "TEXT_MESSAGE_CONTENT",
+  "messageId": "m3",
+  "delta": "Thanks, scoping "
+ },
+ {
+  "type": "TEXT_MESSAGE_CONTENT",
+  "messageId": "m3",
+  "delta": "to admins."
+ },
+ {
+  "type": "TEXT_MESSAGE_END",
+  "messageId": "m3"
+ },
+ {
+  "type": "MESSAGES_SNAPSHOT",
+  "messages": [
+   {
+    "id": "u1",
+    "role": "user",
+    "content": "Refine this feature"
+   },
+   {
+    "id": "m1",
+    "role": "assistant",
+    "content": "Let me ask."
+   },
+   {
+    "id": "m2",
+    "role": "assistant",
+    "toolCalls": [
+     {
+      "id": "call_ask_1",
+      "type": "function",
+      "function": {
+       "name": "ask_user",
+       "arguments": "{\"questions\": [{\"id\": \"q1\", \"header\": \"Scope\", \"question\": \"Which users?\", \"options\": [{\"label\": \"Admins\"}, {\"label\": \"All\"}]}]}"
+      }
+     }
+    ]
+   },
+   {
+    "id": "t1",
+    "role": "tool",
+    "toolCallId": "call_ask_1",
+    "content": "{}"
+   },
+   {
+    "id": "m3",
+    "role": "assistant",
+    "content": "Thanks, scoping to admins."
+   }
+  ]
+ },
+ {
+  "type": "RUN_FINISHED",
+  "threadId": "thr-1",
+  "runId": "run-ans"
+ }
+]

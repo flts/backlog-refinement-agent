@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/quality-assessment.args.schema.json",
+  "title": "record_quality_assessment arguments",
+  "description": "Arguments of the agent-service tool `record_quality_assessment`: store a quality assessment of the item's current document (no rewriting, no questions). The server stores it with the document hash so the UI can mark it stale after edits and mirrors it into state.quality.",
+  "x-tool": "record_quality_assessment",
+  "type": "object",
+  "properties": {
+    "overall": {
+      "type": "string",
+      "enum": [
+        "needs-clarification",
+        "ready",
+        "ready-with-open-questions"
+      ],
+      "description": "Overall verdict."
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "area": {
+            "type": "string",
+            "enum": [
+              "problem",
+              "objective",
+              "outcome",
+              "beneficiary",
+              "value",
+              "scope",
+              "acceptance-criteria",
+              "dependencies",
+              "contradictions",
+              "assumptions",
+              "implementation-detail",
+              "testability",
+              "solution-independence",
+              "abstraction",
+              "lean-scope",
+              "vertical-slicing"
+            ]
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "unclear",
+              "missing",
+              "not-applicable"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "description": "Short evidence or remark."
+          }
+        },
+        "required": [
+          "area",
+          "level"
+        ],
+        "additionalProperties": false
+      },
+      "maxItems": 32,
+      "description": "Assessment per quality area; cover all areas. Explicitly flag contradictions. Never use numeric scores."
+    },
+    "excessiveTechnicalDetail": {
+      "type": "boolean"
+    },
+    "speculativeScope": {
+      "type": "boolean"
+    },
+    "unnecessaryConfigurability": {
+      "type": "boolean"
+    },
+    "mixedOutcomes": {
+      "type": "boolean"
+    },
+    "suggestedItemType": {
+      "type": "string",
+      "enum": [
+        "capability",
+        "feature",
+        "user-story",
+        "enabler"
+      ],
+      "description": "Set when the item is of the wrong type."
+    },
+    "suggestedSplit": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Titles of suggested smaller items."
+    },
+    "excludedFollowUpCandidates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Out-of-scope follow-up candidates."
+    },
+    "summary": {
+      "type": "string",
+      "description": "Optional one-paragraph explanation of the verdict."
+    },
+    "documentHash": {
+      "type": "string",
+      "description": "Optional hash of the assessed document as returned by get_item_context; assessments of an outdated hash are stored as stale."
+    }
+  },
+  "required": [
+    "overall",
+    "areas"
+  ],
+  "additionalProperties": false
+}

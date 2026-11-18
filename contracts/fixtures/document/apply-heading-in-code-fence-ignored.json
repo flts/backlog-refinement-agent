@@ -1,0 +1,19 @@
+{
+  "name": "apply-heading-in-code-fence-ignored",
+  "description": "A \"## \" line inside a fenced code block does not start a section.",
+  "fn": "applySectionUpdates",
+  "input": {
+    "document": "## A\n```\n## not a heading\n```\n\n## B\nb",
+    "updates": [
+      {
+        "heading": "B",
+        "markdown": "x",
+        "mode": "replace"
+      }
+    ]
+  },
+  "expected": {
+    "document": "## A\n```\n## not a heading\n```\n\n## B\nx",
+    "warnings": []
+  }
+}

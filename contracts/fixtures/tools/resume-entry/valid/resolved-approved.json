@@ -1,0 +1,7 @@
+{
+  "interruptId": "af-call-0123456789abcdef0123456789abcdef",
+  "status": "resolved",
+  "payload": {
+    "approved": true
+  }
+}

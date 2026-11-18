@@ -1,0 +1,8 @@
+{
+  "actions": [
+    {
+      "id": "a1",
+      "intent": "refine"
+    }
+  ]
+}

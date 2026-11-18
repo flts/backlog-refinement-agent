@@ -1,0 +1,23 @@
+{
+  "status": "answered",
+  "answers": [
+    {
+      "questionId": "q1",
+      "selected": [
+        "Product owners"
+      ],
+      "skipped": false
+    },
+    {
+      "questionId": "q2",
+      "selected": [],
+      "freeform": "Only on tablets",
+      "skipped": false
+    },
+    {
+      "questionId": "q3",
+      "selected": [],
+      "skipped": true
+    }
+  ]
+}

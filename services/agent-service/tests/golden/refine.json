@@ -1,0 +1,47 @@
+{
+  "scenario": "refine",
+  "runs": [
+    {
+      "run": "refine",
+      "request": {"forwardedProps": {"intent": "refine"}, "messages": ["user: Refine this item."]},
+      "status": 200,
+      "threadStatus": "idle",
+      "modelRequests": 3,
+      "mcpCalls": [{"arguments": {"limit": null, "projectId": "<project>", "query": "checkout"}, "tool": "search_sources"}],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"stepName": "Reading item", "type": "STEP_STARTED"},
+        {"name": "PredictState", "stateKeys": ["childPreview", "preview"], "type": "CUSTOM"},
+        {"stepName": "Reading item", "type": "STEP_FINISHED"},
+        {"messageId": "<id-1>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"parentMessageId": "<id-1>", "toolCallId": "call_search", "toolCallName": "search_sources", "type": "TOOL_CALL_START"},
+        {"stepName": "Searching sources", "type": "STEP_STARTED"},
+        {"args": {"projectId": "<project>", "query": "checkout"}, "toolCallId": "call_search", "type": "TOOL_CALL_ARGS"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"toolCallId": "call_search", "type": "TOOL_CALL_END"},
+        {"content": {"passages": [{"citationId": "src-1:p1", "headingPath": ["Intro"], "page": 1, "score": 0.9, "sourceId": "s-1", "sourceName": "Handbook", "text": "Passage about checkout"}], "semantic": false}, "messageId": "<id-2>", "toolCallId": "call_search", "type": "TOOL_CALL_RESULT"},
+        {"stepName": "Searching sources", "type": "STEP_FINISHED"},
+        {"messageId": "<id-1>", "type": "TEXT_MESSAGE_END"},
+        {"messageId": "<id-3>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-3>", "text": "I read the handbook.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"parentMessageId": "<id-4>", "toolCallId": "call_title", "toolCallName": "set_session_title", "type": "TOOL_CALL_START"},
+        {"args": {"title": "Checkout redesign"}, "toolCallId": "call_title", "type": "TOOL_CALL_ARGS"},
+        {"parentMessageId": "<id-4>", "toolCallId": "call_actions", "toolCallName": "suggest_next_actions", "type": "TOOL_CALL_START"},
+        {"args": {"actions": [{"id": "a1", "intent": "breakdown", "label": "Break it down"}, {"id": "a2", "intent": "message", "label": "Ask about scope", "prompt": "What is out of scope?"}]}, "toolCallId": "call_actions", "type": "TOOL_CALL_ARGS"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"toolCallId": "call_title", "type": "TOOL_CALL_END"},
+        {"content": "ok", "messageId": "<id-5>", "toolCallId": "call_title", "type": "TOOL_CALL_RESULT"},
+        {"messageId": "<id-3>", "type": "TEXT_MESSAGE_END"},
+        {"toolCallId": "call_actions", "type": "TOOL_CALL_END"},
+        {"content": "ok", "messageId": "<id-6>", "toolCallId": "call_actions", "type": "TOOL_CALL_RESULT"},
+        {"snapshot": {"itemId": "<item>", "nextActions": [{"id": "a1", "intent": "breakdown", "label": "Break it down"}, {"id": "a2", "intent": "message", "label": "Ask about scope", "prompt": "What is out of scope?"}], "preview": null, "projectId": "<project>", "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"messageId": "<id-7>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-7>", "text": "The item is in good shape.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"messageId": "<id-7>", "type": "TEXT_MESSAGE_END"},
+        {"messages": [{"content": "Refine this item.", "id": "m1", "role": "user"}, {"id": "<id-1>", "role": "assistant", "toolCalls": [{"arguments": {"projectId": "<project>", "query": "checkout"}, "id": "call_search", "name": "search_sources"}]}, {"content": {"passages": [{"citationId": "src-1:p1", "headingPath": ["Intro"], "page": 1, "score": 0.9, "sourceId": "s-1", "sourceName": "Handbook", "text": "Passage about checkout"}], "semantic": false}, "id": "<id-2>", "role": "tool", "toolCallId": "call_search"}, {"content": "I read the handbook.", "id": "<id-3>", "role": "assistant"}, {"id": "<id-4>", "role": "assistant", "toolCalls": [{"arguments": {"title": "Checkout redesign"}, "id": "call_title", "name": "set_session_title"}, {"arguments": {"actions": [{"id": "a1", "intent": "breakdown", "label": "Break it down"}, {"id": "a2", "intent": "message", "label": "Ask about scope", "prompt": "What is out of scope?"}]}, "id": "call_actions", "name": "suggest_next_actions"}]}, {"content": "ok", "id": "<id-5>", "role": "tool", "toolCallId": "call_title"}, {"content": "ok", "id": "<id-6>", "role": "tool", "toolCallId": "call_actions"}, {"content": "The item is in good shape.", "id": "<id-7>", "role": "assistant"}], "type": "MESSAGES_SNAPSHOT"},
+        {"outcome": "success", "type": "RUN_FINISHED"}
+      ]
+    }
+  ]
+}

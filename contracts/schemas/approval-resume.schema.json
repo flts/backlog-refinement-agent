@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.backlog-refinement-agent.dev/schemas/approval-resume.schema.json",
+  "title": "Approval resume payload",
+  "description": "The `payload` the SPA sends in `RunAgentInput.resume[]` when answering an approval interrupt of propose_document_changes or propose_child_items. Use the interrupt's `id` (\"af-call-...\") as `interruptId` - NOT its `toolCallId`; map to the tool call via `interrupt.toolCallId`; the original arguments are in `interrupt.metadata.agent_framework.function_call.arguments`. To reject, send approved=false and state.preview=null in the same request. To cancel send a resume entry with status \"cancelled\" (see resume-entry).",
+  "type": "object",
+  "properties": {
+    "approved": {
+      "type": "boolean",
+      "description": "true approves the tool call (with editedArgs, if present); false rejects it."
+    },
+    "editedArgs": {
+      "type": "object",
+      "description": "Full REPLACEMENT of the tool arguments (never merged): all argument keys, with only the accepted sections/children, including the user's edits. Must be a subset of the original proposal (checked by id). Validated against the tool's args schema. Omit to approve the proposal unchanged."
+    }
+  },
+  "required": [
+    "approved"
+  ],
+  "additionalProperties": false
+}

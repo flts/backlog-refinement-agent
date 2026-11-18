@@ -1,0 +1,20 @@
+# Uses the shared Istio ingress gateway (label istio=ingressgateway, namespace istio-system). TLS is terminated here;
+# create the certificate Secret `backlog-tls` in the ingress gateway's namespace (e.g. with cert-manager).
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: backlog
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port: {number: 80, name: http, protocol: HTTP}
+      hosts: ["backlog.example.com"]
+      tls:
+        httpsRedirect: true
+    - port: {number: 443, name: https, protocol: HTTPS}
+      hosts: ["backlog.example.com"]
+      tls:
+        mode: SIMPLE
+        credentialName: backlog-tls
+        minProtocolVersion: TLSV1_2

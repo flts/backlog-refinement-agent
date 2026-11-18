@@ -1,0 +1,15 @@
+{
+  "approved": true,
+  "editedArgs": {
+    "summary": "Clarify",
+    "baseVersion": 3,
+    "sections": [
+      {
+        "id": "s1",
+        "heading": "Summary",
+        "mode": "replace",
+        "markdown": "Edited by the user"
+      }
+    ]
+  }
+}

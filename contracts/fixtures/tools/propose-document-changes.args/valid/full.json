@@ -1,0 +1,21 @@
+{
+  "summary": "Refine scope",
+  "suggestedTitle": "Offline sync",
+  "suggestedStatus": "ready-with-open-questions",
+  "baseVersion": 0,
+  "sections": [
+    {
+      "id": "s1",
+      "heading": "Summary",
+      "mode": "replace",
+      "markdown": "A clearer summary.",
+      "rationale": "Was vague"
+    },
+    {
+      "id": "s2",
+      "heading": "Open questions",
+      "mode": "append",
+      "markdown": "- [ ] Who approves?"
+    }
+  ]
+}

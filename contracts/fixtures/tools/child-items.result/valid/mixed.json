@@ -1,0 +1,29 @@
+{
+  "created": [
+    {
+      "proposalId": "c1",
+      "itemId": "22222222-2222-4222-8222-222222222222",
+      "title": "Offline editing"
+    }
+  ],
+  "edited": [
+    "c1"
+  ],
+  "rejected": [
+    "c2"
+  ],
+  "failed": [
+    {
+      "proposalId": "c3",
+      "reason": "Title already exists"
+    }
+  ],
+  "relationshipsCreated": 1,
+  "relationshipsSkipped": [
+    {
+      "sourceRef": "c2",
+      "targetRef": "c1",
+      "reason": "c2 was rejected"
+    }
+  ]
+}

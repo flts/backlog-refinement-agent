@@ -1,0 +1,13 @@
+{
+  "name": "conform-prefix-heading-match",
+  "description": "A heading that is a prefix of the template heading (longer than 3 characters) matches it.",
+  "fn": "conformToTemplate",
+  "input": {
+    "template": "## Acceptance criteria\n\n## Scope",
+    "markdown": "## Acceptance\n- [ ] Works"
+  },
+  "expected": {
+    "document": "## Acceptance criteria\n- [ ] Works\n\n## Scope",
+    "extraHeadings": []
+  }
+}

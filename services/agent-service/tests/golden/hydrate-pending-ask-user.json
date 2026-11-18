@@ -1,0 +1,42 @@
+{
+  "scenario": "hydrate-pending-ask-user",
+  "runs": [
+    {
+      "run": "ask",
+      "request": {"messages": ["user: Refine this feature"]},
+      "status": 200,
+      "threadStatus": "awaiting_input",
+      "modelRequests": 1,
+      "mcpCalls": [],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"stepName": "Reading item", "type": "STEP_STARTED"},
+        {"name": "PredictState", "stateKeys": ["childPreview", "preview"], "type": "CUSTOM"},
+        {"stepName": "Reading item", "type": "STEP_FINISHED"},
+        {"messageId": "<id-1>", "role": "assistant", "type": "TEXT_MESSAGE_START"},
+        {"messageId": "<id-1>", "text": "Let me ask.", "type": "TEXT_MESSAGE_CONTENT"},
+        {"parentMessageId": "<id-2>", "toolCallId": "call_ask_1", "toolCallName": "ask_user", "type": "TOOL_CALL_START"},
+        {"args": {"questions": [{"header": "Scope", "id": "q1", "options": [{"label": "Admins"}, {"label": "All"}], "question": "Which users?"}]}, "toolCallId": "call_ask_1", "type": "TOOL_CALL_ARGS"},
+        {"name": "usage", "type": "CUSTOM"},
+        {"toolCallId": "call_ask_1", "type": "TOOL_CALL_END"},
+        {"messageId": "<id-1>", "type": "TEXT_MESSAGE_END"},
+        {"messages": [{"content": "Refine this feature", "id": "m1", "role": "user"}, {"content": "Let me ask.", "id": "<id-1>", "role": "assistant"}, {"id": "<id-2>", "role": "assistant", "toolCalls": [{"arguments": {"questions": [{"header": "Scope", "id": "q1", "options": [{"label": "Admins"}, {"label": "All"}], "question": "Which users?"}]}, "id": "call_ask_1", "name": "ask_user"}]}], "type": "MESSAGES_SNAPSHOT"},
+        {"outcome": "success", "type": "RUN_FINISHED"}
+      ]
+    },
+    {
+      "run": "hydrate",
+      "request": {"hydrate": true},
+      "status": 200,
+      "threadStatus": "awaiting_input",
+      "modelRequests": 0,
+      "mcpCalls": [],
+      "events": [
+        {"type": "RUN_STARTED"},
+        {"snapshot": {"itemId": "<item>", "preview": null, "projectId": "<project>", "schemaVersion": 1}, "type": "STATE_SNAPSHOT"},
+        {"messages": [{"content": "Refine this feature", "id": "m1", "role": "user"}, {"content": "Let me ask.", "id": "<id-1>", "role": "assistant"}, {"id": "<id-2>", "role": "assistant", "toolCalls": [{"arguments": {"questions": [{"header": "Scope", "id": "q1", "options": [{"label": "Admins"}, {"label": "All"}], "question": "Which users?"}]}, "id": "call_ask_1", "name": "ask_user"}]}], "type": "MESSAGES_SNAPSHOT"},
+        {"outcome": "success", "type": "RUN_FINISHED"}
+      ]
+    }
+  ]
+}

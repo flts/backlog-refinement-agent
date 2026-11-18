@@ -1,0 +1,11 @@
+{
+  "summary": "Clarify the summary",
+  "baseVersion": 3,
+  "sections": [
+    {
+      "id": "s1",
+      "heading": "Summary",
+      "markdown": "New text"
+    }
+  ]
+}
